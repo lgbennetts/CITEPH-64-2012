@@ -1,6 +1,6 @@
-function [S,F]=Wavemaker3D_solver(X0,k,Y_weight,Z_weight,H,omega,M,N,Rw,W,xw,xi)
+function [S,F]=Wavemaker3D_solver(X0,k,Z_weight,alpha,Y_weight,H,omega,M,N,Rw,W,xw,xi)
 
-% [S,F]=Wavemaker2D_solver(X0,k,Y_weight,Z_weight,H,omega,M,N,Rw,W,xw,xi)
+% [S,F]=Wavemaker2D_solver(X0,k,Z_weight,alpha,Y_weight,H,omega,M,N,Rw,W,xw,xi)
 %
 % S is the scattering matrix induced by the wavemaker and F is the wave
 % generation vector, such that for a wave generated towards positive 
@@ -11,11 +11,13 @@ function [S,F]=Wavemaker3D_solver(X0,k,Y_weight,Z_weight,H,omega,M,N,Rw,W,xw,xi)
 %
 % X0 is the amplitude of the wavemaker.
 % k is the vector of wavenumbers (1 travelling + N evanescent).
-% Y_weight is the weighting coefficient of the transversal modes of the 
-% wavetank (\cos \beta_m(z+H)).
 % Z_weight is the vector of weighting coefficients of the vertical 
 % modes in the open water domain (\cosh k_n(z+H)).
 % H is the depth.
+% alpha is an (M+1)*(N+1)-length vector containing all the longitudinal 
+% wavenumbers (propagating + evanescent).
+% Y_weight is the weighting coefficient of the transversal modes of the 
+% wavetank (\cos \beta_m(z+H)).
 % omega is the radian frequency of the paddle motion.
 % M+1 is the number of waves propagating horizontally
 % N+1 is the number of roots from the dispersion relation in open water 
@@ -28,7 +30,7 @@ function [S,F]=Wavemaker3D_solver(X0,k,Y_weight,Z_weight,H,omega,M,N,Rw,W,xw,xi)
 % infinity and the reference is taken at the location of the paddle.
 
 
-if nargin==11
+if nargin==12
     xi=xw;
 end
 
@@ -72,12 +74,12 @@ end
 
 
 % Longitudinal eigenfunctions at wavemaker boundary
-alpha = zeros((M+1)*(N+1),1); % Wavenumbers
-for n = 1:N+1
-    for m = 1:M+1
-        alpha((m-1)*(N+1)+n) = sqrt(k(n)^2-((m-1)*pi/W)^2);
-    end
-end
+% alpha = zeros((M+1)*(N+1),1); % Wavenumbers
+% for n = 1:N+1
+%     for m = 1:M+1
+%         alpha((m-1)*(N+1)+n) = sqrt(k(n)^2-((m-1)*pi/W)^2);
+%     end
+% end
 Phix_P_dx=diag(1i*alpha); 
 Phix_M_dx=Rw*diag(-1i*alpha.*exp(-1i*alpha*(xi-xw))); 
 

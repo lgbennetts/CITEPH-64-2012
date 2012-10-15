@@ -1,5 +1,5 @@
 function [Coef_1P,Coef_1M,Coef_3P,Coef_3M] = Wavetank3D_solver(...
-    Af,k,data_disks,x,W,H,omega,N,M,Rw,Rb)
+    Af,k,data_disks,x,W,H,omega,N,M,Rw)
 
 % [Coef_1P,Coef_1M,Coef_3P,Coef_3M] = Wavetank3D_solver(...
 %     Af,k,data_disks,x,W,H,omega,N,M,Rw,Rb)
@@ -41,8 +41,8 @@ Z_weight = Vert_Weight(k,H);
 
 
 %% Wavemaker scattering at x0: Coef_1P = Sw * Coef_1M + F.
-[Sw,F] = Wavemaker3D_solver(Af,k,Y_weight,Z_weight,H,omega,M,N,Rw,W,...
-    x(1),x(2));
+[Sw,F] = Wavemaker3D_solver(Af,k,Z_weight,alpha,Y_weight,H,omega,M,N,Rw,...
+    W,x(1),x(2));
 
 
 %% Scattering by a group of elastic disks in a channel located in [x1 x2]
@@ -52,7 +52,7 @@ Sd = DisksInChannel_solver(k,data_disks,Y_weight,Z_weight,x(2),x(3),W,H,...
 
 
 %% Beach scattering at x3: Coef_2M = Sb * Coef_2P
-Sb=Beach3D_solver(k,M,N,omega,x(end),x(end-1));
+Sb=Beach3D_solver(alpha,M,P,N,omega,x(end),x(end-1));
 
 
 %% Solution of the wave tank problem

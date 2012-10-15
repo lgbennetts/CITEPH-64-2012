@@ -1,6 +1,6 @@
-function S=Beach3D_solver(k,M,N,omega,W,xb,xi)
+function S=Beach3D_solver(alpha,M,P,N,omega,xb,xi)
 
-% Scat_b=Beach3D_solver(k,M,N,omega,W,xb,xi)
+% Scat_b=Beach3D_solver(alpha,M,P,N,omega,xb,xi)
 %
 % S is the scattering matrix of the beach. It relates the incident wave to
 % the reflected wave by a predefined reflexion coefficient. If cp is the
@@ -9,11 +9,12 @@ function S=Beach3D_solver(k,M,N,omega,W,xb,xi)
 %
 %                              cm = S*cp
 %
-% k is the vector of wavenumbers (1 travelling + N evanescent).
+% alpha is an (M+1)*(N+1)-length vector containing all the longitudinal 
+% wavenumbers (propagating + evanescent).
 % M+1 is the number of transversal modes.
+% P is the number of propagating horizontal modes.
 % N+1 is the number of vertical modes.
 % omega is the radian frequency.
-% W is the width of the wavetank.
 % xb is the location of the beach.
 % xi is the reference of the wave incident on the beach. If it is not
 % specified, we suppose the wave is generated from negative infinity and
@@ -38,17 +39,17 @@ Rb = beach_TF(omega);
 
 % Reflection matrix
 R = zeros((M+1)*(N+1),1);
-for m = 1:M+1
+for m = 1:P
     R((m-1)*(N+1)+1) = Rb;
 end
 
- % Wavenumbers
-alpha = zeros((M+1)*(N+1),1);
-for n = 1:N+1
-    for m = 1:M+1
-        alpha((m-1)*(N+1)+n) = sqrt(k(n)^2-((m-1)*pi/W)^2);
-    end
-end
+%  % Wavenumbers
+% alpha = zeros((M+1)*(N+1),1);
+% for n = 1:N+1
+%     for m = 1:M+1
+%         alpha((m-1)*(N+1)+n) = sqrt(k(n)^2-((m-1)*pi/W)^2);
+%     end
+% end
 
 S=diag(R)*diag(exp(1i*alpha*(xb-xi)));
 
