@@ -38,15 +38,16 @@ z   = linspace(-H,0,N_w);   % z-coordinate vector
 f   = paddle_shape(z,H);    % Generation of the discretized geometry.
 
 %% Note
-% The condition over the paddle is developed as a kinematic condition,
-% which makes equal the horizontal fluid velocity and the paddle velocity.
-% We then need to integrate over the vertical and transversal fluid domain 
-% to eliminate the (y,z)-dependence. 
+% Each vector and matrix involved has length or size (N+1)*(M+1). The
+% entries are organised so that the unknown amplitude vectors with entries
+% a_mn are: a = [a_00 ... a_0N a_10 ... a1N a20 ... ... aMN].', where m and
+% n are summation indices for the transversal and vertical modes,
+% respectively.
 
 %% Definition of the input forcing vector F 
 F=zeros((N+1)*(M+1),1);
 for n=1:N+1
-    F((n-1)*(M+1)+1) = 1i*omega*X0*W*Z_weight(1)*...
+    F(n) = 1i*omega*X0*W*Y_weight*...
         Trapezoidal_rule(f.'.*cosh(k(n)*(z+H))*Z_weight(n),-H,0);
 end
 
@@ -59,15 +60,14 @@ end
 % Matching in vertical direction (Free/Free In-Prod)
 IP_vert=eye((N+1)*(M+1));
 for n=1:N+1
-    IP_vert((n-1)*(M+1)+1,(n-1)*(M+1)+1) = innerproduct_vertical(...
-        k(n),k(n),H)*Z_weight(n)^2;
+    IP_vert(n,n) = innerproduct_vertical(k(n),k(n),H)*Z_weight(n)^2;
 end
 
 
 % Matching in transversal direction (Natural transversal modes In-Prod)
 IP_trans=eye((N+1)*(M+1));
 for n=1:N+1
-    IP_trans((n-1)*(M+1)+1,(n-1)*(M+1)+1) = W/2*Y_weight^2;
+    IP_trans(n,n) = W/2*Y_weight^2;
 end
 
 
@@ -75,10 +75,10 @@ end
 alpha = zeros((M+1)*(N+1),1); % Wavenumbers
 for n = 1:N+1
     for m = 1:M+1
-        alpha((n-1)*(M+1)+m) = sqrt(k(n)^2-((m-1)*pi/W)^2);
+        alpha((m-1)*(N+1)+n) = sqrt(k(n)^2-((m-1)*pi/W)^2);
     end
 end
-Phix_P_dx=diag(1i*alpha.*exp(-1i*alpha*xw)); 
+Phix_P_dx=diag(1i*alpha); 
 Phix_M_dx=Rw*diag(-1i*alpha.*exp(-1i*alpha*(xi-xw))); 
 
 
