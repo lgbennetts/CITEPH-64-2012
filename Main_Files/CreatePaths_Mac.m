@@ -9,4 +9,6 @@ path(path,'../Fns')
 path(path,'../Fns/Greens_fns')
 path(path,'../Fns/Misc')
 
+path(path,'../Fns/Misc/Weight_Norm')
+
 return

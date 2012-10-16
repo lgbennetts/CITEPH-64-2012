@@ -4,14 +4,14 @@ disp('%---------- START: Steady_MultiFloe -----------%')
 
 %% Parameters
 
-Vert_Dim=1;     % - Vertical modes 
-lam0 = 2*pi;    % - wavelength
-evs=0;          % - no. evanescent waves (horiz) to include
+Vert_Dim=2;     % - Vertical modes 
+lam0 = 1.7*pi;    % - wavelength
+evs=1;          % - no. evanescent waves (horiz) to include
 res = 100;      % - for the integration of the Green's fns
 extra_pts = 0;  % - for irreg freqs
 
 %% Definition of the geometry of the problem solved
- GeomPlate=[3.0 2.5, 2.0, 1e-1];   %2.40482555769577
+ GeomPlate=[2.5 2.2, 2.0, 1e-1];      %2.40482555769577
 %            6.0 1.6, 0.6, 1e-1];
 %            4.0 0.6, 0.4, 1e-1];
 %[4.5 2.0, 1,   9e-6 ];
@@ -115,7 +115,7 @@ end
 displ_ice = zeros(th_res,r_res,Geom_Vec(2));
 
 
-[Am, Bm, Ap, En] = ... %displ_fs, displ_ice, 
+[Rm,Tm,Rp,Tp,v_vec,u_vec] = ... %displ_fs, displ_ice, 
     fn_MultiMode_MultiFloe(parameter_vector, Vert_Dim, evs, Geom_Vec, ...
     kappa, thicks, rads, [cx;cy], ...
     r_vec, th_vec, x_vec, y_vec, FS_mesh, res, extra_pts);
@@ -136,8 +136,10 @@ if 0
 
 end
 
-display(['Transmitted amplitudes: ' num2str(abs(Ap))])
-display(['Transmitted energy    : ' num2str(abs(En))])
+% display(['Transmitted amplitudes: ' num2str(abs(Ap(:,1).'))])
+% for loop_Y=2:length(Ap(1,:))
+%  display(['                        ' num2str(abs(Ap(:,loop_Y).'))])
+% end
 
 disp('%----------- END: Steady_MultiFloe ------------%')
 

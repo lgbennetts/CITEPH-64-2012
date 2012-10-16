@@ -1,4 +1,4 @@
-function [Am, Bm, Ap, En] = ...  %displ_fs, floe_displ, 
+function [Rm,Tm,Rp,Tp,v_vec,u_vec] = ...  %displ_fs, floe_displ, 
     fn_MultiMode_MultiFloe(...
     PVec, Vert_Dim, evs, Geom_Vec, kappa, thick_vec, R_vec, posits, ...
     rad_vec, th_vec, x_vec, y_vec, FS_mesh, res, extra_pts)
@@ -28,7 +28,7 @@ Np = Geom_Vec(2); disp(['Plates = ' int2str(Np)])
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Tank Dimensions %%%
 
-width = Geom_Vec(5); bed = Geom_Vec(3); 
+width = Geom_Vec(5); bed = Geom_Vec(3); lth = Geom_Vec(4);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 parameter_vector = PVec(1,[2, 6, 7, 8, 1]);
@@ -90,17 +90,17 @@ disp(['Extra points = ' int2str(extra_pts)])
 %%% - PhiInc = sum_{m=Az_Dims} J_m*PhiInc_{m}*exp{i*m*theta}
 %%% - PhiInc_dr = sum_{m=Az_Dims} PhiInc_dr_{m}*exp{i*m*theta}
 
-[PhiInc, G, Gdr_add, v_vec, u_vec, ExtraOut] = ... 
-    fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, R_vec, width, posits, ...
+[PhiInc, G, Gdr_add, v_vec, u_vec, theta_inc, ExtraOut] = ... 
+    fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, R_vec, width, lth, posits, ...
     res, Amp0, evs, extra_pts);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%% Set Y-DIM %%%
-Y_Dim=length(u_vec(1,:)); new_res = ExtraOut{2};
+Y_Dim=length(u_vec(1,:)); Y0_Dim=Y_Dim-evs; new_res = ExtraOut{2};
 %%%%%%%%%%%%%%%%%
 
-disp(['Tank modes = ',num2str(Y_Dim-evs)]);
+disp(['Tank modes = ',num2str(Y0_Dim)]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Dirichlet 2 Neumann on plate boundaries %%%
@@ -134,23 +134,23 @@ for loop_P=1:Np
 %  VT0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); VT(v1,v1) = zeros(Vert_Dim*(2*Az_Dim+1));
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  %%% SURFACE PIERCING CYLINDER
-%  for loop_N=1:Vert_Dim
-%   v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
-%   PsiMat(v1a,v1a) = diag(besselj(-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P))); 
-%   PsidrMat(v1a,v1a) = k0(loop_N)*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P)));
-%  end
-%  AW(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); AW0(v1,v1) = zeros(Vert_Dim*(2*Az_Dim+1));
-%  VT0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); VT(v1,v1) = VT0(v1,v1);
+ for loop_N=1:Vert_Dim
+  v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
+  PsiMat(v1a,v1a) = diag(besselj(-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P))); 
+  PsidrMat(v1a,v1a) = k0(loop_N)*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P)));
+ end
+ AW(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); AW0(v1,v1) = zeros(Vert_Dim*(2*Az_Dim+1));
+ VT0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); VT(v1,v1) = VT0(v1,v1);
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  %%% ELASTIC PLATE
- pv_plate = [parameter_vector,PVec(loop_P,3),thick_vec(loop_P),...
-        bed-PVec(loop_P,3),PVec(loop_P,5),PVec(loop_P,4)];
- [PsiMat(v1,v1),PsidrMat(v1,v1),Disp_mat(:,:,loop_P),...
-     Amp_mu_Mat(:,:,:,loop_P)] = ...
-    fn_SingleFloe(pv_plate, Vert_Dim, Az_Dim, kk(:,loop_P), ...
-     wt(:,loop_P), mu_0(loop_P), mu_1(loop_P), R_vec(loop_P), rad_vec(loop_P,:));
- [AW0(v1,v1),AW(v1,v1),VT0(v1,v1),VT(v1,v1)] = fn_JumpMats(pv_plate,...
-    Vert_Dim, Vert_Dim, Az_Dim, k0, kk(:,loop_P), wt_0, wt(:,loop_P));
+%  pv_plate = [parameter_vector,PVec(loop_P,3),thick_vec(loop_P),...
+%         bed-PVec(loop_P,3),PVec(loop_P,5),PVec(loop_P,4)];
+%  [PsiMat(v1,v1),PsidrMat(v1,v1),Disp_mat(:,:,loop_P),...
+%      Amp_mu_Mat(:,:,:,loop_P)] = ...
+%     fn_SingleFloe(pv_plate, Vert_Dim, Az_Dim, kk(:,loop_P), ...
+%      wt(:,loop_P), mu_0(loop_P), mu_1(loop_P), R_vec(loop_P), rad_vec(loop_P,:));
+%  [AW0(v1,v1),AW(v1,v1),VT0(v1,v1),VT(v1,v1)] = fn_JumpMats(pv_plate,...
+%     Vert_Dim, Vert_Dim, Az_Dim, k0, kk(:,loop_P), wt_0, wt(:,loop_P));
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  v1=v1+Vert_Dim*(2*Az_Dim+1);
 end
@@ -192,8 +192,6 @@ else
  % - ExtraIn = [skip, const]
 end
 clear ExtraOut
-
-%figure(4); plot(k0,1./abs(v_vec/k0),'.')   
 
 %% - Plot - %%
 
@@ -258,90 +256,98 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% - Free surface - %%%
 
-%PhiI = zeros(1,Y_Dim); PhiI(1,1) = Amp0/1i/k0;
-% -------------------------------------------- %
-
-% J0 = diag(besselj(-Az_Dim:Az_Dim,k0*Rad));
-% H0 = diag(besselh(-Az_Dim:Az_Dim,k0*Rad));
-% J0r = k0*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0*Rad)); % - change when V_Dim~=1
-% H0r = k0*diag(Bessel_dz(@besselh,-Az_Dim:Az_Dim,k0*Rad)); % - ditto
-
-% -------------------------------------------- %
-
-theta_pp = zeros(Vert_Dim, Y_Dim); theta_mm = theta_pp; 
-theta_mp = theta_pp; theta_pm = theta_pp;
-
-for loop_Y=1:Y_Dim
- for loop_Dim=1:Vert_Dim    
-  theta_pp(loop_Dim, loop_Y) = ...
-     GrafThetaVal(v_vec(loop_Dim, loop_Y), u_vec(loop_Dim,loop_Y), [1, 1]);
-  theta_mm(loop_Dim, loop_Y) = ...
-     GrafThetaVal(v_vec(loop_Dim, loop_Y), u_vec(loop_Dim,loop_Y) , [-1, -1]);
-  theta_pm(loop_Dim, loop_Y) = ...
-     GrafThetaVal(v_vec(loop_Dim, loop_Y), u_vec(loop_Dim,loop_Y), [1, -1]);
-  theta_mp(loop_Dim, loop_Y) = ...
-     GrafThetaVal(v_vec(loop_Dim, loop_Y), u_vec(loop_Dim,loop_Y) , [-1, 1]);
- end
-end
-
-theta_vecs = {theta_pp, theta_mm, theta_mp, theta_pm};
-
-%
-
 xNm = [min(posits(1,:)-R_vec),max(posits(1,:)+R_vec)];
 
-%
+%displ_fs = zeros(size(FS_mesh));
 
-displ_fs = zeros(size(FS_mesh));
-Am = zeros(Vert_Dim,Y_Dim,Y_Dim); Bm = Am; Ap = Am;
+%%% AMPLITUDES: 1st DIM = VERT DIM; 2nd DIM = Y DIM; 3rd DIM = INC WAVE
+Bm = zeros(Vert_Dim,Y_Dim,2*Vert_Dim*Y_Dim); Ap = Bm; Am = Bm; Bp = Bm;
 
-v1 = 1:Vert_Dim*(2*Az_Dim+1);
+u1 = 1:Vert_Dim:Vert_Dim*Y_Dim;
 
-for loop_Y=1:Y_Dim
+for loop_Dim=1:Vert_Dim
+ for loop_Y=1:Y_Dim
+  Am(loop_Dim,loop_Y,u1(loop_Y)) = ...
+      exp(1i*k0(loop_Dim)*v_vec(loop_Dim,loop_Y)*xNm(2));
+  Bp(loop_Dim,loop_Y,Vert_Dim*Y_Dim+u1(loop_Y)) = ...
+      exp(1i*k0(loop_Dim)*v_vec(loop_Dim,loop_Y)*lth)*...
+      exp(-1i*k0(loop_Dim)*v_vec(loop_Dim,loop_Y)*xNm(1));
+ end
+ u1=u1+1;
+end
+
+Am = Am*Amp0/1i/k0(1); Bp = Bp*Amp0/1i/k0(1);
+
+for loop_Y=1:2*Y_Dim*Vert_Dim
+  
+ v1 = 1:Vert_Dim*(2*Az_Dim+1);
  for loop_P=1:Np
     
- [dum_Bm, dum_Ap] = ...
+  [dum_Bm, dum_Ap] = ...
     find_Amps(Vert_Dim, Az_Dim, Phi(v1,loop_Y), Phi_dr(v1,loop_Y),  ...
     k0, Y_Dim, [R_vec(loop_P),width], posits(:,loop_P), ...
-    diag(k0)*u_vec, diag(k0)*v_vec, theta_vecs, xNm, ExtraIn);
+    diag(k0)*u_vec, diag(k0)*v_vec, theta_inc, xNm, ExtraIn);
 
 %  displ_fs = displ_fs + fn_PlotFS(parameter_vector, Vert_Dim, Az_Dim, Y_Dim, k0,... 
 %     wt_0, width, R_vec(loop_P), dum_Am, dum_Bm, dum_Ap,...
 %     posits(:,loop_P), u_vec, v_vec, x0, x_vec, y_vec, FS_mesh, ...
 %     Phi(v1), Phi_dr(v1), res, ExtraIn);
 
- Bm(:,:,loop_Y) = Bm(:,:,loop_Y) + dum_Bm; 
- Ap(:,:,loop_Y) = Ap(:,:,loop_Y) + dum_Ap;
+  Bm(:,:,loop_Y) = Bm(:,:,loop_Y) + dum_Bm; 
+  Ap(:,:,loop_Y) = Ap(:,:,loop_Y) + dum_Ap;
  
- v1 = v1 + Vert_Dim*(2*Az_Dim+1);
+  v1 = v1 + Vert_Dim*(2*Az_Dim+1);
  end
 end
 
-clear theta_vecs
-
-% - ENERGY CHECK - %
+%% - ENERGY CHECK - %%
 
 real_inds = find(real(v_vec(1,:))~=0); 
 
 epsm = ones(1,length(real_inds)); epsm(1) = 2; epsm = epsm/2;
 
-for loop_Y=1:Y_Dim
+for loop_Y=1:Vert_Dim:Y0_Dim*Vert_Dim
 
- Am = [[exp(1i*k0(1)*xNm(2))*Amp0/1i/k0(1);zeros(Vert_Dim-1,1)], ...
-    zeros(Vert_Dim,length(real_inds)-1)];
-
- EngErr = sum(epsm.*v_vec(1,real_inds).*(abs(Am(1,real_inds)).^2 ...
-    - abs(Am(1,real_inds)+Ap(1,real_inds)).^2 - abs(Bm(1,real_inds)).^2));
+ EngErr = sum(epsm.*v_vec(1,real_inds).*...
+     (abs(Am(1,real_inds,loop_Y)).^2 + abs(Bp(1,real_inds,loop_Y)).^2 ...
+    - abs(Am(1,real_inds,loop_Y)+Ap(1,real_inds,loop_Y)).^2 ...
+    - abs(Bp(1,real_inds,loop_Y)+Bm(1,real_inds,loop_Y)).^2));
 
  if abs(EngErr)>1e-3
   disp(['Energy error = ',num2str(abs(EngErr)),'!!!!!!!!!!!!!!!!'])
   disp(['Mode = ' int2str(loop_Y)])
  end   
  
+ EngErr = sum(epsm.*v_vec(1,real_inds).*...
+     (abs(Am(1,real_inds,Vert_Dim*Y_Dim+loop_Y)).^2 + abs(Bp(1,real_inds,Vert_Dim*Y_Dim+loop_Y)).^2 ...
+    - abs(Am(1,real_inds,Vert_Dim*Y_Dim+loop_Y)+Ap(1,real_inds,Vert_Dim*Y_Dim+loop_Y)).^2 ...
+    - abs(Bp(1,real_inds,Vert_Dim*Y_Dim+loop_Y)+Bm(1,real_inds,Vert_Dim*Y_Dim+loop_Y)).^2));
+
+ if abs(EngErr)>1e-3
+  disp(['Energy error = ',num2str(abs(EngErr)),'!!!!!!!!!!!!!!!!'])
+  disp(['Mode = ' int2str(Y_Dim+loop_Y)])
+ end   
+ 
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% - For output - %%
+
+%%% TAKE OUT AMPLITUDE %%%
+
+Am = (1i*k0(1)/Amp0)*Am; Bm = (1i*k0(1)/Amp0)*Bm;
+Ap = (1i*k0(1)/Amp0)*Ap; Bp = (1i*k0(1)/Amp0)*Bp;
+
+Rm = zeros(Vert_Dim*Y_Dim); Rp=Rm; Tm=Rm; Tp=Rm;
+
+v1 = 1:Vert_Dim;
+for loop=1:Y_Dim
+ Rm(v1,:) = squeeze(Bp(:,loop,1:Vert_Dim*Y_Dim)+Bm(:,loop,1:Vert_Dim*Y_Dim)); 
+ Tp(v1,:) = squeeze(Bp(:,loop,Vert_Dim*Y_Dim+1:2*Vert_Dim*Y_Dim)+Bm(:,loop,Vert_Dim*Y_Dim+1:2*Vert_Dim*Y_Dim)); 
+ Tm(v1,:) = squeeze(Am(:,loop,1:Vert_Dim*Y_Dim)+Ap(:,loop,1:Vert_Dim*Y_Dim)); 
+ Rp(v1,:) = squeeze(Am(:,loop,Vert_Dim*Y_Dim+1:2*Vert_Dim*Y_Dim)+Ap(:,loop,Vert_Dim*Y_Dim+1:2*Vert_Dim*Y_Dim)); 
+ v1 = v1+Vert_Dim;
+end
 
 if scat==1
  
@@ -351,16 +357,23 @@ if scat==1
      Amp0/1i/k0(1), x_vec, y_vec, FS_mesh);
  end
  
- Ap(1,1) = Ap(1,1) + Am(1,1);
+ Ap = Ap + Am; Bm = Bm + Bp;
 end
 
-Am = abs((1i*k0(1)/Amp0)*Am(1,real_inds));
-Bm = abs((1i*k0(1)/Amp0)*Bm(1,real_inds)); 
-Ap = abs((1i*k0(1)/Amp0)*Ap(1,real_inds));
+u1 = 1:Vert_Dim:2*Vert_Dim*Y_Dim;
 
+%Am = abs(Am(1,real_inds,u1)); Bp = abs(Bp(1,real_inds,u1));
+Ap = abs(Ap(1,real_inds,u1)); Bm = abs(Bm(1,real_inds,u1)); 
 
-En = sum(epsm.*v_vec(1,real_inds).*(Ap.^2)/k0(1));
-%En = En + sum(epsm.*v_vec(1,real_inds).*(Bm.^2)/k0(1));
+En = zeros(1,2*length(real_inds));
+
+for loop_Y=1:length(real_inds)
+ En(loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Ap(1,:,loop_Y)).^2)/k0(1));
+ %En = En + sum(epsm.*v_vec(1,real_inds).*(Bm.^2)/k0(1));
+ En(Y0_Dim+loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Bm(1,:,Y_Dim+loop_Y)).^2)/k0(1));
+end
+
+display(['Transmitted energy    : ' num2str(abs(En))])
 
 return
 
@@ -372,9 +385,9 @@ return
 
 %% - THE INTEGRAL EQN STUFF - %%
 
-function [PhiInc, G, Gdr_add, al_vec, be_vec, ExtraOut] = ...
-    fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, Rad_vec, width, posits,...
-    res, Amp0, evs, extra_pts)
+function [PhiInc, G, Gdr_add, al_vec, be_vec, theta_inc, ExtraOut] = ...
+    fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, Rad_vec, width, lth, ...
+    posits, res, Amp0, evs, extra_pts)
 
 %%% INPUTS
 %
@@ -385,9 +398,9 @@ function [PhiInc, G, Gdr_add, al_vec, be_vec, ExtraOut] = ...
 tol = 7.5e-4; %5e-2; % - tol on resonances
 
 skip=[]; skipinfo=[];
-count=1; al_vec(:,1)=k0; be_vec(:,1)=0; Y_Dim=0; 
+count=1; al_vec(:,1)=ones(Vert_Dim,1); be_vec(:,1)=zeros(Vert_Dim, 1); Y_Dim=0; 
 while be_vec(1,count)-1<tol %imag(vm)<Tols(5)
- be_vec(:,count+1) = count*pi/width./k0;
+ be_vec(:,count+1) = (count*pi/width./k0).';
  al_vec(:,count+1) = sqrt(1-be_vec(:,count+1).^2);
     
  if and(Y_Dim==0,imag(al_vec(1,count+1))~=0)
@@ -413,13 +426,22 @@ for loop_ev=1:evs
 end
 
 clear count tol
+
+theta_inc = zeros(size(al_vec)); % Nb 1st entry should be 0
+
+for loop=1:length(al_vec(1,:))
+ for loop_Dim=1:Vert_Dim   
+ theta_inc(loop_Dim,loop) = GrafThetaVal(be_vec(loop_Dim,loop), ...
+     al_vec(loop_Dim,loop), [1, 1]);
+ end
+end
   
 %%% GREENS FNS & INC WAVE %%%
 
 Np = length(Rad_vec);
 
 G = zeros(Np*Vert_Dim*(2*Az_Dim+1)+Np*extra_pts, Np*Vert_Dim*(2*Az_Dim+1));
-PhiInc = zeros(Np*Vert_Dim*(2*Az_Dim+1)+Np*extra_pts,Y_Dim+evs);
+PhiInc = zeros(Np*Vert_Dim*(2*Az_Dim+1)+Np*extra_pts,2*Vert_Dim*(Y_Dim+evs));
 Gdr_add = zeros(Np*extra_pts, Np*Vert_Dim*(2*Az_Dim+1));
 
 v1=1:Vert_Dim*(2*Az_Dim+1)+extra_pts; 
@@ -444,8 +466,8 @@ for loop_p1=1:Np
   end
   v2=v2+Vert_Dim*(2*Az_Dim+1);
  end
- PhiInc(v1i,:) = get_IncWv(Az_Dim, Amp0, k0(1), ...
-     posits(:,loop_p1), al_vec(1,:), be_vec(1,:), irreg_pts);  
+ PhiInc(v1,:) = get_IncWv(Vert_Dim, Az_Dim, Y_Dim+evs, Amp0, k0, ...
+     posits(:,loop_p1), al_vec, be_vec, theta_inc, lth, irreg_pts);  
  
  v1 =v1 +Vert_Dim*(2*Az_Dim+1)+extra_pts; 
  v1i=v1i+Vert_Dim*(2*Az_Dim+1)+extra_pts;
@@ -466,7 +488,8 @@ return
 
 %
 
-function PhiInc = get_IncWv(Az_Dim, Amp0, kk, c0, al_vec, be_vec, irreg_pts) 
+function PhiInc = get_IncWv(Vert_Dim, Az_Dim, Y_Dim, Amp0, kk, c0, ... 
+    al_vec, be_vec, theta_inc, lth, irreg_pts) 
 
 %%% DESCRIPTION
 %
@@ -483,28 +506,59 @@ function PhiInc = get_IncWv(Az_Dim, Amp0, kk, c0, al_vec, be_vec, irreg_pts)
 % - 27.05.10 - after noting mistake in Green's fn (but no y-dep so no change here)
 % - 27.04.10 - take out the bessel fn weighting (for irreg freqs)
 
-theta_inc = zeros(1,length(al_vec)); % Nb 1st entry should be 0
+PhiInc = zeros(2*Az_Dim+1,2*Vert_Dim*Y_Dim);
 
-for loop=1:length(al_vec)
- theta_inc(loop) = GrafThetaVal(be_vec(loop), al_vec(loop), [1, 1]);
+v1 = 1:2*Az_Dim+1; u1 = 1:Vert_Dim;
+
+%%% POSITIVE x DIRECTION
+
+Sc = exp(1i*kk.*transpose(al_vec(:,1))*c0(1));
+
+for loop_Dim=1:Vert_Dim
+ PhiInc(v1,u1(loop_Dim)) = (1i.^[-Az_Dim:Az_Dim]).';
+end
+PhiInc(v1,u1) = PhiInc(v1,u1)*diag(Sc);
+ 
+for loop=2:Y_Dim
+
+ u1 = u1 + Vert_Dim;
+ 
+ Sc = exp(1i*kk.*transpose(al_vec(:,loop))*c0(1));
+
+ for loop_Dim=1:Vert_Dim
+  PhiInc(v1,u1(loop_Dim)) = (cos([-Az_Dim:Az_Dim]*theta_inc(loop_Dim,loop)...
+     -kk(loop_Dim)*be_vec(loop_Dim,loop)*c0(2)).*(1i.^[-Az_Dim:Az_Dim])).';
+ end
+ 
+ PhiInc(v1,u1) = PhiInc(v1,u1)*diag(Sc);
+
 end
 
-PhiInc = zeros(2*Az_Dim+1,length(al_vec));
+%%% NEGATIVE x DIRECTION
 
-v1 = 1:2*Az_Dim+1;
+u1 = u1 + Vert_Dim;
 
-Sc = exp(1i*al_vec(1)*c0(1));
+theta_inc = theta_inc + pi;
 
-PhiInc(v1,1) = (1i.^[-Az_Dim:Az_Dim]).';
-PhiInc(v1,1) = Sc*PhiInc(v1,1);
+Sc = exp(-1i*kk.*transpose(al_vec(:,1))*c0(1));
+Sc = exp(1i*kk.*transpose(al_vec(:,1))*lth).*Sc;
+for loop_Dim=1:Vert_Dim
+ PhiInc(v1,u1(loop_Dim)) = ((-1i).^[-Az_Dim:Az_Dim]).';
+end
+PhiInc(v1,u1) = PhiInc(v1,u1)*diag(Sc);
 
-for loop=1:length(al_vec)
+for loop=2:Y_Dim
 
- Sc = (Amp0/1i/kk(1))*exp(1i*kk*al_vec(loop)*c0(1));
-
- PhiInc(v1,loop) = (cos([-Az_Dim:Az_Dim]*theta_inc(loop)...
-     -kk*be_vec(loop)*c0(2)).*(1i.^[-Az_Dim:Az_Dim])).';
- PhiInc(v1,loop) = Sc*PhiInc(v1,loop);
+ u1 = u1 + Vert_Dim;
+ 
+ Sc = exp(-1i*kk.*transpose(al_vec(:,loop))*c0(1));
+ Sc = exp(1i*kk.*transpose(al_vec(:,loop))*lth).*Sc;
+ 
+ for loop_Dim=1:Vert_Dim
+  PhiInc(v1,u1(loop_Dim)) = (cos([-Az_Dim:Az_Dim]*theta_inc(loop_Dim,loop)...
+     +kk(loop_Dim)*be_vec(loop_Dim,loop)*c0(2)).*(1i.^[-Az_Dim:Az_Dim])).';
+ end
+ PhiInc(v1,u1) = PhiInc(v1,u1)*diag(Sc);
 
 end
 
@@ -534,8 +588,19 @@ end
 
 end
 
-PhiInc = (Amp0/1i/kk(1))*PhiInc;
+dum_PhiInc = (Amp0/1i/kk(1))*PhiInc;
 
+PhiInc = zeros(Vert_Dim*(2*Az_Dim+1),2*Vert_Dim*Y_Dim);
+u1i = 1:Vert_Dim:2*Vert_Dim*Y_Dim;
+v1i = 1:Vert_Dim:Vert_Dim*(2*Az_Dim+1);
+ 
+for loop=1:Vert_Dim
+ 
+ PhiInc(v1i,u1i) = dum_PhiInc(:,u1i);
+ 
+ u1i=u1i+1; v1i=v1i+1;
+end
+ 
 return
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -801,7 +866,7 @@ return
 
 function [Bm, Ap] = ...
     find_Amps(Vert_Dim, Az_Dim, Phi, Phi_dn, k0, ...
-    Y_Dim, vars, c0, u_vec, v_vec, theta_vecs, xNm, ExtraIn)
+    Y_Dim, vars, c0, u_vec, v_vec, theta_inc, xNm, ExtraIn)
 
 % [Am, Bm, Ap] = find_Amps(Vert_Dim, Phi_I, Phi, Phi_dn, k0, v_vec, u_vec, vars, c0)
 %
@@ -834,8 +899,8 @@ end
 %Phi = BesJ.*Phi; %Phi_dn = BesJ.*Phi_dn;
 % ------------------------------------- %
 
-theta_pp = theta_vecs{1}; theta_mm = theta_vecs{2};
-theta_mp = theta_vecs{3}; theta_pm = theta_vecs{4}; clear theta_vecs
+% theta_pp = theta_vecs{1}; theta_mm = theta_vecs{2};
+% theta_mp = theta_vecs{3}; theta_pm = theta_vecs{4}; clear theta_vecs
 
 Bm = zeros(Vert_Dim, Y_Dim); Ap = Bm;
 
@@ -848,39 +913,54 @@ Bm = zeros(Vert_Dim, Y_Dim); Ap = Bm;
 x0 = c0(1)+[-Rad,Rad]; 
 
 for loop_Dim = 1:Vert_Dim
-    
+     
  Az = 1;   
  for loop_Az=-Az_Dim:Az_Dim
      
-  Bm(loop_Dim,1) = Bm(loop_Dim,1) - exp(-1i*theta_pp(loop_Dim,1)*loop_Az)*(...
+  %%% Nb. theta_inc(1)=0
+     
+  Bm(loop_Dim,1) = Bm(loop_Dim,1) - exp(-1i*(pi/2-theta_inc(loop_Dim,1))*loop_Az)*(...
       k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
       besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) );
   
+%   Bm(loop_Dim,1) = Bm(loop_Dim,1) - exp(-1i*theta_pp(loop_Dim,1)*loop_Az)*(...
+%       k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
+%       besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) );
+
   Az = Az+1; 
   
  end
  
  %%% SCALE FIELD TO LOWER LIMIT x0(1) & SOURCE TO DISK CENTRE c0
- Bm(loop_Dim,1) = exp(1i*v_vec(loop_Dim,1)*Rad+1i*u_vec(loop_Dim,1)*c0(2))*Bm(loop_Dim,1)/v_vec(loop_Dim,1);
+ Bm(loop_Dim,1) = exp(1i*v_vec(loop_Dim,1)*Rad+1i*u_vec(loop_Dim,1)*c0(2))...
+     *Bm(loop_Dim,1)/v_vec(loop_Dim,1);
     
  for loop_Y = 2:Y_Dim   
      
   if loop_Y~=skip
-     
+        
    Az = 1;   
    for loop_Az=-Az_Dim:Az_Dim
-     
+       
+    Bm(loop_Dim,loop_Y) = Bm(loop_Dim,loop_Y) - ...
+      exp(-1i*loop_Az*pi/2)*cos(u_vec(loop_Dim,loop_Y)*c0(2)...
+          +loop_Az*theta_inc(loop_Dim,loop_Y))*(...
+      k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
+      besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) );
+   
+    if 0
     Bm(loop_Dim,loop_Y) = Bm(loop_Dim,loop_Y) - ( ...
        exp( 1i*u_vec(loop_Dim,loop_Y)*c0(2))*exp(-1i*theta_pp(loop_Dim,loop_Y)*loop_Az) ...
      + exp(-1i*u_vec(loop_Dim,loop_Y)*c0(2))*exp(-1i*theta_pm(loop_Dim,loop_Y)*loop_Az) )*(...
       k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
       besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) );
-  
+    end 
     Az = Az+1; 
   
    end
   
-   Bm(loop_Dim,loop_Y) = exp(1i*v_vec(loop_Dim,loop_Y)*Rad)*Bm(loop_Dim,loop_Y)/v_vec(loop_Dim,loop_Y);
+   Bm(loop_Dim,loop_Y) = 2*exp(1i*v_vec(loop_Dim,loop_Y)*Rad)*...
+       Bm(loop_Dim,loop_Y)/v_vec(loop_Dim,loop_Y);
   
   else
       
@@ -892,43 +972,58 @@ for loop_Dim = 1:Vert_Dim
  
 end
 
+   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % - for xi>x   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for loop_Dim = 1:Vert_Dim
-
+    
   Az = 1;   
   for loop_Az=-Az_Dim:Az_Dim
-     
-   Ap(loop_Dim,1) = Ap(loop_Dim,1) - exp(-1i*theta_mp(loop_Dim,1)*loop_Az)*(...
+      
+     Ap(loop_Dim,1) = Ap(loop_Dim,1) - exp(-1i*(3*pi/2-theta_inc(loop_Dim,1))*loop_Az)*(...
       k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
       besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) );
+   
+%    Ap(loop_Dim,1) = Ap(loop_Dim,1) - exp(-1i*theta_mp(loop_Dim,1)*loop_Az)*(...
+%       k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
+%       besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) );
   
    Az = Az+1; 
   
   end
   
-  Ap(loop_Dim,1) = exp(1i*v_vec(loop_Dim,1)*Rad+1i*u_vec(loop_Dim,1)*c0(2))*Ap(loop_Dim,1)/v_vec(loop_Dim,1);   
+  Ap(loop_Dim,1) = exp(1i*v_vec(loop_Dim,1)*Rad+1i*u_vec(loop_Dim,1)*c0(2))*...
+      Ap(loop_Dim,1)/v_vec(loop_Dim,1);   
   
-  for loop_Y = 2:Y_Dim   
-   
+  for loop_Y = 2:Y_Dim  
+     
    if loop_Y~=skip
      
     Az = 1;   
     for loop_Az=-Az_Dim:Az_Dim
+        
+       Ap(loop_Dim,loop_Y) = Ap(loop_Dim,loop_Y) - ...
+        exp(-3i*pi*loop_Az/2)*cos(u_vec(loop_Dim,loop_Y)*c0(2)...
+            - loop_Az*theta_inc(loop_Dim,loop_Y))*(...
+        k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
+        besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) ); 
      
-     Ap(loop_Dim,loop_Y) = Ap(loop_Dim,loop_Y) - ( ...
+      %%% TEST 
+      if 0     
+       Ap(loop_Dim,loop_Y) = Ap(loop_Dim,loop_Y) - ( ...
         exp( 1i*u_vec(loop_Dim,loop_Y)*c0(2))*exp(-1i*theta_mp(loop_Dim,loop_Y)*loop_Az) ...
-      + exp(-1i*u_vec(loop_Dim,loop_Y)*c0(2))*exp(-1i*theta_mm(loop_Dim,loop_Y)*loop_Az) )*(...
-       k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
-       besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) );
-  
+        + exp(-1i*u_vec(loop_Dim,loop_Y)*c0(2))*exp(-1i*theta_mm(loop_Dim,loop_Y)*loop_Az) )*(...
+        k0(loop_Dim)*Bessel_dz(@besselj, -loop_Az, Rad*k0(loop_Dim))*Phi(loop_Dim,Az) - ...
+        besselj(-loop_Az, Rad*k0(loop_Dim))*Phi_dn(loop_Dim,Az) );
+      end   
      Az = Az+1; 
   
     end
   
-    Ap(loop_Dim,loop_Y) = exp(1i*v_vec(loop_Dim,loop_Y)*Rad)*Ap(loop_Dim,loop_Y)/v_vec(loop_Dim,loop_Y);
+    Ap(loop_Dim,loop_Y) = 2*exp(1i*v_vec(loop_Dim,loop_Y)*Rad)*...
+        Ap(loop_Dim,loop_Y)/v_vec(loop_Dim,loop_Y);
   
    else
       

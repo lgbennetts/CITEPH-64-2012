@@ -1,6 +1,8 @@
 function [G, Gdr_add, ExtraOut] = fn_getGmix(...
     Dim, Az_Dim, kk, Rad, Rad0, width, cc, c0, res, irreg_vals)
 
+skip = []; % INVESTIGATE LATER (12.10.12)
+
 % - 27.09.12 - modified from find_getGmix for irregular values
 % - 27.05.10 - after noting mistake in Green's fn
 % - 27.04.10 - take care of reson freqs (vm=0) and irreg freqs (Jm=0) with
