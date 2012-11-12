@@ -5,10 +5,11 @@ disp('%---------- START: Steady_MultiFloe -----------%')
 %% Parameters
 
 Vert_Dim=2;     % - Vertical modes 
-lam0 = 1.7*pi;    % - wavelength
+lam0 = 1.7*pi;  % - wavelength
 evs=1;          % - no. evanescent waves (horiz) to include
 res = 100;      % - for the integration of the Green's fns
 extra_pts = 0;  % - for irreg freqs
+
 
 %% Definition of the geometry of the problem solved
  GeomPlate=[2.5 2.2, 2.0, 1e-1];      %2.40482555769577
@@ -27,6 +28,7 @@ extra_pts = 0;  % - for irreg freqs
 %[glob,R_max]=global_system(GeomPlate);
 
 [Geom_Vec, thicks, rads, cx, cy] = fn_GeomDef3d(GeomPlate);
+
 
 %% Check that plates don't overlap &/or touch side walls
 
@@ -62,41 +64,47 @@ if max(GeomPlate(:,2)+GeomPlate(:,3))>Geom_Vec(5)
  disp(['plate ',num2str(pl),' overlaps y=w'])
 end
 
+
 %% Definition of the physical parameters 
+% param_vec = [g rho_water draft beta gamma rho_ice nu E D]
 parameter_vector = ParamDef3d_v2(Geom_Vec,thicks);
 
-freq = FindFreq_FS([inf,inf,inf,inf,parameter_vector(1)],2*pi/lam0,Geom_Vec(3));
+% radian frequency (associated with wavelength and depth specified)
+freq = FindFreq_FS([inf,inf,inf,inf,parameter_vector(1)],2*pi/lam0,...
+    Geom_Vec(3));
 
-% T0=2; % Period
-% freq = 2*pi/T0;
+% frequency parameter in disp rel
 kappa = freq^2/parameter_vector(1,1);
 
-%kappa = 0.3385;
 
 %% Inititializing the frequency dependent variables
 
+% spatial resolution in the horizontal directions
 x_length = Geom_Vec(4); width = Geom_Vec(end);
 x_res = 101; y_res = 51;
 
+% horizontal space vectors
 x_vec = linspace(0,x_length,x_res);
 y_vec = linspace(0,width,y_res);
+
 
 %%% CALCULATE THE MESH POINTS IN THE FREE SURF REGION %%%
 % - The x vals that bound the plate covered region
 minx0 = min(GeomPlate(:,1)-GeomPlate(:,3));
 maxx0 = max(GeomPlate(:,1)+GeomPlate(:,3));
 
+
 FS_mesh = zeros(y_res,x_res);
 
 for loop_x=1:length(x_vec)
- if and(x_vec(loop_x)>minx0,x_vec(loop_x)<maxx0)
-  for loop_y=1:y_res
-   if max((x_vec(loop_x)-GeomPlate(:,1)).^2 + ...
-           (y_vec(loop_y)-GeomPlate(:,2)).^2 < (rads.^2).')
-    FS_mesh(loop_y,loop_x)=inf;
-   end
-  end
- end    
+    if and(x_vec(loop_x)>minx0,x_vec(loop_x)<maxx0)
+        for loop_y=1:y_res
+            if max((x_vec(loop_x)-GeomPlate(:,1)).^2 + ...
+                    (y_vec(loop_y)-GeomPlate(:,2)).^2 < (rads.^2).')
+                FS_mesh(loop_y,loop_x)=inf;
+            end
+        end
+    end
 end
     
 %surf(x_vec,y_vec,FS_mesh)
@@ -109,12 +117,13 @@ th_vec(:,1) = linspace(-pi,pi,th_res);
 
 r_vec=zeros(Geom_Vec(2),r_res);
 for loop_p=1:Geom_Vec(2)
- r_vec(loop_p,:) = linspace(0, rads(loop_p), r_res);
+    r_vec(loop_p,:) = linspace(0, rads(loop_p), r_res);
 end
 
 displ_ice = zeros(th_res,r_res,Geom_Vec(2));
 
 
+%% Solution
 [Rm,Tm,Rp,Tp,v_vec,u_vec] = ... %displ_fs, displ_ice, 
     fn_MultiMode_MultiFloe(parameter_vector, Vert_Dim, evs, Geom_Vec, ...
     kappa, thicks, rads, [cx;cy], ...
@@ -144,6 +153,9 @@ end
 disp('%----------- END: Steady_MultiFloe ------------%')
 
 return
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -185,6 +197,6 @@ D = Geom(:,4).'/L_scale; % -scaled thicknesses
 x = x/L_scale; y = y/L_scale; 
 
 %% Output vector of tank parameters 
-Out=[L_scale Np H/L_scale l/L_scale, w/L_scale];
+Out=[L_scale Np H/L_scale l/L_scale w/L_scale];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

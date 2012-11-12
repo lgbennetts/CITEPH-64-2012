@@ -11,8 +11,8 @@
 \usepackage{color}  %%%%% for colour
 \usepackage{rotating}
 %\usepackage{natbib}
-\usepackage{refcheck}
-\usepackage{overpic}
+% \usepackage{refcheck}
+% \usepackage{overpic}
 
 \newcommand{\real}{\textrm{Re}}
 \newcommand{\imag}{\textrm{Im}}
@@ -203,6 +203,7 @@ For $m\geq P$ the wave number $k_{0}<\ky_{m}$ and $\ky_{m}\in\ci\mathbb{R}$, so 
 
 The full solution is now expressed as
 \begin{equation}
+\label{eq:PotOW}
 \begin{array}{rcl}
 \vp(x,y,z)
 &
@@ -281,6 +282,7 @@ This assumes no reflected waves.
 %%% OPEN WATER %%%
 
 \section{Solution in the open water}
+\label{sec2}
 
 %%% Green's function %%%
 
@@ -930,11 +932,127 @@ where the integral appearing on the right-hand side requires numerical evaluatio
 
 
 
+\section{Wavemaker and beach}
+
+To integrate the wavemaker and the beach into the model, we separate the horizontal domain into three 
+rectangular subdomains. These correspond to two exterior disk-free regions, denoted by $\Omega^{1} = 
+\left\{x,y\,:\,0<x<x_1,\,0<y<w\right\}$ and $\Omega^{2} = \left\{x,y\,:\,x_2<x<l,\,0<y<w\right\}$, and an 
+interior region containing all the disks, denoted by $\Omega^{\mathrm{d}} = \Omega \setminus 
+\left(\Omega^{1} \cup \Omega^{2}\right)$. In the open-water region $\Omega^{i}$, $i=1,\,2$, the velocity 
+potential, denoted by $\vp^i$, can be expressed as in \eqref{eq:PotOW}, \ie
+\begin{equation}
+\vp^i(x,y,z) \approx \sum_{n=0}^{N} \sum_{m=0}^{M} \Big(a^i_{n,m}\exp^{\ci\kx_{m}(k_{n}) (x-x^i_+)} + 
+b^i_{n,m}\exp^{-\ci\kx_{m}(k_{n}) (x-x^i_-)}\Big) \ym_{m}(y) \vm(z:k_{n}),
+\end{equation}
+where $a^i_{n,m}$ and $b^i_{n,m}$ are unknown amplitudes, and $x^1_+=0$, $x^1_-=x_1$, $x^2_+=x_2$ and 
+$x^2_-=l$.
+
+The solution in $\Omega^{\mathrm{d}}$ has been devised in \textsection \ref{sec2}. Let us denote by 
+$\mathbf{S}$ the scattering matrix associated with $\Omega^{\mathrm{d}}$. It maps the incident waves 
+amplitudes to the scattered waves amplitudes as follows
+\begin{equation}
+	\left(
+	\begin{array}{c}
+		\mathbf{b}^1 \\
+		\mathbf{a}^2
+	\end{array}
+	\right) = \left[
+	\begin{array}{cc}
+	\mathbf{S}^{11} & \mathbf{S}^{12} \\
+	\mathbf{S}^{21} & \mathbf{S}^{22}
+	\end{array}
+	\right] \left(
+	\begin{array}{c}
+		\mathbf{a}^1 \\
+		\mathbf{b}^2
+	\end{array}
+	\right),
+\end{equation}
+where 
+\[
+	\mathbf{a}^i = \left(a^i_{0,0},\ldots,a^i_{N,0},a^i_{0,1},\ldots,a^i_{N,M-1},a^i_{0,M},\ldots
+	,a^i_{N,M}\right)^{\mathrm{T}}
+\]
+and 
+\[
+	\mathbf{b}^i = \left(b^i_{0,0},\ldots,b^i_{N,0},b^i_{0,1},\ldots,b^i_{N,M-1},b^i_{0,M},\ldots
+	,b^i_{N,M}\right)^{\mathrm{T}},
+\]
+$i=1,\,2$, have length $(N+1)(M+1)$.
+
+Using matrix and vector notations, the velocity potential in $\Omega^{i}$, $i=1,\,2$, can be expressed as
+\begin{equation}
+  \label{eq:MatPot}
+ \vp^i(x,y,z) \approx \mathbf{C}(y,z)\left(\mathbf{E}(x-x^i_+)\mathbf{a}^i + 
+ \mathbf{E}(x^i_--x)\mathbf{b}^i\right),
+\end{equation}
+where
+\[
+  \mathbf{C}(y,z) = \left(C_{0,0},\ldots,C_{N,0},C_{0,1},\ldots,C_{N,M-1},C_{0,M},\ldots,C_{N,M}\right)
+\]
+has length $(N+1)(M+1)$, with 
+\[
+  C_{n,m}(y,z) = \ym_{m}(y) \vm(z:k_{n}).
+\]
+We have also introduced the diagonal matrix $\mathbf{E}(x)$ of size $(N+1)(M+1)$ defined by
+\[
+  \mathbf{E}(x) = \mathrm{diag}\{\exp^{\ci\kx_{0}(k_{0})x},\ldots,\exp^{\ci\kx_{0}(k_{N})x},
+  \exp^{\ci\kx_{1}(k_{0})x},\ldots,\exp^{\ci\kx_{M-1}(k_{N})x},\exp^{\ci\kx_{M}(k_{0})x},\ldots,
+  \exp^{\ci\kx_{M}(k_{N})x}\}.
+\]
+
+
+\subsection{Wavemaker}
+
+At $x=0$, a unidirectional wave maker of cross-section $\Lambda(z)$ sets the system in motion. The 
+horizontal displacement of the paddle is described by $X_w(z,t)=\Lambda(z)X_0(t)$, where $X_0(t)$ is the 
+time-dependent evolution of the paddle amplitude at $z = 0$. Assuming time-harmonic motion (\ie 
+$X_0(t) = \real\{A_0\exp(\ci\omega t)\}$), the linearised 
+boundary condition is given by
+\begin{equation}
+  \label{eq:WM}
+  \ci \omega A_0 \Lambda(z) = \partial_x \vp^1 \quad (x=0).
+\end{equation}
+
+Using \eqref{eq:MatPot}, we multiply \eqref{eq:WM} by $\mathbf{C}^{\mathrm{T}}(y,z)$ and integrate over the 
+vertical and transversal domains. This yields
+\begin{equation}
+  \label{eq:WM_proj}
+  \mathbf{F} = \mathbf{B}\left(\mathbf{E}'(0)\mathbf{a}^1 + \mathbf{E}'(x_1)\mathbf{b}^1\right),
+\end{equation}
+where
+\[
+  \mathbf{F} = \ci \omega A_0 \int_{-H}^0 \int_0^w \Lambda(z) \mathbf{C}^{\mathrm{T}}(y,z) \wrt y \wrt z
+\]
+has length $(N+1)(M+1)$ and entries given by 
+\[
+  \big[\mathbf{F}\big]_{n,m} = \ci \omega A_0 w \delta_{0,m} \int_{-H}^0 \Lambda(z) \vm(z:k_{n}) \wrt z.
+\]
+We have also introduced the $(N+1)(M+1)$-size matrix
+\[
+  \mathbf{B} = \int_{-H}^0 \int_0^w \mathbf{C}^{\mathrm{T}}(y,z) \mathbf{C}(y,z) \wrt y \wrt z,
+\]
+which is diagonal with entries $w/2$, from the orthogonality properties of $C_{n,m}(y,z)$.
+
+Re-arranging \eqref{eq:WM_proj} yields 
+\begin{equation}
+  \mathbf{a}^1 = \mathbf{S}_w\mathbf{b}^1 + \mathbf{F}_w,
+\end{equation}
+where the scattering matrix $\mathbf{S}_w$ and the forcing vector $\mathbf{F}_w$ are obtained 
+straightforwardly.
+
+
+
+
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \bibliographystyle{plain}      % References
-\bibliography{/Users/a1612881/Dropbox/Documents/bibli/LukesBibli}
+% \bibliography{/Users/a1612881/Dropbox/Documents/bibli/LukesBibli}
+\bibliography{biblio}
 
 %\begin{thebibliography}{10}
 %

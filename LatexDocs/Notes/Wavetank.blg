@@ -1,11 +1,11 @@
-This is BibTeX, Version 0.99d (TeX Live 2010)
+This is BibTeX, Version 0.99d (TeX Live 2013/dev)
 Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: Wavetank.aux
 The style file: plain.bst
-Database file #1: /Users/a1612881/Dropbox/Documents/bibli/LukesBibli.bib
+Database file #1: biblio.bib
 You've used 2 entries,
             2118 wiz_defined-function locations,
-            586 strings with 5127 characters,
+            511 strings with 4234 characters,
 and the built_in function-call counts, 681 in all, are:
 = -- 70
 > -- 26
