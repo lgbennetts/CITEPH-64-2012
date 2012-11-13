@@ -4,9 +4,9 @@ disp('%---------- START: Steady_MultiFloe -----------%')
 
 %% Parameters
 
-Vert_Dim=2;     % - Vertical modes 
+Vert_Dim=2;     % - Vertical modes (>=1)
 lam0 = 1.7*pi;  % - wavelength
-evs=1;          % - no. evanescent waves (horiz) to include
+evs=1;          % - no. evanescent waves (horiz) to include (>=0)
 res = 100;      % - for the integration of the Green's fns
 extra_pts = 0;  % - for irreg freqs
 

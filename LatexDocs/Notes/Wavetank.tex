@@ -933,29 +933,31 @@ where the integral appearing on the right-hand side requires numerical evaluatio
 
 
 
-\section{Wavemaker and beach}
+\section{Wave tank}
 
-To integrate the wavemaker and the beach into the model, we separate the horizontal domain into three 
+To integrate the wave maker and the beach into the model, we separate the horizontal domain into three 
 rectangular subdomains. These correspond to two exterior disk-free regions, denoted by $\Omega^{1} = 
 \left\{x,y\,:\,0<x<x_1,\,0<y<w\right\}$ and $\Omega^{2} = \left\{x,y\,:\,x_2<x<l,\,0<y<w\right\}$, and an 
 interior region containing all the disks, denoted by $\Omega^{\mathrm{d}} = \Omega \setminus 
 \left(\Omega^{1} \cup \Omega^{2}\right)$. In the open-water region $\Omega^{i}$, $i=1,\,2$, the velocity 
-potential, denoted by $\vp^i$, can be expressed as in \eqref{eq:PotOW}, \ie
+potential, denoted by $\vp^{(i)}$, can be expressed as in \eqref{eq:PotOW}, \ie
 \begin{equation}
-\vp^i(x,y,z) \approx \sum_{n=0}^{N} \sum_{m=0}^{M} \Big(a^i_{n,m}\exp^{\ci\kx_{m}(k_{n}) (x-x^i_+)} + 
-b^i_{n,m}\exp^{-\ci\kx_{m}(k_{n}) (x-x^i_-)}\Big) \ym_{m}(y) \vm(z:k_{n}),
+\vp^{(i)}(x,y,z) \approx \sum_{n=0}^{N} \sum_{m=0}^{M} 
+\Big(a^{(i)}_{n,m}\exp^{\ci\kx_{m}(k_{n})(x-x^{(i)}_+)} + 
+b^{(i)}_{n,m}\exp^{-\ci\kx_{m}(k_{n}) (x-x^{(i)}_-)}\Big) \ym_{m}(y) \vm(z:k_{n}),
 \end{equation}
-where $a^i_{n,m}$ and $b^i_{n,m}$ are unknown amplitudes, and $x^1_+=0$, $x^1_-=x_1$, $x^2_+=x_2$ and 
-$x^2_-=l$.
+where $a^{(i)}_{n,m}$ and $b^{(i)}_{n,m}$ are unknown amplitudes, and $x^{(1)}_+=0$, $x^{(1)}_-=x_1$, 
+$x^{(2)}_+=x_2$ and $x^{(2)}_-=l$.
 
 The solution in $\Omega^{\mathrm{d}}$ has been devised in \textsection \ref{sec2}. Let us denote by 
 $\mathbf{S}$ the scattering matrix associated with $\Omega^{\mathrm{d}}$. It maps the incident waves 
 amplitudes to the scattered waves amplitudes as follows
 \begin{equation}
+	\label{eq:disk_scat}
 	\left(
 	\begin{array}{c}
-		\mathbf{b}^1 \\
-		\mathbf{a}^2
+		\mathbf{b}^{(1)} \\
+		\mathbf{a}^{(2)}
 	\end{array}
 	\right) = \left[
 	\begin{array}{cc}
@@ -964,32 +966,32 @@ amplitudes to the scattered waves amplitudes as follows
 	\end{array}
 	\right] \left(
 	\begin{array}{c}
-		\mathbf{a}^1 \\
-		\mathbf{b}^2
+		\mathbf{a}^{(1)} \\
+		\mathbf{b}^{(2)}
 	\end{array}
 	\right),
 \end{equation}
 where 
 \[
-	\mathbf{a}^i = \left(a^i_{0,0},\ldots,a^i_{N,0},a^i_{0,1},\ldots,a^i_{N,M-1},a^i_{0,M},\ldots
-	,a^i_{N,M}\right)^{\mathrm{T}}
+	\mathbf{a}^{(i)} = \left(a^{(i)}_{0,0},\ldots,a^{(i)}_{0,M},a^{(i)}_{1,0},\ldots,a^{(i)}_{N-1,M},
+	a^{(i)}_{N,0},\ldots,a^{(i)}_{N,M}\right)^{\mathrm{T}}
 \]
 and 
 \[
-	\mathbf{b}^i = \left(b^i_{0,0},\ldots,b^i_{N,0},b^i_{0,1},\ldots,b^i_{N,M-1},b^i_{0,M},\ldots
-	,b^i_{N,M}\right)^{\mathrm{T}},
+	\mathbf{b}^{(i)} = \left(b^{(i)}_{0,0},\ldots,b^{(i)}_{0,M},b^{(i)}_{1,0},\ldots,b^{(i)}_{N-1,M},
+	b^{(i)}_{N,0},\ldots,b^{(i)}_{N,M}\right)^{\mathrm{T}},
 \]
 $i=1,\,2$, have length $(N+1)(M+1)$.
 
 Using matrix and vector notations, the velocity potential in $\Omega^{i}$, $i=1,\,2$, can be expressed as
 \begin{equation}
   \label{eq:MatPot}
- \vp^i(x,y,z) \approx \mathbf{C}(y,z)\left(\mathbf{E}(x-x^i_+)\mathbf{a}^i + 
- \mathbf{E}(x^i_--x)\mathbf{b}^i\right),
+ \vp^{(i)}(x,y,z) \approx \mathbf{C}(y,z)\left(\mathbf{E}(x-x^{(i)}_+)\mathbf{a}^{(i)} + 
+ \mathbf{E}(x^{(i)}_--x)\mathbf{b}^{(i)}\right),
 \end{equation}
 where
 \[
-  \mathbf{C}(y,z) = \left(C_{0,0},\ldots,C_{N,0},C_{0,1},\ldots,C_{N,M-1},C_{0,M},\ldots,C_{N,M}\right)
+  \mathbf{C}(y,z) = \left(C_{0,0},\ldots,C_{0,M},C_{1,0},\ldots,C_{N-1,M},C_{N,0},\ldots,C_{N,M}\right)
 \]
 has length $(N+1)(M+1)$, with 
 \[
@@ -1003,7 +1005,7 @@ We have also introduced the diagonal matrix $\mathbf{E}(x)$ of size $(N+1)(M+1)$
 \]
 
 
-\subsection{Wavemaker}
+\subsection{Wave maker}
 
 At $x=0$, a unidirectional wave maker of cross-section $\Lambda(z)$ sets the system in motion. The 
 horizontal displacement of the paddle is described by $X_w(z,t)=\Lambda(z)X_0(t)$, where $X_0(t)$ is the 
@@ -1012,14 +1014,14 @@ $X_0(t) = \real\{A_0\mathrm{exp}(\ci\omega t)\}$), the linearised
 boundary condition is given by
 \begin{equation}
   \label{eq:WM}
-  \ci \omega A_0 \Lambda(z) = \partial_x \vp^1 \quad (x=0).
+  \ci \omega A_0 \Lambda(z) = \partial_x \vp^{(1)} \quad (x=0).
 \end{equation}
 
 Using \eqref{eq:MatPot}, we multiply \eqref{eq:WM} by $\mathbf{C}^{\mathrm{T}}(y,z)$ and integrate over the 
 vertical and transversal domains. This yields
 \begin{equation}
   \label{eq:WM_proj}
-  \mathbf{F} = \mathbf{B}\left(\mathbf{E}'(0)\mathbf{a}^1 + \mathbf{E}'(x_1)\mathbf{b}^1\right),
+  \mathbf{F} = \mathbf{B}\left(\mathbf{E}'(0)\mathbf{a}^{(1)} + \mathbf{E}'(x_1)\mathbf{b}^{(1)}\right),
 \end{equation}
 where
 \[
@@ -1037,7 +1039,8 @@ which is diagonal with entries $w/2$, from the orthogonality properties of $C_{n
 
 Re-arranging \eqref{eq:WM_proj} yields 
 \begin{equation}
-  \mathbf{a}^1 = \mathbf{S}_w\mathbf{b}^1 + \mathbf{F}_w,
+  \label{eq:WM_scat}
+  \mathbf{a}^{(1)} = \mathbf{S}_w\mathbf{b}^{(1)} + \mathbf{F}_w,
 \end{equation}
 where the scattering matrix $\mathbf{S}_w$ and the forcing vector $\mathbf{F}_w$ are obtained 
 straightforwardly.
@@ -1052,12 +1055,13 @@ other scatterers, so that it only influences propagating waves. This can be achi
 as a piston-like wave absorber. A kinematic condition is then prescribed as
 \begin{equation}
   \label{eq:beach}
-  \ci \omega A_b = \partial_x \vp^2 \quad (x=l),
+  \ci \omega A_b = \partial_x \vp^{(2)} \quad (x=l),
 \end{equation}
 where $A_b$ is the horizontal displacement of the paddle. The control law of the wave absorber is defined 
 such that a single travelling vertical mode is generated upon reflection at $x=l$, \ie
 \begin{equation}
-  \mathbf{b}^2 = \mathbf{R}_b\mathbf{E}(l-x_2)\mathbf{a}^2 = \mathbf{S}_b\mathbf{a}^2,
+  \label{eq:beach_scat}
+  \mathbf{b}^{(2)} = \mathbf{R}_b\mathbf{E}(l-x_2)\mathbf{a}^{(2)} = \mathbf{S}_b\mathbf{a}^{(2)},
 \end{equation}
 where $\mathbf{R}_b$ is the reflection $(N+1)(M+1)$-size diagonal matrix with entries $\mathcal{R}_b$ if 
 $n=0$ and $0$ otherwise. The reflection coefficient $\mathcal{R}_b$ is governed by the beach spectrum 
@@ -1066,8 +1070,10 @@ $n=0$ and $0$ otherwise. The reflection coefficient $\mathcal{R}_b$ is governed 
   \mathcal{R}_b = 0.9\left(\exp^{-5\omega} -1\right) + 1.
 \end{equation}
 
-
-
+The flow in the wave tank is then governed by the matrix equations \eqref{eq:disk_scat}, \eqref{eq:WM_scat} 
+and \eqref{eq:beach_scat}. The forcing is input by vector $\mathbf{F}_w$ in \eqref{eq:WM_scat}. Calculation 
+of the unknown amplitude vectors $\mathbf{a}^{(i)}$ and $\mathbf{b}^{(i)}$, $i=1,\,2$, follows 
+straightforwardly.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
