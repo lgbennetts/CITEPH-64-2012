@@ -53,6 +53,7 @@
 
 \newcommand{\eg}{e.g.\ }
 \newcommand{\ie}{i.e.\ }
+\newcommand{\etal}{\textit{et al.}\ }
 
 % - particular to this problem (vary easily)
 
@@ -1007,7 +1008,7 @@ We have also introduced the diagonal matrix $\mathbf{E}(x)$ of size $(N+1)(M+1)$
 At $x=0$, a unidirectional wave maker of cross-section $\Lambda(z)$ sets the system in motion. The 
 horizontal displacement of the paddle is described by $X_w(z,t)=\Lambda(z)X_0(t)$, where $X_0(t)$ is the 
 time-dependent evolution of the paddle amplitude at $z = 0$. Assuming time-harmonic motion (\ie 
-$X_0(t) = \real\{A_0\exp(\ci\omega t)\}$), the linearised 
+$X_0(t) = \real\{A_0\mathrm{exp}(\ci\omega t)\}$), the linearised 
 boundary condition is given by
 \begin{equation}
   \label{eq:WM}
@@ -1042,7 +1043,28 @@ where the scattering matrix $\mathbf{S}_w$ and the forcing vector $\mathbf{F}_w$
 straightforwardly.
 
 
+\subsection{Beach}
 
+At $x=l$, the beach partly attenuates waves, depending on their frequency. It is difficult to model a beach 
+properly within the framework of the linearised theory of water waves, as the attenuation process is 
+non-linear. Instead, its effect on the system is considered assuming the beach is sufficiently far from 
+other scatterers, so that it only influences propagating waves. This can be achieved by modelling the beach 
+as a piston-like wave absorber. A kinematic condition is then prescribed as
+\begin{equation}
+  \label{eq:beach}
+  \ci \omega A_b = \partial_x \vp^2 \quad (x=l),
+\end{equation}
+where $A_b$ is the horizontal displacement of the paddle. The control law of the wave absorber is defined 
+such that a single travelling vertical mode is generated upon reflection at $x=l$, \ie
+\begin{equation}
+  \mathbf{b}^2 = \mathbf{R}_b\mathbf{E}(l-x_2)\mathbf{a}^2 = \mathbf{S}_b\mathbf{a}^2,
+\end{equation}
+where $\mathbf{R}_b$ is the reflection $(N+1)(M+1)$-size diagonal matrix with entries $\mathcal{R}_b$ if 
+$n=0$ and $0$ otherwise. The reflection coefficient $\mathcal{R}_b$ is governed by the beach spectrum 
+(Montiel \etal \cite{Montiel_etal12})
+\begin{equation}
+  \mathcal{R}_b = 0.9\left(\exp^{-5\omega} -1\right) + 1.
+\end{equation}
 
 
 
