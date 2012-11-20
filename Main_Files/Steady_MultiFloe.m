@@ -67,7 +67,7 @@ end
 
 %% Definition of the physical parameters 
 % param_vec = [g rho_water draft beta gamma rho_ice nu E D]
-parameter_vector = ParamDef3d_v2(Geom_Vec,thicks);
+parameter_vector = ParamDef3d(Geom_Vec,thicks);
 
 % radian frequency (associated with wavelength and depth specified)
 freq = FindFreq_FS([inf,inf,inf,inf,parameter_vector(1)],2*pi/lam0,...

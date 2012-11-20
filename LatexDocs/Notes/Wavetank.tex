@@ -973,13 +973,13 @@ amplitudes to the scattered waves amplitudes as follows
 \end{equation}
 where 
 \[
-	\mathbf{a}^{(i)} = \left(a^{(i)}_{0,0},\ldots,a^{(i)}_{0,M},a^{(i)}_{1,0},\ldots,a^{(i)}_{N-1,M},
-	a^{(i)}_{N,0},\ldots,a^{(i)}_{N,M}\right)^{\mathrm{T}}
+	\mathbf{a}^{(i)} = \left(a^{(i)}_{0,0},\ldots,a^{(i)}_{N,0},a^{(i)}_{0,1},\ldots,a^{(i)}_{N,M-1},
+	a^{(i)}_{0,M},\ldots,a^{(i)}_{N,M}\right)^{\mathrm{T}}
 \]
 and 
 \[
-	\mathbf{b}^{(i)} = \left(b^{(i)}_{0,0},\ldots,b^{(i)}_{0,M},b^{(i)}_{1,0},\ldots,b^{(i)}_{N-1,M},
-	b^{(i)}_{N,0},\ldots,b^{(i)}_{N,M}\right)^{\mathrm{T}},
+	\mathbf{b}^{(i)} = \left(b^{(i)}_{0,0},\ldots,b^{(i)}_{N,0},b^{(i)}_{0,1},\ldots,b^{(i)}_{N,M-1},
+	b^{(i)}_{0,M},\ldots,b^{(i)}_{N,M}\right)^{\mathrm{T}},
 \]
 $i=1,\,2$, have length $(N+1)(M+1)$.
 
@@ -991,7 +991,7 @@ Using matrix and vector notations, the velocity potential in $\Omega^{i}$, $i=1,
 \end{equation}
 where
 \[
-  \mathbf{C}(y,z) = \left(C_{0,0},\ldots,C_{0,M},C_{1,0},\ldots,C_{N-1,M},C_{N,0},\ldots,C_{N,M}\right)
+  \mathbf{C}(y,z) = \left(C_{0,0},\ldots,C_{N,0},C_{0,1},\ldots,C_{N,M-1},C_{0,M},\ldots,C_{N,M}\right)
 \]
 has length $(N+1)(M+1)$, with 
 \[
@@ -999,9 +999,9 @@ has length $(N+1)(M+1)$, with
 \]
 We have also introduced the diagonal matrix $\mathbf{E}(x)$ of size $(N+1)(M+1)$ defined by
 \[
-  \mathbf{E}(x) = \mathrm{diag}\{\exp^{\ci\kx_{0}(k_{0})x},\ldots,\exp^{\ci\kx_{0}(k_{N})x},
+  \mathbf{E}(x) = \mathrm{diag}\left\{\exp^{\ci\kx_{0}(k_{0})x},\ldots,\exp^{\ci\kx_{0}(k_{N})x},
   \exp^{\ci\kx_{1}(k_{0})x},\ldots,\exp^{\ci\kx_{M-1}(k_{N})x},\exp^{\ci\kx_{M}(k_{0})x},\ldots,
-  \exp^{\ci\kx_{M}(k_{N})x}\}.
+  \exp^{\ci\kx_{M}(k_{N})x}\right\}.
 \]
 
 

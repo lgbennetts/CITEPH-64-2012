@@ -1,7 +1,8 @@
-function [Rm,Tm,Rp,Tp,v_vec,u_vec] = ...  %displ_fs, floe_displ, 
+function [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,wt_0,xNm] = ...  %displ_fs, floe_displ, 
     fn_MultiMode_MultiFloe(...
-    PVec, Vert_Dim, evs, Geom_Vec, kappa, thick_vec, R_vec, posits, ...
-    rad_vec, th_vec, x_vec, y_vec, FS_mesh, res, extra_pts)
+    PVec, Vert_Dim, evs, Geom_Vec, kappa, beta_vec, thick_vec, ...
+    draft_vec, R_vec, posits, rad_vec, th_vec, x_vec, y_vec, FS_mesh, ...
+    res, extra_pts)
 
 disp(['Vertical modes = ' int2str(Vert_Dim)])
 
@@ -21,48 +22,47 @@ scat = 1; % - scat=0 (scat only) scat=1 (scat+inc)
 
 %%% Number of floes %%%
 
-Np = Geom_Vec(2); disp(['Plates = ' int2str(Np)])
+Np = length(thick_vec); disp(['Plates = ' int2str(Np)])
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Tank Dimensions %%%
 
-width = Geom_Vec(5); bed = Geom_Vec(3); lth = Geom_Vec(4);
+width = Geom_Vec(2); bed = Geom_Vec(3); lth = Geom_Vec(1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-parameter_vector = PVec(1,[2, 6, 7, 8, 1]);
-parameter_vector = [parameter_vector, kappa, bed];
+parameter_vector = [PVec, kappa, bed];
 
 %%% Roots in the free surface %%%
 
 k0 = zeros(1,Vert_Dim); wt_0 = k0;
 
 for loop_Dim=1:Vert_Dim
- k0(loop_Dim) = GetRootsMMA_FS_PWC(parameter_vector, loop_Dim, Tol_vec);
- wt_0(loop_Dim) = weight_0_PWC(parameter_vector, k0(loop_Dim));   
+    k0(loop_Dim) = GetRootsMMA_FS_PWC(parameter_vector, loop_Dim, Tol_vec);
+    wt_0(loop_Dim) = weight_0_PWC(parameter_vector(7), k0(loop_Dim));   
 end
 
 %%% Roots in the plates %%%
 
-kk = zeros(1,Vert_Dim,Np); wt = kk; %wt_0 = wt;
+kk = zeros(Vert_Dim,Np); wt = kk; %wt_0 = wt;
 
 mu_0 = zeros(1,Np); mu_1 = mu_0;
 
 for loop_P=1:Np
- pv_plate = [parameter_vector,PVec(loop_P,3),thick_vec(loop_P),...
-        bed-PVec(loop_P,3),PVec(loop_P,5),PVec(loop_P,4)];
+    pv_plate = [parameter_vector,draft_vec(loop_P),thick_vec(loop_P),...
+        bed-draft_vec(loop_P),draft_vec(loop_P),beta_vec(loop_P)];
  for loop_Dim = 1:Vert_Dim
     kk(loop_Dim,loop_P) = GetRootsMMA_PWC(pv_plate, loop_Dim, Tol_vec);
     wt(loop_Dim,loop_P) = weight_PWC(pv_plate, kk(loop_Dim,loop_P));
  end
- [mu_0(loop_P), mu_1(loop_P)] = mu_new_PWC(pv_plate, Vert_Dim, ...
-     kk(:,loop_P), wt(:,loop_P));
- clear pv_plate
+    [mu_0(loop_P), mu_1(loop_P)] = mu_new_PWC(pv_plate, Vert_Dim, ...
+        kk(:,loop_P), wt(:,loop_P));
+    clear pv_plate
 end
 
 %%%% - Amplitude of the x-derivative !!!!! - %%%%%
-Amp0 = 1i*k0(1)/wt_0(1); %1; %1i*kappa/wt_0(1)/sinh(k0(1)*bed); % 0 + 0.1858i; 
+Amp0 = 1;%1i*k0(1)/wt_0(1); %1; %1i*kappa/wt_0(1)/sinh(k0(1)*bed); % 0 + 0.1858i; 
 
 %%%%%%%%%%%%%%%%%%%%%%%
 
@@ -135,9 +135,9 @@ for loop_P=1:Np
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  %%% SURFACE PIERCING CYLINDER
  for loop_N=1:Vert_Dim
-  v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
-  PsiMat(v1a,v1a) = diag(besselj(-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P))); 
-  PsidrMat(v1a,v1a) = k0(loop_N)*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P)));
+    v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
+    PsiMat(v1a,v1a) = diag(besselj(-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P))); 
+    PsidrMat(v1a,v1a) = k0(loop_N)*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P)));
  end
  AW(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); AW0(v1,v1) = zeros(Vert_Dim*(2*Az_Dim+1));
  VT0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); VT(v1,v1) = VT0(v1,v1);

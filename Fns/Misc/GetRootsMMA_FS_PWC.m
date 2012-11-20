@@ -7,7 +7,7 @@ if Dim==1
     
     else
 
-    r = i*pure_imag_root_FS_PWC(parameter_vector, Dim-1, Tol_vec);
+    r = 1i*pure_imag_root_FS_PWC(parameter_vector, Dim-1, Tol_vec);
     
 end
     
