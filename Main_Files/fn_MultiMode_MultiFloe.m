@@ -62,7 +62,7 @@ for loop_P=1:Np
 end
 
 %%%% - Amplitude of the x-derivative !!!!! - %%%%%
-Amp0 = 1;%1i*k0(1)/wt_0(1); %1; %1i*kappa/wt_0(1)/sinh(k0(1)*bed); % 0 + 0.1858i; 
+Amp0 = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%
 
