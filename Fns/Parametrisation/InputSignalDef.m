@@ -12,7 +12,7 @@ type_force = 'freq';
 
 if strcmp(type_force,'freq')
     %%% Frequency (in Hz)
-    Signal.f0 = .5;
+    Signal.f0 = 0.5;
     
     %%% Frequency parameter
     Signal.kappa = (2*pi*Signal.f0).^2/g;
@@ -68,7 +68,7 @@ Signal.t0=0;        % Wavemaker start (in s).
 Signal.t1=2;        % Transition ramp/steady (in s).
 Signal.t2=50;       % Start of the decaying ramp (in s).
 Signal.t3=55;       % Transition ramp/relaxation (in s).
-Signal.t4=400;      % End of the relaxation time (in s).       
+Signal.t4=200;      % End of the relaxation time (in s).       
 
 %% Time-dependent input wavemaker signal
 % Linear ramp

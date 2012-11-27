@@ -36,12 +36,8 @@ Mesh = Mesh_FS_def(GeomDisks, TankDim);
 Param = ModParam_def(Param);
 
 %% Frequency domain response
-addpath('Frequency Solver')
-Res_mat_freq = Freq_response_gen_multi(GeomDisks,TankDim,Sample,Param);
-
-%% Generation of results
-addpath('Results routines')
-Results_time(Res_mat_freq,Signal,Sample,Param,Plate,Tank);
+Res_mat_freq = Freq_response_gen_multi(GeomDisks, TankDim, Sample, ...
+    Param, Mesh);
 
 
 disp('%---------- END: Main_Wavetank_time -----------%')

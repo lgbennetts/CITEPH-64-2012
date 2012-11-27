@@ -72,8 +72,8 @@ Az_Dim_vec = 2*Tol_vec(3)*ones(3,1);
 Az_Dim = 0;
 count = 0;
 while max(Az_Dim_vec)>Tol_vec(3)    
- Az_Dim_vec(count+1) = abs(besselj(Az_Dim,k0(1)*max(R_vec)));
- Az_Dim=Az_Dim+1; count = count+1; count = mod(count,length(Az_Dim_vec));
+    Az_Dim_vec(count+1) = abs(besselj(Az_Dim,k0(1)*max(R_vec)));
+    Az_Dim=Az_Dim+1; count = count+1; count = mod(count,length(Az_Dim_vec));
 end
 
 clear Az_Dim_vec count

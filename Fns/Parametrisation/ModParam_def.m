@@ -5,8 +5,8 @@ function Param = ModParam_def(Param)
 % Setup of modal parameters and accuracy parameters for the solution
 % method.
 
-%%% Number of evanescent vertical modes
-Param.N = 3;
+%%% Number of vertical modes (travel + evan)
+Param.N = 1;
 
 %%% Number of evanescent horizontal modes
 Param.Mev = 0;
