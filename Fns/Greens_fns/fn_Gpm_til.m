@@ -13,7 +13,7 @@ function [Gpm,gp] = fn_Gpm_til(xm,ypm,vars,skip,Tols)
 
 % - last modified: 27.05.10
 
-skipinfo = [];
+%skipinfo = [];
 
 width = vars(2); % - y \in (-width,width)
 kk = vars(3); % - wavenumber
@@ -31,11 +31,13 @@ while and(enough == 0, loop<=Tols(1))
     sm = exp(1i*u_m*abs(xm))*(...
           exp(1i*mu_m*ypm) + exp(-1i*mu_m*ypm) );
       
+    %%% REMOVE RESONANT TERM %%% 
     if loop==skip
      sm=0;
     else
      sm = sm/u_m; 
     end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     tm = exp(-mu_m*abs(xm))*(...
           exp(1i*mu_m*ypm) + exp(-1i*mu_m*ypm) );
@@ -60,19 +62,19 @@ end
 
 Gpm = Gpm/4i/width; 
 
+%% EXTRA INFO IF RESONANCE OCCURS
+
 if isempty(skip)==1
  gp=[];
 else
-    mu_m = skip*pp;
-    u_m = sqrt(kk^2-mu_m^2);
+ %%% THE MISSING TERM *u_m
+ mu_m = skip*pp;
+ u_m = sqrt(kk^2-mu_m^2);
     
-    sm = exp(1i*u_m*abs(xm))*(...
-          exp(1i*mu_m*ypm) + exp(-1i*mu_m*ypm) );
+ sm = exp(1i*u_m*abs(xm))*(...
+  exp(1i*mu_m*ypm) + exp(-1i*mu_m*ypm) );
       
-    gp = sm/4i/width;
+ gp = sm/4i/width;
 end
 
-
-return
-    
-    
+return    

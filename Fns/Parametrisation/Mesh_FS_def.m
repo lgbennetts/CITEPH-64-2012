@@ -31,9 +31,11 @@ for loop_x = 1:length(Mesh.x_vec)
         for loop_y = 1:length(Mesh.y_vec)
             if max((Mesh.x_vec(loop_x) - GeomDisks(:,1)).^2 + ...
                     (Mesh.y_vec(loop_y) - GeomDisks(:,2)).^2 < ...
-                    (GeomDisks(:,3).^2).')
+                    (GeomDisks(:,3).^2))
                 Mesh.FS_mesh(loop_y, loop_x) = inf;
             end
         end
     end
 end
+
+return

@@ -30,7 +30,7 @@ for loop1 = 1:Np-1
                 num2str(loop2),' overlapping!!!!!'])
             return
         end
-        clear sumRads distij
+        clear sumRads
     end
 end
 
@@ -54,3 +54,5 @@ if max(cx-rads) > TankDim(1)
     [mxx,pl] = max(cx-rads);
     disp(['plate ',num2str(pl),' overlaps x=l'])
 end
+
+return

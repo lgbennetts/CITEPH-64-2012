@@ -2,12 +2,11 @@ function [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,wt_0,xNm] = ...  %displ_fs, floe_displ,
     fn_MultiMode_MultiFloe(...
     PVec, Vert_Dim, evs, Geom_Vec, kappa, beta_vec, thick_vec, ...
     draft_vec, R_vec, posits, rad_vec, th_vec, x_vec, y_vec, FS_mesh, ...
-    res, extra_pts)
+    GrnTols, extra_pts)
 
 disp(['Vertical modes = ' int2str(Vert_Dim)])
 
 % - Geom_Vec = [scaling No.plates depth thickness l w]
-% - Param_Vec = [g rho_water draft beta gamma rho_ice nu E D];
 
 % - 27.09.10 created by LGB
 % - adapted from fn_SingleMode_MultiFloe_v2
@@ -19,6 +18,10 @@ Tol_vec(3) = 1e-1; % - Az_Dim tol - %
 scat = 1; % - scat=0 (scat only) scat=1 (scat+inc)
 
 %k0 = 2*pi/lam0;
+
+%%% resolution of angular dimension
+
+%res = GrnTol(1);
 
 %%% Number of floes %%%
 
@@ -32,15 +35,16 @@ Np = length(thick_vec); disp(['Plates = ' int2str(Np)])
 width = Geom_Vec(2); bed = Geom_Vec(3); lth = Geom_Vec(1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-parameter_vector = [PVec, kappa, bed];
+%parameter_vector = [rho_0, rho, nu, ..., kappa=omega^2/g, bed depth]
+parameter_vector = [PVec, kappa*ones(Np,1), bed*ones(Np,1)];
 
 %%% Roots in the free surface %%%
 
 k0 = zeros(1,Vert_Dim); wt_0 = k0;
 
 for loop_Dim=1:Vert_Dim
-    k0(loop_Dim) = GetRootsMMA_FS_PWC(parameter_vector, loop_Dim, Tol_vec);
-    wt_0(loop_Dim) = weight_0_PWC(parameter_vector(7), k0(loop_Dim));   
+ k0(loop_Dim) = GetRootsMMA_FS_PWC(parameter_vector(1,:), loop_Dim, Tol_vec);
+ wt_0(loop_Dim) = weight_0_PWC(parameter_vector(1,7), k0(loop_Dim));   
 end
 
 %%% Roots in the plates %%%
@@ -50,7 +54,8 @@ kk = zeros(Vert_Dim,Np); wt = kk; %wt_0 = wt;
 mu_0 = zeros(1,Np); mu_1 = mu_0;
 
 for loop_P=1:Np
-    pv_plate = [parameter_vector,draft_vec(loop_P),thick_vec(loop_P),...
+    % NB. pv_plate(11): alpha = draft
+    pv_plate = [parameter_vector(loop_P,:),draft_vec(loop_P),thick_vec(loop_P),...
         bed-draft_vec(loop_P),draft_vec(loop_P),beta_vec(loop_P)];
  for loop_Dim = 1:Vert_Dim
     kk(loop_Dim,loop_P) = GetRootsMMA_PWC(pv_plate, loop_Dim, Tol_vec);
@@ -92,12 +97,12 @@ disp(['Extra points = ' int2str(extra_pts)])
 
 [PhiInc, G, Gdr_add, v_vec, u_vec, theta_inc, ExtraOut] = ... 
     fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, R_vec, width, lth, posits, ...
-    res, Amp0, evs, extra_pts);
+    GrnTols, Amp0, evs, extra_pts);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%% Set Y-DIM %%%
-Y_Dim=length(u_vec(1,:)); Y0_Dim=Y_Dim-evs; new_res = ExtraOut{2};
+Y_Dim=length(u_vec(1,:)); Y0_Dim=Y_Dim-evs; 
 %%%%%%%%%%%%%%%%%
 
 disp(['Tank modes = ',num2str(Y0_Dim)]);
@@ -108,7 +113,7 @@ disp(['Tank modes = ',num2str(Y0_Dim)]);
 
 PsiMat = zeros(Np*Vert_Dim*(2*Az_Dim+1)); PsidrMat = PsiMat;
 AW0 = zeros(Np*Vert_Dim*(2*Az_Dim+1)); AW = AW0; VT0 = AW; VT = AW;
-Disp_mat = zeros(Vert_Dim*(2*Az_Dim+1),length(rad_vec),Np);
+Disp_mat = zeros(Vert_Dim*(2*Az_Dim+1),length(rad_vec{1}),Np);
 Amp_mu_Mat = zeros(2,Vert_Dim,2*Az_Dim+1,Np);
 
 v1 = 1:Vert_Dim*(2*Az_Dim+1);
@@ -143,26 +148,19 @@ for loop_P=1:Np
  VT0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); VT(v1,v1) = VT0(v1,v1);
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  %%% ELASTIC PLATE
-%  pv_plate = [parameter_vector,PVec(loop_P,3),thick_vec(loop_P),...
+%  pv_plate = [parameter_vector(loop_P,:),PVec(loop_P,3),thick_vec(loop_P),...
 %         bed-PVec(loop_P,3),PVec(loop_P,5),PVec(loop_P,4)];
+%  pv_plate = [parameter_vector(loop_P,:),draft_vec(loop_P),thick_vec(loop_P),...
+%         bed-draft_vec(loop_P),draft_vec(loop_P),beta_vec(loop_P)];
 %  [PsiMat(v1,v1),PsidrMat(v1,v1),Disp_mat(:,:,loop_P),...
 %      Amp_mu_Mat(:,:,:,loop_P)] = ...
 %     fn_SingleFloe(pv_plate, Vert_Dim, Az_Dim, kk(:,loop_P), ...
-%      wt(:,loop_P), mu_0(loop_P), mu_1(loop_P), R_vec(loop_P), rad_vec(loop_P,:));
+%      wt(:,loop_P), mu_0(loop_P), mu_1(loop_P), R_vec(loop_P), rad_vec{loop_P});
 %  [AW0(v1,v1),AW(v1,v1),VT0(v1,v1),VT(v1,v1)] = fn_JumpMats(pv_plate,...
 %     Vert_Dim, Vert_Dim, Az_Dim, k0, kk(:,loop_P), wt_0, wt(:,loop_P));
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  v1=v1+Vert_Dim*(2*Az_Dim+1);
 end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if length(ExtraOut)>2
- ExtraIn = {ExtraOut{3:end}};
-else
- ExtraIn = [];
-end
-clear ExtraOut
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% SOLVE THE INTEGRAL SYSTEM %%%
@@ -173,8 +171,8 @@ clear ExtraOut
 %%% - (d/dr)Psi=sum Psi_dr_m*exp(im*theta)
 
 [Phi, Psi, Phi_dr, Psi_dr, ExtraOut] = ...
-    fn_Solve(Vert_Dim, Az_Dim, k0, R_vec, width, PhiInc, G, Gdr_add, ...
-    PsiMat, PsidrMat, AW0, AW, VT0, VT, extra_pts, ExtraIn);
+    fn_Solve(Vert_Dim, Az_Dim, k0, R_vec, posits, width, PhiInc, G, ...
+     Gdr_add, PsiMat, PsidrMat, AW0, AW, VT0, VT, extra_pts, ExtraOut);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -184,14 +182,6 @@ clear ExtraOut
 %[abs(Phi-PhiInc), abs(Psi-PhiInc), abs(Phi_dr-PhiInc_dr), abs(Psi_dr-PhiInc_dr)]
 
 %% -- Scattered amplitudes -- %%
-
-if isempty(ExtraOut)==1
- ExtraIn = [];
-else
- ExtraIn = [ExtraIn{1}{1}(1), ExtraOut];
- % - ExtraIn = [skip, const]
-end
-clear ExtraOut
 
 %% - Plot - %%
 
@@ -283,10 +273,24 @@ for loop_Y=1:2*Y_Dim*Vert_Dim
  v1 = 1:Vert_Dim*(2*Az_Dim+1);
  for loop_P=1:Np
     
-  [dum_Bm, dum_Ap] = ...
+  if isempty(ExtraOut)
+   [dum_Bm, dum_Ap] = ...
     find_Amps(Vert_Dim, Az_Dim, Phi(v1,loop_Y), Phi_dr(v1,loop_Y),  ...
     k0, Y_Dim, [R_vec(loop_P),width], posits(:,loop_P), ...
-    diag(k0)*u_vec, diag(k0)*v_vec, theta_inc, xNm, ExtraIn);
+    diag(k0)*u_vec, diag(k0)*v_vec, theta_inc, xNm, ExtraOut);
+  else
+   [dum_Bm, dum_Ap] = ...
+    find_Amps(Vert_Dim, Az_Dim, Phi(v1,loop_Y), Phi_dr(v1,loop_Y),  ...
+    k0, Y_Dim, [R_vec(loop_P),width], posits(:,loop_P), ...
+    diag(k0)*u_vec, diag(k0)*v_vec, theta_inc, xNm, ExtraOut(loop_Y,:));
+   % ADJUST FOR CTY OF INC WAVE OVER LEFT/RIGHT INTERFACE
+   % I.E. THE WAVE ISN"T PROPAGATING FROM ONE SIDE TO THE OTHER!!!
+   % 
+   % -> ACTUALLY< ALREADY TAKEN CARE OF IN SCAT MAT !!!!
+%    if or(loop_Y-1==ExtraOut(1,1),loop_Y-1==Y_Dim*Vert_Dim+ExtraOut(1,1))
+%     dum_Bm = dum_Bm + Bp(:,:,loop_Y); dum_Ap = dum_Ap + Am(:,:,loop_Y);
+%    end
+  end
 
 %  displ_fs = displ_fs + fn_PlotFS(parameter_vector, Vert_Dim, Az_Dim, Y_Dim, k0,... 
 %     wt_0, width, R_vec(loop_P), dum_Am, dum_Bm, dum_Ap,...
@@ -365,15 +369,15 @@ u1 = 1:Vert_Dim:2*Vert_Dim*Y_Dim;
 %Am = abs(Am(1,real_inds,u1)); Bp = abs(Bp(1,real_inds,u1));
 Ap = abs(Ap(1,real_inds,u1)); Bm = abs(Bm(1,real_inds,u1)); 
 
-En = zeros(1,2*length(real_inds));
+En = zeros(2,1*length(real_inds));
 
 for loop_Y=1:length(real_inds)
- En(loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Ap(1,:,loop_Y)).^2)/k0(1));
+ En(1,loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Ap(1,:,loop_Y)).^2)/k0(1));
  %En = En + sum(epsm.*v_vec(1,real_inds).*(Bm.^2)/k0(1));
- En(Y0_Dim+loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Bm(1,:,Y_Dim+loop_Y)).^2)/k0(1));
+ En(2,0*Y0_Dim+loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Bm(1,:,Y_Dim+loop_Y)).^2)/k0(1));
 end
 
-display(['Transmitted energy    : ' num2str(abs(En))])
+if 0; display(['Transmitted energy    : ' num2str(abs(En(1,:)))]); end
 
 return
 
@@ -387,31 +391,34 @@ return
 
 function [PhiInc, G, Gdr_add, al_vec, be_vec, theta_inc, ExtraOut] = ...
     fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, Rad_vec, width, lth, ...
-    posits, res, Amp0, evs, extra_pts)
+    posits, GrnTol, Amp0, evs, extra_pts)
 
 %%% INPUTS
 %
 % evs = no. of evanescent waves included in inc wave (evs=0,1,2,...)
 
+res = GrnTol(1); tol = GrnTol(4);
+
 %%% FIND alpha_m beta_m & RESONANCES %%%
 
-tol = 7.5e-4; %5e-2; % - tol on resonances
+%tol = 7.5e-4; %5e-2; % - tol on resonances
 
 skip=[]; skipinfo=[];
 count=1; al_vec(:,1)=ones(Vert_Dim,1); be_vec(:,1)=zeros(Vert_Dim, 1); Y_Dim=0; 
-while be_vec(1,count)-1<tol %imag(vm)<Tols(5)
+while and(be_vec(1,count)-1<tol,isempty(skip))
  be_vec(:,count+1) = (count*pi/width./k0).';
  al_vec(:,count+1) = sqrt(1-be_vec(:,count+1).^2);
     
- if and(Y_Dim==0,imag(al_vec(1,count+1))~=0)
-  Y_Dim=count;
- end
+%  if and(Y_Dim==0,imag(al_vec(1,count+1))~=0)
+%   Y_Dim=count;
+%  end
     
- if abs(al_vec(1,count+1)-1)<tol %abs(vm(count))<Tols(5)
+ if abs(be_vec(1,count+1)-1)<tol %abs(vm(count))<Tols(5)
   skipinfo(1) = count;
   skipinfo(2) = be_vec(1,count+1);
   skipinfo(3) = al_vec(1,count+1);
   skip=count;
+  disp(['***** Resonant case |alpha_m|=', num2str(abs(al_vec(1,count+1))), ' *****'])
  end
  count=count+1;
 end
@@ -458,11 +465,11 @@ for loop_p1=1:Np
   % - ORIGIN OF SOURCE PT:   
   c0 = posits(:,loop_p2); Rad0=Rad_vec(loop_p2);
   if loop_p1==loop_p2
-   [G(v1,v2), Gdr_add(w1,v2), ExtraOut] = fn_getG(...
-       Vert_Dim, Az_Dim, k0, Rad, width, c0, res, irreg_pts);
+   [G(v1,v2), Gdr_add(w1,v2), ExtraOut] = fn_getG(Vert_Dim, Az_Dim, k0, ...
+        Rad, width, c0, res, GrnTol(2:3), irreg_pts, skip, skipinfo);
   else
    [G(v1,v2), Gdr_add(w1,v2), ExtraOut] = fn_getGmix(...
-       Vert_Dim, Az_Dim, k0, Rad, Rad0, width, cc, c0, res, irreg_pts);
+       Vert_Dim, Az_Dim, k0, Rad, Rad0, width, cc, c0, res, GrnTol(2:3), irreg_pts);
   end
   v2=v2+Vert_Dim*(2*Az_Dim+1);
  end
@@ -562,43 +569,51 @@ for loop=2:Y_Dim
 
 end
 
-% PhiInc_dr = kk*(1i.^[-Az_Dim:Az_Dim]).*...
-%         Bessel_dz(@besselj,-Az_Dim:Az_Dim,kk*Rad);
-%  
-% PhiInc_dr = Sc*PhiInc_dr;
-% 
-% PhiInc_dr = reshape(PhiInc_dr, 2*Az_Dim+1,1);
-
-%%% THE EXTRA PTS (FOR IRREGULAR FREQS) %%%
+%%% THE EXTRA PTS (FOR IRREGULAR FREQS)
 
 if isempty(irreg_pts)~=1
 
-v1 = 2*Az_Dim+2;
+v1 = (2*Az_Dim+1)+1;
 
 for loop=1:length(irreg_pts(1,:))
+    
+ u1 = 1:Vert_Dim;
  
- for loop_Y=1:length(al_vec)   
-  PhiInc(v1,loop_Y) = exp(1i*al_vec(loop_Y)*irreg_pts(1,loop))*...
-      cos(be_vec(loop_Y)*irreg_pts(2,loop));
- 
-  %PhiInc_dr(v1) = (Amp0)*exp(1i*kk(1)*irreg_pts(1,loop));
+ for loop_Y=1:length(al_vec)
+  PhiInc(v1,u1(1)) = exp(1i*al_vec(1,loop_Y)*irreg_pts(1,loop)).*...
+      cos(be_vec(1,loop_Y)*irreg_pts(2,loop));
+  u1 = u1 + Vert_Dim;
  end
+ 
+ for loop_Y=1:length(al_vec)
+  PhiInc(v1,u1(1)) = exp(1i*al_vec(1,loop_Y)*(lth-irreg_pts(1,loop))).*...
+      cos(be_vec(1,loop_Y)*irreg_pts(2,loop));
+  u1 = u1 + Vert_Dim;
+ end
+ 
  v1 = v1+1;
 end
 
 end
 
+%%% ORGANISE
+
 dum_PhiInc = (Amp0/1i/kk(1))*PhiInc;
 
 PhiInc = zeros(Vert_Dim*(2*Az_Dim+1),2*Vert_Dim*Y_Dim);
+
 u1i = 1:Vert_Dim:2*Vert_Dim*Y_Dim;
 v1i = 1:Vert_Dim:Vert_Dim*(2*Az_Dim+1);
- 
+v1 = 1:(2*Az_Dim+1);
+
 for loop=1:Vert_Dim
- 
- PhiInc(v1i,u1i) = dum_PhiInc(:,u1i);
- 
+ PhiInc(v1i,u1i) = dum_PhiInc(v1,u1i);
  u1i=u1i+1; v1i=v1i+1;
+end
+
+if isempty(irreg_pts)~=1
+ PhiInc(Vert_Dim*(2*Az_Dim+1):Vert_Dim*(2*Az_Dim+1)+length(irreg_pts(1,:)),:) = ... 
+  dum_PhiInc((2*Az_Dim+1):(2*Az_Dim+1)+length(irreg_pts(1,:)),:);
 end
  
 return
@@ -608,13 +623,11 @@ return
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [Phi, Psi, Phi_dr, Psi_dr, ExtraOut] = fn_Solve(Vert_Dim, ...
-    Az_Dim, k0, R_vec, width, PhiInc, G, Gdr_add, ...
+    Az_Dim, k0, R_vec, posits, width, PhiInc, G, Gdr_add, ...
     PsiMat, PsidrMat, AW0, AW, VT0, VT, extra_pts, ExtraIn)
-% ------------------------------------------- %
-Np=length(R_vec);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Np=length(R_vec); % number of plates
+%% 
 if isempty(ExtraIn)==1 % - non-reson case
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     Gr = 0*G;
 
@@ -674,7 +687,7 @@ if isempty(ExtraIn)==1 % - non-reson case
      
     end
     
-    %% - solve for auxiliary u (in terms of inc wave) - %%
+    %%% - solve for auxiliary u (in terms of inc wave) - %%
     
     mat_Phi_Inc = ( Idtil + Gr )\Ide;
     
@@ -684,7 +697,7 @@ if isempty(ExtraIn)==1 % - non-reson case
     
     mat_Psi_u = (PsiMat/PsidrMat)*AW;
     
-    %% - solve for auxiliary u (in terms of inc wave) - %%
+    %%% - solve for auxiliary u (in terms of inc wave) - %%
     
     if max(max([AW0,AW]))==0
      u_aux = 0*PhiInc;
@@ -693,27 +706,172 @@ if isempty(ExtraIn)==1 % - non-reson case
         VT0*mat_Phi_Inc*PhiInc;
     end
     
-    %% - then solve for Phi_dr and Psi_dr - %%
+    %%% - then solve for Phi_dr and Psi_dr - %%
     
     Phi_dr = AW0*u_aux; Psi_dr = AW*u_aux;
     
-    %% - finally solve for Phi and Psi - %%
+    %%% - finally solve for Phi and Psi - %%
     
     Phi = mat_Phi_u*u_aux + mat_Phi_Inc*PhiInc;
     Psi = mat_Psi_u*u_aux;
     
     ExtraOut = [];
     
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 elseif length(ExtraIn)==1 % - so only reson freqs (ie vm=0)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% - subtract vp*const=(1/2*pi)*int(Gp'phi-Gp*phi')dtheta
+% - subtract vp*const=-int(Gp'*phi-Gp*phi')dtheta
 % where Gp = exp(i*up*y)+exp(-i*up*y) (up=k for resonance)
-
-    disp('needs to be rewritten')
+  
+    %%% NO EXTRA POINTS (IRREG FREQS) FOR NOW %%%
+    extra_pts = 0;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    return
+    %skipinfo=ExtraIn{1}; 
+    
+    %%% CALC INC WAVE AND GREENS FN MATRICES %%%
+    Gr = 0*G;
+
+    BesJ = zeros(1,Vert_Dim*(2*Az_Dim+1)); BesJr=BesJ;
+    
+    w1 = 1:Vert_Dim*(2*Az_Dim+1);  
+    w2 = 1:Vert_Dim*(2*Az_Dim+1);
+   
+    for loop_P=1:Np
+     fac = ones(1,Vert_Dim*(2*Az_Dim+1))*(R_vec(loop_P));
+     
+     u1 = 1:Vert_Dim:Vert_Dim*(2*Az_Dim+1);
+     for loop_Dim=1:Vert_Dim
+      BesJ(u1) = besselj(-Az_Dim:Az_Dim, k0(loop_Dim)*R_vec(loop_P));
+      BesJr(u1) = k0(loop_Dim)*Bessel_dz(@besselj, -Az_Dim:Az_Dim, k0(loop_Dim)*R_vec(loop_P));
+      u1 = u1+1;
+     end
+     
+     PhiInc_dr(w1,:) = diag(BesJr)*PhiInc(w1,:);
+     PhiInc(w1,:) = diag(BesJ)*PhiInc(w1,:);
+     
+     G(:,w2) = G(:,w2)*diag(fac);
+     
+     v1 = 1:Vert_Dim*(2*Az_Dim+1); 
+     v2 = Vert_Dim*(2*Az_Dim+1)+[1:extra_pts];
+     v3 = 1:extra_pts;
+     for loop_Pr=1:Np
+      Gr(v1,w2) = G(v1,w2)*diag(BesJr./BesJ);
+     
+      if extra_pts      
+       Gr(v2,w2) = Gdr_add(v3,w2)*diag(fac);
+      end
+      v1 = v1 + Vert_Dim*(2*Az_Dim+1)+extra_pts;
+      v2 = v2 + Vert_Dim*(2*Az_Dim+1)+extra_pts;
+      v3 = v3 + extra_pts;
+     end
+      
+     w1=w1+Vert_Dim*(2*Az_Dim+1)+extra_pts;
+     w2=w2+Vert_Dim*(2*Az_Dim+1);
+     
+    end
+    
+    clear BesJ BesJr BesH BesHr u1 v1 v2 v3 w1 w2
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%% The boundedness condition
+    
+    row_BC = zeros(1,Np*Vert_Dim*(2*Az_Dim+1)); row_BCn = row_BC;
+    col_BC = row_BC.';
+    
+    v1 = 1:Vert_Dim:Vert_Dim*(2*Az_Dim+1);
+    Im = (-1).^[-Az_Dim:Az_Dim];
+    for loop_P=1:Np
+     row_BC(1,v1) = ...
+      besselj(-Az_Dim:Az_Dim,k0(1)*R_vec(loop_P)).*( ...
+        exp(1i*k0(1)*posits(2,loop_P))...
+      + Im.*exp(-1i*k0(1)*posits(2,loop_P)) );
+     
+     row_BCn(1,v1) = ...
+      Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(1)*R_vec(loop_P)).*( ...
+        exp(1i*k0(1)*posits(2,loop_P))...
+      + Im.*exp(-1i*k0(1)*posits(2,loop_P)) );
+  
+     col_BC(v1,1) = row_BC(1,v1).';
+     
+     row_BC(1,v1) = fliplr(row_BC(1,v1).*fac); 
+     row_BCn(1,v1) = fliplr(row_BCn(1,v1).*fac);
+     
+     v1 = v1 + Vert_Dim*(2*Az_Dim+1);
+    end
+    
+    col_BC = (1/2i/width)*col_BC;
+    
+    row_BC = pi*row_BC; row_BCn = k0(1)*pi*row_BCn;
+    
+    clear fac
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    Ide = eye(Np*Vert_Dim*(2*Az_Dim+1)+Np*extra_pts);
+    
+    Idtil = zeros(Np*Vert_Dim*(2*Az_Dim+1)+Np*extra_pts,Np*Vert_Dim*(2*Az_Dim+1));
+    
+    v1 = 1:Vert_Dim*(2*Az_Dim+1)+extra_pts; v2 = 1:Vert_Dim*(2*Az_Dim+1);
+    
+    for loop=1:Np
+    
+     Idtil(v1,v2) = [eye((2*Az_Dim+1)*Vert_Dim);...
+          zeros(extra_pts,(2*Az_Dim+1)*Vert_Dim)];
+      
+     v1 = v1 + Vert_Dim*(2*Az_Dim+1)+extra_pts;
+     v2 = v2 + Vert_Dim*(2*Az_Dim+1);
+     
+    end
+    
+    %%% - solve for auxiliary u (in terms of inc wave) - %%
+    
+    mat_Phi_Inc = ( Idtil + Gr )\Ide;
+    
+    mat_Phi_u = mat_Phi_Inc*(G*AW0);
+    
+    mat_Phi_c = mat_Phi_Inc*col_BC; % ** c is const from resonance condn **
+    
+    clear Jmat fac
+    
+    mat_Psi_u = (PsiMat/PsidrMat)*AW;
+    
+    %%% - solve for auxiliary u (in terms of inc wave) - %%
+    
+    if max(max([AW0,AW]))==0
+     u_Inc = zeros(length(VT(:,1)),length(mat_Phi_Inc(1,:)));
+     u_c = zeros(length(VT(:,1)),length(mat_Phi_c(1,:)));
+    else
+     u_Inc = (VT*mat_Psi_u-VT0*mat_Phi_u)\...
+        VT0*mat_Phi_Inc;
+     u_c = (VT*mat_Psi_u-VT0*mat_Phi_u)\...
+        VT0*mat_Phi_c;
+      
+    end
+    
+    %%% - apply boundedness condition
+     
+    c_Inc = - (row_BC*AW0*u_c - row_BCn*mat_Phi_c)\( row_BC*AW0*u_Inc ...
+          - row_BCn*(mat_Phi_Inc + mat_Phi_u*u_Inc) );
+      
+    u_aux = (u_Inc + u_c*c_Inc)*PhiInc;
+    
+    %%% - then solve for Phi_dr and Psi_dr - %%
+    
+    Phi_dr = AW0*u_aux; Psi_dr = AW*u_aux;
+    
+    %% - finally solve for Phi and Psi and c - %%
+    
+    Phi = mat_Phi_u*u_aux + (mat_Phi_Inc + mat_Phi_c*c_Inc)*PhiInc;
+    Psi = mat_Psi_u*u_aux;
+    
+    c = c_Inc*PhiInc;
+    
+    ExtraOut = [ExtraIn{1}(1) + 0*c.', c.'/Np];
+    
+ end
+    
+ return
 
 %     skipinfo=ExtraIn{1}{1};
 %     
@@ -855,10 +1013,6 @@ elseif length(ExtraIn)==1 % - so only reson freqs (ie vm=0)
 % else % - both reson freqs & irreg freqs
 %     
 %     disp('need to write this part!!!!')
-    
-end
-
-return
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% - Calculate amps in the rectangular regions either side of a plate - %%
@@ -937,8 +1091,12 @@ for loop_Dim = 1:Vert_Dim
     
  for loop_Y = 2:Y_Dim   
      
-  if loop_Y~=skip
-        
+  if and(loop_Y==skip, loop_Dim==1)
+            
+   Bm(loop_Dim,loop_Y) = -ExtraIn(2)/pi/Rad;
+      
+  else
+      
    Az = 1;   
    for loop_Az=-Az_Dim:Az_Dim
        
@@ -961,10 +1119,6 @@ for loop_Dim = 1:Vert_Dim
   
    Bm(loop_Dim,loop_Y) = 2*exp(1i*v_vec(loop_Dim,loop_Y)*Rad)*...
        Bm(loop_Dim,loop_Y)/v_vec(loop_Dim,loop_Y);
-  
-  else
-      
-   Bm(loop_Dim,loop_Y) = -ExtraIn(2);
    
   end
   
@@ -999,8 +1153,12 @@ for loop_Dim = 1:Vert_Dim
   
   for loop_Y = 2:Y_Dim  
      
-   if loop_Y~=skip
-     
+   if and(loop_Y==skip,loop_Dim==1)
+       
+    Ap(:,loop_Y) = -ExtraIn(2)/pi/Rad;
+   
+   else
+       
     Az = 1;   
     for loop_Az=-Az_Dim:Az_Dim
         
@@ -1025,10 +1183,6 @@ for loop_Dim = 1:Vert_Dim
     Ap(loop_Dim,loop_Y) = 2*exp(1i*v_vec(loop_Dim,loop_Y)*Rad)*...
         Ap(loop_Dim,loop_Y)/v_vec(loop_Dim,loop_Y);
   
-   else
-      
-    Ap(:,loop_Y) = -2*ExtraIn(2);
-   
    end
   
  end

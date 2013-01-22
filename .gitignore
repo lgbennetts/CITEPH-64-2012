@@ -1,2 +1,7 @@
 *.asv
 *.m~
+*.aux
+*.bbl
+*.dvi
+*.log
+*.ps

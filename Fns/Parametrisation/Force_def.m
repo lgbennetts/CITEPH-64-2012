@@ -1,4 +1,4 @@
-function Forcing = Force_def(g,H)
+function Forcing = Force_def(g,H,type_freq,lam0)
 
 % Forcing = Force_def()
 %
@@ -7,7 +7,8 @@ function Forcing = Force_def(g,H)
 %% Frequency forcing
 
 %%% Type of frequency forcing 'freq' or 'wlength'
-type_freq = 'freq';
+if ~exist('type_freq','var'); type_freq = 'freq'; end
+if isempty(type_freq); type_freq = 'freqh'; end
 
 if strcmp(type_freq,'freq')
     %%% Frequency (in Hz)
@@ -21,13 +22,38 @@ if strcmp(type_freq,'freq')
         'UppLimReal_FS_PWC', 1e-16); 
 elseif strcmp(type_freq,'wlength')
     %%% Wavelength (in m)
-    Forcing.lam0 = 1;
+    if ~exist('lam0','var') 
+     Forcing.lam0 = 1; 
+    else
+     if isempty(lam0) 
+      Forcing.lam0 = 1; 
+     else 
+      Forcing.lam0 = lam0;
+     end
+    end
     
     %%% Frequency (in Hz)
-    Forcing.f = FindFreq_FS([inf,inf,inf,inf,g],2*pi/Signal.lam0, H)/2/pi;
+    Forcing.f = FindFreq_FS([inf,inf,inf,inf,g],2*pi/Forcing.lam0, H)/2/pi;
     
     %%% Frequency parameter
     Forcing.kappa = (2*pi*Forcing.f).^2/g;
+elseif strcmp(type_freq,'waveno')
+    %%% Wavelength (in m)
+    if ~exist('lam0','var') 
+     Forcing.lam0 = 1; 
+    else
+     if isempty(lam0) 
+      Forcing.lam0 = 1; 
+     else 
+      Forcing.lam0 = 2*pi/lam0;
+     end
+    end
+    
+    %%% Frequency (in Hz)
+    Forcing.f = FindFreq_FS([inf,inf,inf,inf,g],2*pi/Forcing.lam0, H)/2/pi;
+    
+    %%% Frequency parameter
+    Forcing.kappa = (2*pi*Forcing.f).^2/g;    
 end
 
 %% Amplitude forcing

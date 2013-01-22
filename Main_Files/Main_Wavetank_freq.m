@@ -8,7 +8,7 @@ function Main_Wavetank_freq
 disp('%---------- START: Main_Wavetank_freq -----------%')
 
 %% Creation of local paths
-CreatePaths_Mac
+%CreatePaths_Mac
 
 %% Parametrisation
 % Note that the origin of the Cartesian system is located at the bottom 
@@ -45,7 +45,6 @@ Param = ModParam_def(Param);
     [GeomDisks(:,1).';GeomDisks(:,2).'], Mesh.r_vec, Mesh.th_vec, ...
     Mesh.x_vec, Mesh.y_vec, Mesh.FS_mesh, Param.res_green, ...
     Param.extra_pts);
-
 
 %% Solution - Wave tank 
 [Amp_1P,Amp_1M,Amp_3P,Amp_3M] = ...

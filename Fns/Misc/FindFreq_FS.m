@@ -9,3 +9,4 @@ freq = kk.*tanh(kk.*HH);
 
 freq = sqrt(parameter_vector(5)*freq);
 
+return

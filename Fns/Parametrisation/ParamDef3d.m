@@ -4,14 +4,14 @@ function Param = ParamDef3d(GeomDisks)
 %
 % Physical properties of te problem stored in the structure Param.
 
-% Accelaration due to gravity (in m\,s^{-2})
-Param.g = 9.81;            
-
-% Density of fluid (in kg\,m^{-3})
-Param.rho_0 = 1025;           
-
 % Number of disks
 Param.Np = size(GeomDisks,1);
+
+% Accelaration due to gravity (in m\,s^{-2})
+Param.g = 9.81*ones(Param.Np,1);            
+
+% Density of fluid (in kg\,m^{-3})
+Param.rho_0 = 1025*ones(Param.Np,1);           
 
 % Densities of disks (in kg\,m^{-3})
 Param.rho = 500*ones(Param.Np,1);
@@ -29,7 +29,9 @@ Param.draft = GeomDisks(:,4).*Param.rho./Param.rho_0;
 Param.D = Param.E.*GeomDisks(:,4).^3./(12*(1-Param.nu.^2));
 
 % Scaled rigidity 
-Param.beta = Param.D/(Param.g*Param.rho_0);
+Param.beta = Param.D./(Param.g.*Param.rho_0);
 
 % Reflection coefficient (at high frequency)
 Param.Rb = 0.1;
+
+return

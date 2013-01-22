@@ -1,5 +1,5 @@
 function [G, Gdr_add, ExtraOut] = fn_getGmix(...
-    Dim, Az_Dim, kk, Rad, Rad0, width, cc, c0, res, irreg_vals)
+    Dim, Az_Dim, kk, Rad, Rad0, width, cc, c0, res, Tols, irreg_vals)
 
 skip = []; % INVESTIGATE LATER (12.10.12)
 
@@ -17,8 +17,8 @@ skip = []; % INVESTIGATE LATER (12.10.12)
 %               = { 0        (j=til)   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Tols(1) = 100; % - max num of terms in Green's fns
-Tols(2) = 1e-1; % - cut off tol for terms in Green's fns
+% Tols(1) = 100; % - max num of terms in Green's fns
+% Tols(2) = 1e-1; % - cut off tol for terms in Green's fns
 Tols(3) = 1e-2; % - the point at which the sings are dealt with anay in Logs
 Tols(4) = 1e-4; % - accuracy of numerical integration
 Tols(5) = 7.5e-4; %5e-2; % - tol on resonances

@@ -4,11 +4,11 @@ function [G, g_sk] = fn_GreensFnQuasiPer(xx,x0,c0,vars,skip,Tols)
 
 e0 = Term0(xx(1)-x0(1),vars);
 
-[Gm,g_sk] = fn_Gpm_til(xx(1)-x0(1),xx(2)-x0(2),vars,skip,Tols);
+[Gm, g_sk] = fn_Gpm_til(xx(1)-x0(1),xx(2)-x0(2),vars,skip,Tols);
 
 Logm_v1 = fn_Logpm_til(xx,x0,c0,-1,vars,Tols);
 
-G = e0 + Gm + Logm_v1; % 
+G = (e0 + Gm) + Logm_v1; 
 
 return
 

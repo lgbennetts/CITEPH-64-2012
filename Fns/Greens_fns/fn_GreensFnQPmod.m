@@ -4,7 +4,7 @@ function [G, g_sk] = fn_GreensFnQPmod(xx,x0,vars,skip,Tols)
 
 e0 = Term0(xx(1)-x0(1),vars);
 
-[Gm,g_sk] = fn_Gpm_til(xx(1)-x0(1),xx(2)-x0(2),vars,skip,Tols);
+[Gm, g_sk] = fn_Gpm_til(xx(1)-x0(1),xx(2)-x0(2),vars,skip,Tols);
 
 Logm = fn_Logpm(xx(1)-x0(1),xx(2)-x0(2),vars,Tols);
 

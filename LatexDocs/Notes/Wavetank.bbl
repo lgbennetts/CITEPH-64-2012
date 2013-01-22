@@ -1,5 +1,11 @@
 \begin{thebibliography}{1}
 
+\bibitem{Ben11}
+L.~G. Bennetts.
+\newblock Wave attenuation through multiple rows of scatterers with differing
+  periodicities.
+\newblock {\em SIAM J. Appl. Maths.}, 71(2):540--558, 2011.
+
 \bibitem{Ben&Squ09a}
 L.~G. Bennetts and V.~A. Squire.
 \newblock Linear wave forcing of an array of axisymmetric ice floes.
@@ -10,10 +16,9 @@ L.~G. Bennetts and V.~A. Squire.
 \newblock Wave scattering by multiple rows of circular ice floes.
 \newblock {\em J. Fluid Mech.}, 639:213--238, 2009.
 
-\bibitem{Montiel_etal12}
-F.~Montiel, L.~G. Bennetts, and V.~A. Squire.
-\newblock The transient response of floating elastic plates to wavemaker
-  forcing in two dimensions.
-\newblock {\em J. Fluids Struct.}, 28:416--433, 2012.
+\bibitem{Lin&Tho07a}
+C.~M. Linton and I.~Thompson.
+\newblock Resonant effects in scattering by periodic arrays.
+\newblock {\em Wave Motion}, 44(3):165--175, 2007.
 
 \end{thebibliography}

@@ -1,7 +1,5 @@
 function [G, Gdr_add, ExtraOut] = fn_getG(...
-    Dim, Az_Dim, kk, Rad, width, c0, res, irreg_vals)
-
-skip = []; % INVESTIGATE LATER (12.10.12)
+    Dim, Az_Dim, kk, Rad, width, c0, res, Tols, irreg_vals, skip, skipinfo)
 
 % - 26.09.12 - modified from find_getG for irregular values
 % - 21.09.12 - modified from find_GandGr_vTol_Resonx2_v3
@@ -18,8 +16,8 @@ skip = []; % INVESTIGATE LATER (12.10.12)
 %               = { 0        (j=til)   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Tols(1) = 100; % - max num of terms in Green's fns
-Tols(2) = 1e-1; % - cut off tol for terms in Green's fns
+% Tols(1) = 100; % - max num of terms in Green's fns
+% Tols(2) = 1e-1; % - cut off tol for terms in Green's fns
 Tols(3) = 1e-2; % - the point at which the sings are dealt with anay in Logs
 Tols(4) = 1e-4; % - accuracy of numerical integration
 Tols(5) = 7.5e-4; %5e-2; % - tol on resonances
@@ -36,43 +34,43 @@ xx=c0(1)+Rad*cos(theta_vec); yy=c0(2)+Rad*sin(theta_vec);
 % NB. source vals vary in dim 1 (vertically); field dim 2 (horizontally)
 % BUT doesn't make a difference here (does in find_getGmix)
 
-Gqp_vals = zeros(res); Gqpmod_vals = zeros(res); %Gtil_vals = Gqp_vals; S0_vals = zeros(res);
-gsk_vals = zeros(res); % - the skipped values!!!
+Gqp_vals = zeros(res,res,Dim); Gqpmod_vals = zeros(res,res,Dim); %Gtil_vals = Gqp_vals; S0_vals = zeros(res);
+%gsk_vals = zeros(res,res,Dim); % - the skipped values!!!
 
-if isempty(skip)==1
- for loop_N=1:Dim   
-  vars=[nan,width,kk(loop_N),Rad];
-  for loop=1:length(theta_vec)
-   for loop2=1:length(theta_vec)
-    [Gqp_vals(loop,loop2,loop_N)] = fn_GreensFnQuasiPer...
-       ([xx(loop),yy(loop)],[xx(loop2),yy(loop2)],c0,vars,skip,Tols);
-    [Gqpmod_vals(loop,loop2,loop_N)] = fn_GreensFnQPmod...
-       ([xx(loop),yy(loop)],[xx(loop2),-yy(loop2)],vars,skip,Tols);
-   end
-  end
- end
-else
+for loop_N=1:Dim   
+ vars=[nan,width,kk(loop_N),Rad];
  for loop=1:length(theta_vec)
   for loop2=1:length(theta_vec)
-   [Gqp_vals(loop,loop2),gsk_vals(loop,loop2)] = fn_GreensFnQuasiPer_Reson_v2...
-       ([xx(loop),yy(loop)],[xx(loop2),yy(loop2)],c0,vars,skip,Tols);
-   [Gqpmod_vals(loop,loop2),gskmod_vals(loop,loop2)] = fn_GreensFnQPmod_Reson...
-       ([xx(loop),yy(loop)],[xx(loop2),-yy(loop2)],vars,skip,Tols);
+   [Gqp_vals(loop,loop2,loop_N)] = ...
+       fn_GreensFnQuasiPer([xx(loop),yy(loop)],[xx(loop2),yy(loop2)],c0,vars,skip,Tols);
+   [Gqpmod_vals(loop,loop2,loop_N)] = ...
+       fn_GreensFnQPmod([xx(loop),yy(loop)],[xx(loop2),-yy(loop2)],vars,skip,Tols);
   end
  end
 end
+% else
+%  for loop=1:length(theta_vec)
+%   for loop2=1:length(theta_vec)
+%    [Gqp_vals(loop,loop2),gsk_vals(loop,loop2)] = fn_GreensFnQuasiPer_Reson_v2...
+%        ([xx(loop),yy(loop)],[xx(loop2),yy(loop2)],c0,vars,skip,Tols);
+%    [Gqpmod_vals(loop,loop2),gskmod_vals(loop,loop2)] = fn_GreensFnQPmod_Reson...
+%        ([xx(loop),yy(loop)],[xx(loop2),-yy(loop2)],vars,skip,Tols);
+%   end
+%  end
+% end
 
 % - Find their inner-prods with Fourier exps - %
 
 Gqp = fn_FillMat_SymmD(Gqp_vals, Dim, Az_Dim, theta_vec);
 Gqpmod = fn_FillMat_SymmE(Gqpmod_vals, Dim, Az_Dim, theta_vec);
 
-if isempty(skip)==0
- gv = fn_FillMat_SymmD(gsk_vals, Dim, Az_Dim, theta_vec);
- gvmod = fn_FillMat_NoSymm(gskmod_vals, Dim, Az_Dim, theta_vec);
-end
-
 clear Gqp_vals Gqpmod_vals
+
+% if isempty(skip)==0
+%  gv = fn_FillMat_SymmD(gsk_vals, Dim, Az_Dim, theta_vec);
+%  gvmod = fn_FillMat_NoSymm(gskmod_vals, Dim, Az_Dim, theta_vec);
+%  clear gsk_vals gskmod_vals
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TEST %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -127,9 +125,9 @@ Gqp = Gqp+diag(Log_Mat);
 %G = Gtil + Gqp + Gqpmod;  
 G = (Gqp + Gqpmod)/2/pi;  
 
-if isempty(skip)~=1
- Gsk = gsktil + gv + gvmod;
-end
+% if isempty(skip)~=1
+%  Gsk = gv + gvmod; % (10.01.13) What was gsktil +  ????
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% IRREGULAR VALUES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -177,12 +175,12 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% EXTRAS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-% - Extra info for resonances, etc
-ExtraOut = {[], res};
+%%% Extra info for resonances, etc
+ExtraOut = []; %{[], res};
 if isempty(skip)~=1
- SkipOut = {skipinfo, Gsk}; %, Gsk_dr (30.07.12)
- ExtraOut{3} = SkipOut;
+%  SkipOut = {skipinfo}; %, Gsk_dr (30.07.12) , Gsk (10.01.13)
+%  ExtraOut{3} = SkipOut;
+ ExtraOut = {skipinfo};
 end
 
 % if isempty(irregs)~=1

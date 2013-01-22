@@ -3,57 +3,10 @@
 \textwidth=170.00mm
 \topmargin=-10.00mm
 \textheight=240.00mm
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage{mathrsfs}
-%\usepackage{eufrak}
-\usepackage{amssymb,graphicx,psfrag}
-\usepackage{color}  %%%%% for colour
-\usepackage{rotating}
-%\usepackage{natbib}
-% \usepackage{refcheck}
-% \usepackage{overpic}
 
-\newcommand{\real}{\textrm{Re}}
-\newcommand{\imag}{\textrm{Im}}
-\newcommand{\wrt}{ ~ {\rm d}}
-\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
-\newcommand{\sech}{\rm sech}
-\newcommand{\cosech}{\rm cosech}
-\newcommand{\bnab}{{\bf \nabla}}
-\newcommand{\besj}{\textrm{J}}
-\newcommand{\besy}{\textrm{Y}}
-\newcommand{\besh}{\textrm{H}}
-\newcommand{\sgn}{\textrm{sgn}}
-\newcommand{\mn}{\textrm{mn}}
-\newcommand{\mx}{\textrm{mx}}
-\newcommand{\diag}{\textrm{diag}}
-\renewcommand{\vec}{\textrm{vec}}
-\newcommand{\mat}{\textrm{Mat}}
-\newcommand{\inv}{\textrm{inv}}
-\def\ci{{\mathrm i}}
-\renewcommand{\exp}{{\rm e}}
-\newcommand{\pn}{\partial_{n}}
-\newcommand{\ps}{\partial_{s}}
-\newcommand{\px}{\partial_{x}}
-\newcommand{\pz}{\partial_{z}}
-\newcommand{\order}{\textrm{O}}
-\newcommand{\lap}{\nabla^{2}}
-\newcommand{\eps}{\varepsilon}
+\usepackage{refcheck}
 
-% - Gen Symbols & fonts
-
-\newcommand{\ca}{\mathcal}
-\newcommand{\bs}{\boldsymbol}
-\newcommand{\cc}{\overline}
-\newcommand{\ds}{\displaystyle}
-
-\newcommand{\newbit}[1]{{\color{blue}\bf #1}}
-\newcommand{\qu}[1]{{\color{red}\it #1}}
-
-\newcommand{\eg}{e.g.\ }
-\newcommand{\ie}{i.e.\ }
-\newcommand{\etal}{\textit{et al.}\ }
+\input{Preamble.tex}
 
 % - particular to this problem (vary easily)
 
@@ -375,9 +328,9 @@ Hence
 noting that $\kx_{m}=\kx_{-m}$.
 The required Green's function, $G$, is therefore
 \begin{equation}
-G(\bx\vert \bxo,\yo:k)
+G(\bx\vert \bxo:k)
 =
-\hat{G}(\bx\vert \bxo,\yo:k).
+\hat{G}(\bx\vert \bxo:k).
 \end{equation}
 \end{subequations}
 
@@ -408,7 +361,6 @@ G(\bxo_{d}\vert \bx)
 %_{(\xo,\yo)\in\bdy_{d}}
 .
 \end{equation}
-
 Here $D$ denotes the number of disks in the tank, $\bdy_{d}$ denotes the  boundary of disk $d$, and $\nm_{d}$ and $s_{d}$ denote the (outward) normal to $\bdy_{d}$ and its arclength, respectively.
 Coordinate subscripts are used to  indicate evaluation on the boundary of a particular disk, \ie $\bx_{d}\equiv[\bx ]_{\bdy_{d}(s_{d})}$.
 The quantity $\eps(\bx)$ is equal to unity if the field point $\bx$ is in the open-water region, one-half if the field point is on a disk edge, and zero if the field point is in the disk-covered region.
@@ -923,15 +875,129 @@ The double integral over the disk perimeter of the second term can be evaluated 
 \end{equation}
 where the integral appearing on the right-hand side requires numerical evaluation.
 
-
-
-
-
 %
 
 \subsubsection{Irregular frequencies}
 
+%
 
+\subsubsection{Resonances}
+
+If $\kx_{m}=0$ for some $m\neq0$ ($\vert \ky_{m}\vert =1$)  the Green's function (\ref{eqns:Greens}) is singular, and the solution method described is invalid.
+Therefore, define the modified Green's function, $G_{\mathcal{M}}$, as
+\begin{equation}
+G_{\mathcal{M}}(\bx\vert\bxo)
+=
+\frac{1}{2\ci w}
+\sum_{m=0/\mathcal{M}}^{\infty}
+\frac{1}{\kx_{m}(k)}(2-\delta_{m0})
+\exp^{\ci \kx_{m}(k) \vert x-\xo\vert}
+\eta_{m}(\yo)\eta_{m}(y).
+\end{equation}
+At the resonant points the Green's function may therefore be written
+\begin{equation}
+G(\bx\vert\bxo)
+=
+G_{m}(\bx\vert\bxo)
++
+\lim_{\kx_{m}\to 0}
+\left\{
+\frac{1}{\ci w \kx_{m}}
+\exp^{\ci \kx_{m}(k) \vert x-\xo\vert}
+\eta_{m}(\yo)\eta_{m}(y)
+\right\}.
+\end{equation}
+It is assumed that all physical variables remain bounded in this limit, and thus, from equation (\ref{eqn:IEsys}), the following condition must hold (Linton \& Thompson \cite{Lin&Tho07a}, Bennetts \cite{Ben11})
+\begin{subequations}\label{eqns:ResonSys}
+\begin{equation}\label{eqn:ResonCond}
+\lim_{\kx_{m}\to 0}
+\sum_{d=1}^{D}
+\rad_{d}
+\int_{-\pi}^{\pi}
+\wrt \tho\,
+\Big\{
+\vpr_{d}(\tho)
+\partial_{r_{d}}
+\eta_{m}(\yo_{d})
+-
+\eta_{m}(\yo_{d})
+\vpr'_{d}(\tho)
+\Big\}
+=
+\lim_{\kx_{m}\to 0}c \kx_{m}
+=0
+,
+\end{equation}
+where $\yo_{d}(\tho)=y_{d}+\rad_{d}\sin\tho$, and for some constant $c$.
+Condition (\ref{eqn:ResonCond}) must be solved, for all $\vpr_{d}$ and $c$, in combination with the modified integral equation system
+\begin{equation}
+\frac12
+\vpr_{j}(\theta)
+=
+\force_{j}(\theta)
+-
+\sum_{d=1}^{D}
+\rad_{d}
+\int_{-\pi}^{\pi}
+\wrt \tho\,
+\Big\{
+\vpr_{d}(\tho)
+\partial_{r_{d}}
+G_{m}(\bxo_{d}\vert \bx_{j})
+-
+G_{m}(\bxo_{d}\vert \bx_{j})
+\vpr'_{d}(\tho)
+\Big\}
+-
+\frac{c}{\ci w}
+\eta_{m}(y_{j})
+,
+\end{equation}
+\end{subequations}
+for $j=1,\dots,D$.
+The system (\ref{eqns:ResonSys}) is then solved via the Galerkin technique as before.
+When doing so, it is useful to note that for $\vert \ky_{m}\vert =1$
+\begin{equation}
+\int_{-\pi}^{\pi}
+\eta_{m}(\yo_{d})
+\exp^{-n\tho}
+\wrt \tho
+=
+\pi
+\{
+\exp^{\ci y_{d}}
+\besj_{n}(k\rad_{d})
++
+\exp^{-\ci y_{d}}
+\besj_{n}(-k\rad_{d})
+\},
+\end{equation}
+and
+\begin{equation}
+\int_{-\pi}^{\pi}
+\partial_{r_{d}}
+\eta_{m}(\yo_{d})
+\exp^{-n\tho}
+\wrt \tho
+=
+\pi
+k
+\{
+\exp^{\ci y_{d}}
+\besj'_{n}(k\rad_{d})
++
+\exp^{-\ci y_{d}}
+\besj'_{n}(-k\rad_{d})
+\}.
+\end{equation}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%                         FABIEN                     %%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%% WAVE TANK %%%
 
 \section{Wave tank}
 
@@ -1079,8 +1145,8 @@ straightforwardly.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \bibliographystyle{plain}      % References
-% \bibliography{/Users/a1612881/Dropbox/Documents/bibli/LukesBibli}
-\bibliography{biblio}
+\bibliography{/Users/a1612881/Dropbox/Documents/bibli/LukesBibli}
+%\bibliography{biblio}
 
 %\begin{thebibliography}{10}
 %

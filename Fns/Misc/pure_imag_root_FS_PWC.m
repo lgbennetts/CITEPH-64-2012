@@ -32,3 +32,5 @@ interval = [low, up];
 
 w = fzero('pimag_disprel_FS_PWC', interval, ...
     optimset('tolX', tol_x),parameter_vector);
+
+return
