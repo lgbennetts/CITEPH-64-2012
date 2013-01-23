@@ -1,9 +1,13 @@
-function Main_Channel_freq(Np, lam_vec,extra_pts,file_marker)
+function Main_Channel_freq(Np, lam_vec,extra_pts,scatyp,Rows,file_marker)
 
 if ~exist('Np','var'); Np=1; end
 if ~exist('extra_pts','var'); extra_pts=[]; end
 if ~exist('file_marker','var'); file_marker=0; end
-if ~exist('lam_vec','var'); lam_vec=1.0*pi/16; end
+if ~exist('lam_vec','var'); lam_vec=1.999*pi/16; end
+if ~exist('scatyp','var'); scatyp='none'; end
+if ~exist('Rows','var'); Rows=1; end
+
+fortyp = 'waveno';
 
 % Main_Wavetank_freq
 %
@@ -50,21 +54,21 @@ Param = ModParam_def(Param,extra_pts);
 for loop_lam=1:length(lam_vec)
 
 %%% Forcing
-Forcing = Force_def(Param.g(1), TankDim(3), 'waveno', lam_vec(loop_lam));
+Forcing = Force_def(Param.g(1), TankDim(3), fortyp, lam_vec(loop_lam));
 
 %% Solution - Disks in a channel
 % Scattering matrix is S = [Rm Tp;Tm Rp]
 % Wavenumbers matrices v_vec and u_vec are scaled by vertical wavenumbers.
-[Rm,Tm,Rp,Tp,v_vec,u_vec,k0,weight_0,x_lim] = ...
+[Rm,Tm,Rp,Tp,v_vec,u_vec,k0,weight_0,x_lim,reson_mkr(loop_lam)] = ...
     fn_MultiMode_MultiFloe([Param.rho_0 Param.rho Param.nu Param.E ...
     Param.g], Param.N, Param.Mev, TankDim, Forcing.kappa, ...
     Param.beta.', GeomDisks(:,4).', Param.draft.', GeomDisks(:,3).', ...
     [GeomDisks(:,1).';GeomDisks(:,2).'], ...
     Mesh.r_vec, Mesh.th_vec, Mesh.x_vec, Mesh.y_vec, Mesh.FS_mesh, ...
     [Param.res_green, Param.terms_green, Param.cutoff_green, Param.tolres], ...
-    Param.extra_pts);
+    Param.extra_pts, scatyp);
 
-R_vec{loop_lam} = Rm; T_vec{loop_lam} = Tm; 
+R_vec{loop_lam} = Rm; T_vec{loop_lam} = Tm; %En_vec{loop_lam} = En;
 
 v_vecs{loop_lam} = v_vec(1,:); %k_vec(loop_lam) = k0(1);
 
@@ -96,7 +100,10 @@ if file_marker~=0
   end
   clear loopii 
 
- description = {['Tank: ' num2str(TankDim(1)) 'x' num2str(TankDim(2)) ...
+ description = {['Problem: ' scatyp], ...
+     [fortyp ' :' num2str(lam_vec(1)) ' -> ' num2str(lam_vec(end)) ' (' ...
+      int2str(length(lam_vec)) ')'] ...
+     ['Tank: ' num2str(TankDim(1)) 'x' num2str(TankDim(2)) ...
      'x' num2str(TankDim(3))], ...
      [int2str(Np) ' Disk(s): x=' dum_str{1} ...
      '; y=' dum_str{2} ...
@@ -107,12 +114,13 @@ if file_marker~=0
      ', extra points=' int2str(Param.extra_pts) ...
      ', angular res=' int2str(Param.res_green) ...
      ', Green fn terms=' int2str(Param.terms_green) ...
-     ', Greens fn cutoff=' int2str(Param.cutoff_green) ] };
+     ', Greens fn cutoff=' int2str(Param.cutoff_green) ...
+     ', resonance tol=' int2str(Param.tolres)] };
      
- file_name = ['Main_Channel_freq_',file_marker,'.mat'];
+ file_name = ['Main_Channel_freq_',scatyp,'_',file_marker,'.mat'];
 
  save(['../../../../../Documents/MatLab/Data/3d_Wavetank/Tests/',file_name],...
-    'R_vec', 'T_vec', 'lam_vec', 'v_vecs', 'w', 'description')
+    'R_vec', 'T_vec', 'lam_vec', 'v_vecs', 'w', 'description','reson_mkr')
 
 else
  beep; beep; beep

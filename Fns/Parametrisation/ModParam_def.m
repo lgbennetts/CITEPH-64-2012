@@ -33,6 +33,6 @@ Param.cutoff_green = 1e-1;
 
 %%% Tolerance on resonances
 
-Param.tolres=7.5e-4;
+Param.tolres=1e-5; 7.5e-4; %0; %
 
 return

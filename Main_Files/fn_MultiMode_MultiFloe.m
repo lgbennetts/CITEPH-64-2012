@@ -1,8 +1,12 @@
-function [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,wt_0,xNm] = ...  %displ_fs, floe_displ, 
+function [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,wt_0,xNm,reson_mkr] = ...  %displ_fs, floe_displ, 
     fn_MultiMode_MultiFloe(...
     PVec, Vert_Dim, evs, Geom_Vec, kappa, beta_vec, thick_vec, ...
     draft_vec, R_vec, posits, rad_vec, th_vec, x_vec, y_vec, FS_mesh, ...
-    GrnTols, extra_pts)
+    GrnTols, extra_pts,scatyp)
+
+disp('%----------                          -----------%')
+
+disp(['Problem = ' scatyp])
 
 disp(['Vertical modes = ' int2str(Vert_Dim)])
 
@@ -120,24 +124,27 @@ v1 = 1:Vert_Dim*(2*Az_Dim+1);
 
 for loop_P=1:Np
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ if strcmp(scatyp,'none')
  %%% NO SCATTERER TEST !!!!
-%  for loop_N=1:Vert_Dim
-%   v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
-%   PsiMat(v1a,v1a) = diag(besselj(-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P))); 
-%   PsidrMat(v1a,v1a) = k0(loop_N)*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P)));
-%  end
-%  AW0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); AW(v1,v1) = AW0(v1,v1); 
-%  VT0(v1,v1) = AW0(v1,v1); VT(v1,v1) = AW0(v1,v1);   
+ for loop_N=1:Vert_Dim
+  v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
+  PsiMat(v1a,v1a) = diag(besselj(-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P))); 
+  PsidrMat(v1a,v1a) = k0(loop_N)*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P)));
+ end
+ AW0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); AW(v1,v1) = AW0(v1,v1); 
+ VT0(v1,v1) = AW0(v1,v1); VT(v1,v1) = AW0(v1,v1);   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ elseif strcmp(scatyp,'soft')
  %%% SOUND SOFT CYLINDER
-%  for loop_N=1:Vert_Dim
-%   v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
-%   PsiMat(v1a,v1a) = diag(besselj(-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P))); 
-%   PsidrMat(v1a,v1a) = k0(loop_N)*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P)));
-%  end
-%  AW0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); AW(v1,v1) = AW0(v1,v1); 
-%  VT0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); VT(v1,v1) = zeros(Vert_Dim*(2*Az_Dim+1));
+ for loop_N=1:Vert_Dim
+  v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
+  PsiMat(v1a,v1a) = diag(besselj(-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P))); 
+  PsidrMat(v1a,v1a) = k0(loop_N)*diag(Bessel_dz(@besselj,-Az_Dim:Az_Dim,k0(loop_N)*R_vec(loop_P)));
+ end
+ AW0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); AW(v1,v1) = AW0(v1,v1); 
+ VT0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); VT(v1,v1) = zeros(Vert_Dim*(2*Az_Dim+1));
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ elseif strcmp(scatyp,'cyl')
  %%% SURFACE PIERCING CYLINDER
  for loop_N=1:Vert_Dim
     v1a = v1(loop_N:Vert_Dim:Vert_Dim*(2*Az_Dim+1)); 
@@ -148,18 +155,20 @@ for loop_P=1:Np
  VT0(v1,v1) = eye(Vert_Dim*(2*Az_Dim+1)); VT(v1,v1) = VT0(v1,v1);
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  %%% ELASTIC PLATE
+ elseif strcmp(scatyp,'ela_plt')
 %  pv_plate = [parameter_vector(loop_P,:),PVec(loop_P,3),thick_vec(loop_P),...
 %         bed-PVec(loop_P,3),PVec(loop_P,5),PVec(loop_P,4)];
-%  pv_plate = [parameter_vector(loop_P,:),draft_vec(loop_P),thick_vec(loop_P),...
-%         bed-draft_vec(loop_P),draft_vec(loop_P),beta_vec(loop_P)];
-%  [PsiMat(v1,v1),PsidrMat(v1,v1),Disp_mat(:,:,loop_P),...
-%      Amp_mu_Mat(:,:,:,loop_P)] = ...
-%     fn_SingleFloe(pv_plate, Vert_Dim, Az_Dim, kk(:,loop_P), ...
-%      wt(:,loop_P), mu_0(loop_P), mu_1(loop_P), R_vec(loop_P), rad_vec{loop_P});
-%  [AW0(v1,v1),AW(v1,v1),VT0(v1,v1),VT(v1,v1)] = fn_JumpMats(pv_plate,...
-%     Vert_Dim, Vert_Dim, Az_Dim, k0, kk(:,loop_P), wt_0, wt(:,loop_P));
+ pv_plate = [parameter_vector(loop_P,:),draft_vec(loop_P),thick_vec(loop_P),...
+        bed-draft_vec(loop_P),draft_vec(loop_P),beta_vec(loop_P)];
+ [PsiMat(v1,v1),PsidrMat(v1,v1),Disp_mat(:,:,loop_P),...
+     Amp_mu_Mat(:,:,:,loop_P)] = ...
+    fn_SingleFloe(pv_plate, Vert_Dim, Az_Dim, kk(:,loop_P), ...
+     wt(:,loop_P), mu_0(loop_P), mu_1(loop_P), R_vec(loop_P), rad_vec{loop_P});
+ [AW0(v1,v1),AW(v1,v1),VT0(v1,v1),VT(v1,v1)] = fn_JumpMats(pv_plate,...
+    Vert_Dim, Vert_Dim, Az_Dim, k0, kk(:,loop_P), wt_0, wt(:,loop_P));
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  v1=v1+Vert_Dim*(2*Az_Dim+1);
+ end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -173,6 +182,14 @@ end
 [Phi, Psi, Phi_dr, Psi_dr, ExtraOut] = ...
     fn_Solve(Vert_Dim, Az_Dim, k0, R_vec, posits, width, PhiInc, G, ...
      Gdr_add, PsiMat, PsidrMat, AW0, AW, VT0, VT, extra_pts, ExtraOut);
+
+% MARKER TO INDICATE RESONANCE
+if isempty(ExtraOut)
+ reson_mkr=nan;
+else
+ reson_mkr=1;
+end
+ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -413,7 +430,7 @@ while and(be_vec(1,count)-1<tol,isempty(skip))
 %   Y_Dim=count;
 %  end
     
- if abs(be_vec(1,count+1)-1)<tol %abs(vm(count))<Tols(5)
+ if abs(al_vec(1,count+1))<tol %abs(vm(count))<Tols(5)
   skipinfo(1) = count;
   skipinfo(2) = be_vec(1,count+1);
   skipinfo(3) = al_vec(1,count+1);

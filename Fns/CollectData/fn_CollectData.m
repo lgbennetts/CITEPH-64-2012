@@ -10,7 +10,7 @@ path_root = '../../../../../Documents/MatLab/Data/3d_Wavetank/Tests/';
 
 file_name = ['Main_Channel_freq_',file_marker,'.mat'];
 
-load([path_root,file_name],'lam_vec','R_vec','T_vec','v_vecs','w')
+load([path_root,file_name],'lam_vec','R_vec','T_vec','v_vecs','w','reson_mkr')
 
 %% Reflection & transmission coeffs
 
@@ -47,10 +47,12 @@ end
 if ~exist('w','var'); w=16; end
 
 plot(h(1),w*lam_vec/pi,abs(R).^2,col{1})
+plot(h(1),w*lam_vec/pi,reson_mkr.*abs(R).^2,col{1},'linestyle','none','marker','o')
 ylabel(h(1),'|R|^2')
 plot(h(2),w*lam_vec/pi,M,col{2}); set(h(2),'ylim',[0,max(M)])
 ylabel(h(2),'No modes')
 plot(h(3),w*lam_vec/pi,En,col{3})
+plot(h(3),w*lam_vec/pi,reson_mkr.*En,col{3},'linestyle','none','marker','o')
 ylabel(h(3),'Trans energy')
 xlabel(h(3),'w*k/\pi')
 
