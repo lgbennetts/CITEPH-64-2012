@@ -1,3 +1,5 @@
+function WDM(run_num)
+
 % WDM.m  Wavelet Directional Method 
 % Driver for producing WDM directional wave spectra plots
 %           from a specified array of 3 or more wave staffs.
@@ -5,22 +7,28 @@
 %  
 % M.Donelan / Bergen 1994.11.26; Modified by A.Babanin and M.Donelan
 % 2012.05 and earlier
-clf
-clear
+
+%clf
+%clear
+
+if ~exist('run_num','var'); run_num=1; end
 
 np = 4;% Set number of wave staffs.
 npp = (np*(np-1))/2;
 
 %  load data array with each wave staff time series as a column.
-for run = [189]
+for run=run_num  %[062]
 
 if run > 99
-   eval(['load s87',int2str(run)])
+   eval(['load s13',int2str(run)])
 elseif run > 9
-  eval(['load s870',int2str(run)])
+  eval(['load s130',int2str(run)])
 else
-  eval(['load s8700',int2str(run)])
+  eval(['load s1300',int2str(run)])
 end
+
+disp(description)
+
 if length(data) > 4095
     
 %data=binavg(data,2);   % binavg;  Modify as necessary to subsample time series.
@@ -32,8 +40,10 @@ tlen = fix(length(data)/4096);
 
 % Apply calibrations [to metres] to the wave staffs and set in desired order.
 
-ws=[.58467*data(:,3) .57756*data(:,1) .59762*data(:,4) ...
-      .58998*data(:,6) .57155*data(:,5) .57363*data(:,2) ];
+% ws=[.58467*data(:,3) .57756*data(:,1) .59762*data(:,4) ...
+%       .58998*data(:,6) .57155*data(:,5) .57363*data(:,2) ];
+ 
+ws=[data(:,3) data(:,1) data(:,4) data(:,6) data(:,5) data(:,2) ];
   
       ws = detrend(ws);% Remove mean and trend.
 %
@@ -95,11 +105,14 @@ i1
      eval(['wx',int2str(jj),' = [];'])
      eval(['B',int2str(jj),' = [];'])
      eval(['AMP',int2str(jj),' = [];'])
+     %%% (LB comm) pick off `blocks' size 2^12 for each probe:
      x=ws(i1:i1+n-1,jj);x=x(:);
+     %%%
      eval(['[wx',int2str(jj),',f]=wavelet(x,lp,hp,nv,ns);'])
      eval(['B',int2str(jj),'=angle(wx',int2str(jj),');'])
      eval(['AMP',int2str(jj),'=abs(wx',int2str(jj),');'])
   end
+  %%% (LB comm) Average the amplitude over the probes:
   AMP = AMP1;
   for jj = 2:np
       eval(['AMP = AMP + AMP',int2str(jj),';'])
@@ -111,10 +124,10 @@ i1
 mxmf=max(find(f < ns/2));
 kkm=[];thm=[];kks=[];ths=[];
 %********************************************
-for mf=1:mxmf
+for mf=1:mxmf %%% (LB comm) loop over freqs
 %********************************************
 
-l=0;b=[];
+l=0;b=[]; %%% (LB comm) difference in phases at freq mf
 for j=1:np-1
 for k=(j+1):np
    l=l+1;
@@ -138,7 +151,7 @@ end
 end
 
 th=[];ll=0;
-
+%%% (LB comm) see eqns 8-9 of Donelan et al 96
 for l=ij
    ll=ll+1;
    th(:,ll)=atan2((AA(:,l)*csk(l)-csj(l)),(snj(l)-AA(:,l)*snk(l)));
@@ -159,13 +172,13 @@ if i1 == 1
    AAp=AMP;
    ddd=round(thm*180/pi);
    kkmp=kkm;
-   eval(['save yw',int2str(run),' AAp ddd kkmp f'])
+   eval(['save ../WDM/yw',int2str(run),' AAp ddd kkmp f'])
 else
-  eval(['load yw',int2str(run)])
+  eval(['load ../WDM/yw',int2str(run)])
   AAp=[AAp;AMP];
   kkmp=[kkmp;kkm];
   ddd=[ddd;round(thm*180/pi)];
-  eval(['save yw',int2str(run),' AAp ddd kkmp f'])
+  eval(['save ../WDM/yw',int2str(run),' AAp ddd kkmp f'])
 end 
 clear AAp ddd kkmp f
 end

@@ -2,13 +2,15 @@ function [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,wt_0,xNm,reson_mkr] = ...  %displ_fs, floe_
     fn_MultiMode_MultiFloe(...
     PVec, Vert_Dim, evs, Geom_Vec, kappa, beta_vec, thick_vec, ...
     draft_vec, R_vec, posits, rad_vec, th_vec, x_vec, y_vec, FS_mesh, ...
-    GrnTols, extra_pts,scatyp)
+    GrnTols, extra_pts,scatyp, COMM)
 
-disp('%----------                          -----------%')
+if ~exist('COMM','var'); COMM=1; end
 
+if COMM
+disp('%-----------------------------------------------%')
 disp(['Problem = ' scatyp])
-
 disp(['Vertical modes = ' int2str(Vert_Dim)])
+end
 
 % - Geom_Vec = [scaling No.plates depth thickness l w]
 
@@ -18,6 +20,8 @@ disp(['Vertical modes = ' int2str(Vert_Dim)])
 Tol_vec(1) = 1e-16; % - Real root error - %
 Tol_vec(2) = 1e-16; % - Imag root error (init) - %
 Tol_vec(3) = 1e-1; % - Az_Dim tol - %
+
+TOLEN = 1e-7; % Energy error tolerance (display warning when greater than)
 
 scat = 1; % - scat=0 (scat only) scat=1 (scat+inc)
 
@@ -29,7 +33,7 @@ scat = 1; % - scat=0 (scat only) scat=1 (scat+inc)
 
 %%% Number of floes %%%
 
-Np = length(thick_vec); disp(['Plates = ' int2str(Np)])
+Np = length(thick_vec); if COMM; disp(['Plates = ' int2str(Np)]); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -51,11 +55,11 @@ for loop_Dim=1:Vert_Dim
  wt_0(loop_Dim) = weight_0_PWC(parameter_vector(1,7), k0(loop_Dim));   
 end
 
+if COMM; disp(['wavelength = ' num2str(2*pi/k0(1))]); end
+
 %%% Roots in the plates %%%
 
-kk = zeros(Vert_Dim,Np); wt = kk; %wt_0 = wt;
-
-mu_0 = zeros(1,Np); mu_1 = mu_0;
+kk = zeros(Vert_Dim,Np); wt = kk; mu_0 = zeros(1,Np); mu_1 = mu_0;
 
 for loop_P=1:Np
     % NB. pv_plate(11): alpha = draft
@@ -89,8 +93,10 @@ clear Az_Dim_vec count
 
 Az_Dim=Az_Dim-2;
 
-disp(['Azimuthal modes = ' int2str(Az_Dim) ' (x2 + 1)'])
-disp(['Extra points = ' int2str(extra_pts)])
+if COMM
+ disp(['Azimuthal modes = ' int2str(Az_Dim) ' (x2 + 1)'])
+ disp(['Extra points = ' int2str(extra_pts)])
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -109,7 +115,7 @@ disp(['Extra points = ' int2str(extra_pts)])
 Y_Dim=length(u_vec(1,:)); Y0_Dim=Y_Dim-evs; 
 %%%%%%%%%%%%%%%%%
 
-disp(['Tank modes = ',num2str(Y0_Dim)]);
+if COMM; disp(['Tank modes = ',num2str(Y0_Dim)]); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Dirichlet 2 Neumann on plate boundaries %%%
@@ -167,8 +173,8 @@ for loop_P=1:Np
  [AW0(v1,v1),AW(v1,v1),VT0(v1,v1),VT(v1,v1)] = fn_JumpMats(pv_plate,...
     Vert_Dim, Vert_Dim, Az_Dim, k0, kk(:,loop_P), wt_0, wt(:,loop_P));
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- v1=v1+Vert_Dim*(2*Az_Dim+1);
  end
+ v1=v1+Vert_Dim*(2*Az_Dim+1);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -329,26 +335,27 @@ epsm = ones(1,length(real_inds)); epsm(1) = 2; epsm = epsm/2;
 
 for loop_Y=1:Vert_Dim:Y0_Dim*Vert_Dim
 
- EngErr = sum(epsm.*v_vec(1,real_inds).*...
+ if 0
+  EngErr = sum(epsm.*v_vec(1,real_inds).*...
      (abs(Am(1,real_inds,loop_Y)).^2 + abs(Bp(1,real_inds,loop_Y)).^2 ...
     - abs(Am(1,real_inds,loop_Y)+Ap(1,real_inds,loop_Y)).^2 ...
     - abs(Bp(1,real_inds,loop_Y)+Bm(1,real_inds,loop_Y)).^2));
 
- if abs(EngErr)>1e-3
-  disp(['Energy error = ',num2str(abs(EngErr)),'!!!!!!!!!!!!!!!!'])
-  disp(['Mode = ' int2str(loop_Y)])
- end   
+  if and(abs(EngErr)>TOLEN,COMM)
+   disp(['Mode = ' int2str(loop_Y)])
+   disp(['Energy error = ',num2str(abs(EngErr)),'!!!!!!!!!!!!!!!!'])
+  end   
  
- EngErr = sum(epsm.*v_vec(1,real_inds).*...
+  EngErr = sum(epsm.*v_vec(1,real_inds).*...
      (abs(Am(1,real_inds,Vert_Dim*Y_Dim+loop_Y)).^2 + abs(Bp(1,real_inds,Vert_Dim*Y_Dim+loop_Y)).^2 ...
     - abs(Am(1,real_inds,Vert_Dim*Y_Dim+loop_Y)+Ap(1,real_inds,Vert_Dim*Y_Dim+loop_Y)).^2 ...
     - abs(Bp(1,real_inds,Vert_Dim*Y_Dim+loop_Y)+Bm(1,real_inds,Vert_Dim*Y_Dim+loop_Y)).^2));
 
- if abs(EngErr)>1e-3
-  disp(['Energy error = ',num2str(abs(EngErr)),'!!!!!!!!!!!!!!!!'])
-  disp(['Mode = ' int2str(Y_Dim+loop_Y)])
- end   
- 
+  if and(abs(EngErr)>TOLEN,COMM)
+   disp(['Mode = ' int2str(Y_Dim+loop_Y)])
+   disp(['Energy error = ',num2str(abs(EngErr)),'!!!!!!!!!!!!!!!!'])
+  end   
+ end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -388,13 +395,25 @@ Ap = abs(Ap(1,real_inds,u1)); Bm = abs(Bm(1,real_inds,u1));
 
 En = zeros(2,1*length(real_inds));
 
+%%% NB. Removed /k0(1) on 30.01.2013
+err_mkr=1;
 for loop_Y=1:length(real_inds)
- En(1,loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Ap(1,:,loop_Y)).^2)/k0(1));
+ if 1
+  EngErr = epsm(loop_Y)*v_vec(1,real_inds(loop_Y)) ...
+   - sum(epsm.*v_vec(1,real_inds).*...
+   ( abs(Rm(real_inds,real_inds(loop_Y)).').^2 ...
+   + abs(Tm(real_inds,real_inds(loop_Y)).').^2 ) );
+  if and(abs(EngErr)>TOLEN,COMM)
+   if err_mkr; disp('Energy error!!!!!!!!!!!!!!!!'); err_mkr=0; end
+   disp([num2str(abs(EngErr)) '; Mode = ' int2str(loop_Y)])
+  end  
+ end
+ En(1,loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Ap(1,:,loop_Y)).^2));
  %En = En + sum(epsm.*v_vec(1,real_inds).*(Bm.^2)/k0(1));
- En(2,0*Y0_Dim+loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Bm(1,:,Y_Dim+loop_Y)).^2)/k0(1));
+ En(2,0*Y0_Dim+loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Bm(1,:,Y_Dim+loop_Y)).^2));
 end
 
-if 0; display(['Transmitted energy    : ' num2str(abs(En(1,:)))]); end
+if COMM; display(['Transmitted energy    : ' num2str(abs(En(1,:)))]); end
 
 return
 
@@ -485,8 +504,8 @@ for loop_p1=1:Np
    [G(v1,v2), Gdr_add(w1,v2), ExtraOut] = fn_getG(Vert_Dim, Az_Dim, k0, ...
         Rad, width, c0, res, GrnTol(2:3), irreg_pts, skip, skipinfo);
   else
-   [G(v1,v2), Gdr_add(w1,v2), ExtraOut] = fn_getGmix(...
-       Vert_Dim, Az_Dim, k0, Rad, Rad0, width, cc, c0, res, GrnTol(2:3), irreg_pts);
+   [G(v1,v2), Gdr_add(w1,v2)] = fn_getGmix(Vert_Dim, Az_Dim, ...
+        k0, Rad, Rad0, width, cc, c0, res, GrnTol(2:3), irreg_pts, skip);
   end
   v2=v2+Vert_Dim*(2*Az_Dim+1);
  end

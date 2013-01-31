@@ -1,7 +1,7 @@
 function [G, Gdr_add, ExtraOut] = fn_getGmix(...
-    Dim, Az_Dim, kk, Rad, Rad0, width, cc, c0, res, Tols, irreg_vals)
+    Dim, Az_Dim, kk, Rad, Rad0, width, cc, c0, res, Tols, irreg_vals, skip)
 
-skip = []; % INVESTIGATE LATER (12.10.12)
+%skip = []; % INVESTIGATE LATER (12.10.12)
 
 % - 27.09.12 - modified from find_getGmix for irregular values
 % - 27.05.10 - after noting mistake in Green's fn
@@ -37,7 +37,7 @@ x0=c0(1)+Rad0*cos(theta_vec); y0=c0(2)+Rad0*sin(theta_vec);
 
 % GREEN'S FUNCTION %
 
-if isempty(skip)==1
+%if isempty(skip)==1
  for loop_N=1:Dim   
   vars=[nan,width,kk(loop_N),Rad];
   for loop=1:length(theta_vec)
@@ -49,32 +49,32 @@ if isempty(skip)==1
    end
   end
  end
-else
- for loop=1:length(theta_vec)
-  for loop2=1:length(theta_vec)
-   [Gqp_vals(loop2,loop),gsk_vals(loop,loop2)] = fn_GreensFnQPmod...
-       ([xx(loop),yy(loop)],[x0(loop2),y0(loop2)],vars,skip,Tols);
-   [Gqpmod_vals(loop2,loop),gskmod_vals(loop,loop2)] = fn_GreensFnQPmod...
-       ([xx(loop),yy(loop)],[x0(loop2),-y0(loop2)],vars,skip,Tols);
-  end
- end
-end
+% else
+%  for loop=1:length(theta_vec)
+%   for loop2=1:length(theta_vec)
+%    [Gqp_vals(loop2,loop),gsk_vals(loop,loop2)] = fn_GreensFnQPmod...
+%        ([xx(loop),yy(loop)],[x0(loop2),y0(loop2)],vars,skip,Tols);
+%    [Gqpmod_vals(loop2,loop),gskmod_vals(loop,loop2)] = fn_GreensFnQPmod...
+%        ([xx(loop),yy(loop)],[x0(loop2),-y0(loop2)],vars,skip,Tols);
+%   end
+%  end
+% end
 
 % - Find their inner-prods with Fourier exps - %
 
 Gqp = fn_FillMat_NoSymm(Gqp_vals, Dim, Az_Dim, theta_vec);
 Gqpmod = fn_FillMat_NoSymm(Gqpmod_vals, Dim, Az_Dim, theta_vec);
 
-if isempty(skip)==0
- gv = fn_FillMat_SymmD(gsk_vals, Dim, Az_Dim, theta_vec);
- gvmod = fn_FillMat_NoSymm(gskmod_vals, Dim, Az_Dim, theta_vec);
-end
+% if isempty(skip)==0
+%  gv = fn_FillMat_SymmD(gsk_vals, Dim, Az_Dim, theta_vec);
+%  gvmod = fn_FillMat_NoSymm(gskmod_vals, Dim, Az_Dim, theta_vec);
+% end
 
 G = (Gqp + Gqpmod)/2/pi;  
 
-if isempty(skip)~=1
- Gsk = gsktil + gv + gvmod;
-end
+% if isempty(skip)~=1
+%  Gsk = gsktil + gv + gvmod;
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% IRREGULAR VALUES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -119,11 +119,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% EXTRAS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % - Extra info for resonances, etc
-ExtraOut = {[], res};
-if isempty(skip)~=1
- SkipOut = {skipinfo, Gsk, Gsk_dr};
- ExtraOut{3} = SkipOut;
-end
+% ExtraOut = {[], res};
+% if isempty(skip)~=1
+%  SkipOut = {skipinfo, Gsk, Gsk_dr};
+%  ExtraOut{3} = SkipOut;
+% end
 
 return
    

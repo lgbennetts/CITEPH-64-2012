@@ -8,10 +8,10 @@ maxwn=6;
 kfac=120/maxwn;
 figure(10*run);clf;
 %
-eval(['ex2=exist([''yw'',int2str(run),''.mat'']);'])
+eval(['ex2=exist([''../WDM/yw'',int2str(run),''.mat'']);'])
 if ex2==2
 run
-eval(['load yw',int2str(run)])
+eval(['load ../WDM/yw',int2str(run)])
 
 stdh=mean(std(detrend(ws)));
 varh=stdh*stdh;
@@ -50,7 +50,7 @@ corr=varh/(sum(sum(K).*wavenn)/kfac*pi/180);
 
 Hs=4*sqrt(sum(sum(K).*wavenn)/kfac*pi/180);
 
-fnsave=['kspect\ksp_',int2str(run)];
+fnsave=['../WDM/kspect/ksp_',int2str(run)];
 eval(['save ',fnsave,' K waven run kfac runl Hs corr wsstats'])
 
 subplot(221)

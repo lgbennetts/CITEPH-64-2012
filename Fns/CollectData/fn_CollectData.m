@@ -1,3 +1,5 @@
+% function fn_CollectData(file_marker,fig,col)
+
 function fn_CollectData(file_marker,fig,col)
 
 if ~exist('file_marker','var'); file_marker='0'; end
@@ -12,6 +14,35 @@ file_name = ['Main_Channel_freq_',file_marker,'.mat'];
 
 load([path_root,file_name],'lam_vec','R_vec','T_vec','v_vecs','w','reson_mkr')
 
+%% - ENERGY CHECK & Tranmitted energy- %%
+for loop_lam=61 %1:length(lam_vec)
+ disp_error = []; mkr = 1;
+ real_inds = find(real(v_vecs{loop_lam})~=0); Y0_Dim = length(real_inds);
+ Vert_Dim = size(R_vec{loop_lam},1)/length(v_vecs{loop_lam});
+ epsm = ones(1,length(real_inds)); epsm(1) = 2; epsm = epsm/2;
+ for loop_Y=1:Vert_Dim:Y0_Dim*Vert_Dim
+  EngErr = epsm(loop_Y)*v_vecs{loop_lam}(real_inds(loop_Y)) ...
+      - sum(epsm.*v_vecs{loop_lam}(real_inds).*...
+       ( abs(R_vec{loop_lam}(real_inds,real_inds(loop_Y)).').^2 ...
+       + abs(T_vec{loop_lam}(real_inds,real_inds(loop_Y)).').^2 ) );
+
+  if abs(EngErr)>1e-3
+   if mkr 
+    disp_error{1} = ['Energy error ' 'wk/pi = ' num2str(w*lam_vec(loop_lam)/pi)]; 
+    disp_error{2} = '; Modes: '; disp_error{3} = ' -> '; mkr=0;
+   end
+   disp_error{2} = [disp_error{2} int2str(loop_Y) ', '];
+   disp_error{3} = [disp_error{3} num2str(abs(EngErr))  ', '];
+  end   
+ end
+ 
+ if ~isempty(disp_error); disp([disp_error{1},disp_error{2},disp_error{3}]); end
+ 
+ %%% Transmitted energy
+ En(1,loop_lam) = sum( transpose(epsm.*v_vecs{loop_lam}(real_inds)) .* ...
+     ( squeeze(abs(T_vec{loop_lam}(real_inds,real_inds(1))).^2) ) );
+end
+
 %% Reflection & transmission coeffs
 
 for loop_lam=1:length(lam_vec)
@@ -20,15 +51,7 @@ for loop_lam=1:length(lam_vec)
  M(loop_lam) = length(R_vec{loop_lam}(:,1));
 end
 
-%% Transmitted energy
- 
-for loop_lam=1:length(lam_vec)
- real_inds = find(real(v_vecs{loop_lam})~=0); 
- epsm = ones(1,length(real_inds)); epsm(1) = 2; epsm = epsm/2;
-
- En(1,loop_lam) = sum( transpose(epsm.*v_vecs{loop_lam}(real_inds)) .* ...
-     ( squeeze(abs(T_vec{loop_lam}(real_inds,real_inds(1))).^2) ) );
-end
+%% Plot
 
 if ~exist('fig','var')
  figure

@@ -13,4 +13,6 @@ path(path,'../Fns/Collectdata')
 
 path(path,'../Fns/Misc/Weight_Norm')
 
+path(path,'../WDM')
+
 return

@@ -1,20 +1,34 @@
-function Main_Channel_freq(Np, lam_vec,extra_pts,scatyp,Rows,file_marker)
+function Main_Channel_freq(Np,lam_vec,scatyp,row_seps,file_marker,COMM,POOL)
+
+if ~exist('POOL','var'); POOL=0; end
+if ~exist('COMM','var'); COMM=1; end
+
+if POOL
+ matlabpool('open',POOL)
+end
 
 if ~exist('Np','var'); Np=1; end
 if ~exist('extra_pts','var'); extra_pts=[]; end
 if ~exist('file_marker','var'); file_marker=0; end
-if ~exist('lam_vec','var'); lam_vec=1.999*pi/16; end
-if ~exist('scatyp','var'); scatyp='none'; end
-if ~exist('Rows','var'); Rows=1; end
+if ~exist('lam_vec','var'); lam_vec=2*pi/0.6; end %4.0317;1.0472;%2*pi-0.1:0.1:2*pi+0.1;0.95*pi/16:0.05*pi/16:1.05*pi/16;
+if ~exist('scatyp','var'); scatyp='cyl'; end
+if ~exist('row_seps','var'); Rows=1; row_seps = 3 + zeros(1,Rows-1); end
+
+% if file_marker~=0
+%  file_name = ['Main_Channel_freq_',scatyp,'_',file_marker,'.mat'];
+%  dummy = 1.234;   
+%  save(['../../../../../Documents/MatLab/Data/3d_Wavetank/Tests/',file_name],...
+%      'dummy'); clear dummy
+% end
+
+Rows = length(row_seps)+1;
 
 fortyp = 'waveno';
 
-% Main_Wavetank_freq
-%
-% This is the main program used to solve the frequency response of a set of
-% floating disks to wave maker forcing in a 3D wave tank.
-
+if COMM
+disp('%-----------------------------------------------%')
 disp('%---------- START: Main_Channel_freq -----------%')
+end
 
 %% Creation of local paths
 %CreatePaths_Mac
@@ -29,14 +43,24 @@ disp('%---------- START: Main_Channel_freq -----------%')
 % left corner of the wave tank and coincides with the free-surface at rest.
 
 %%% Geometry of the wave tank: [length width height]
-TankDim = [10 16 2]; 
+TankDim = [40 16 2]; %[15 10 0.5]; %
+
+%%% Separation of the rows
+SAME_ROWS = 1; % =0 DIFFERENT ROWS; =1 SAME ROWS-> NO NEED TO RECALC SCATS
 
 %%% Location and geometry of disks: [x_c y_c Rad thick]
-
-GeomDisks = zeros(Np, 4);
-
 for loop=1:Np
- GeomDisks(loop,:)=[4 0+(TankDim(2)/2/Np)+(TankDim(2)/Np)*(loop-1) 0.5 1e-10];
+ GeomDisks(loop,:)=[4 0+(TankDim(2)/2/Np)+(TankDim(2)/Np)*(loop-1) 0.5 1e-1];
+end
+
+%GeomDisks = [7.5 1.5 0.5 0.005; 7.5 8.5 0.5 0.005]; %[4 8 0.5 1e-10; 8 8 0.5 1e-10];
+
+if ~SAME_ROWS
+ disp('PUT SOMETHING HERE!!!!!')
+ GeomDisks(:,:,1) = GeomDisks(:,:);
+ for loop=2:Rows
+  GeomDisks(:,:,loop) = GeomDisks(:,:,1);
+ end
 end
 
 %%% Check disk/disk and disk/wall overlaps
@@ -52,33 +76,111 @@ Mesh = Mesh_FS_def(GeomDisks, TankDim);
 Param = ModParam_def(Param,extra_pts);
 
 for loop_lam=1:length(lam_vec)
+         
+ %%% Forcing
+ Forcing = Force_def(Param.g(1), TankDim(3), fortyp, lam_vec(loop_lam));
 
-%%% Forcing
-Forcing = Force_def(Param.g(1), TankDim(3), fortyp, lam_vec(loop_lam));
-
-%% Solution - Disks in a channel
-% Scattering matrix is S = [Rm Tp;Tm Rp]
-% Wavenumbers matrices v_vec and u_vec are scaled by vertical wavenumbers.
-[Rm,Tm,Rp,Tp,v_vec,u_vec,k0,weight_0,x_lim,reson_mkr(loop_lam)] = ...
+ %% Solution - Disks in a channel
+ % Scattering matrix is S = [Rm Tp;Tm Rp]
+ % Wavenumbers matrices v_vec and u_vec are scaled by vertical wavenumbers.
+ if SAME_ROWS
+  [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,weight_0,x_lim,reson_mkr(loop_lam)] = ...
     fn_MultiMode_MultiFloe([Param.rho_0 Param.rho Param.nu Param.E ...
     Param.g], Param.N, Param.Mev, TankDim, Forcing.kappa, ...
     Param.beta.', GeomDisks(:,4).', Param.draft.', GeomDisks(:,3).', ...
     [GeomDisks(:,1).';GeomDisks(:,2).'], ...
     Mesh.r_vec, Mesh.th_vec, Mesh.x_vec, Mesh.y_vec, Mesh.FS_mesh, ...
     [Param.res_green, Param.terms_green, Param.cutoff_green, Param.tolres], ...
-    Param.extra_pts, scatyp);
+    Param.extra_pts, scatyp, COMM);
+ else
+  [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,weight_0,x_lim,reson_mkr(loop_lam)] = ...
+    fn_MultiMode_MultiFloe([Param.rho_0 Param.rho Param.nu Param.E ...
+    Param.g], Param.N, Param.Mev, TankDim, Forcing.kappa, ...
+    Param.beta.', GeomDisks(:,4,1).', Param.draft.', GeomDisks(:,3,1).', ...
+    [GeomDisks(:,1,1).';GeomDisks(:,2,1).'], ...
+    Mesh.r_vec, Mesh.th_vec, Mesh.x_vec, Mesh.y_vec, Mesh.FS_mesh, ...
+    [Param.res_green, Param.terms_green, Param.cutoff_green, Param.tolres], ...
+    Param.extra_pts, scatyp, COMM);
+ end
+ 
+ kv = reshape(diag(k0)*v_vec,1,size(v_vec,1)*size(v_vec,2));
+ 
+ Ep0 = diag(exp(-1i*kv*(x_lim(1)-0) ));
+ Rm = Rm*Ep0; Tm = Tm*Ep0;
+ Ep = diag(exp( 1i*kv*(x_lim(2)-TankDim(1)) ));
+ Rp = Rp*Ep; Tp = Tp*Ep;
+ 
+ v1 = 1:size(v_vec,1)*size(v_vec,2); v2 = v1+size(v_vec,1)*size(v_vec,2);
+ 
+ Full_S = zeros(2*length(v_vec),2*length(v_vec),Rows);
+ 
+ Full_S(v1,v1,1)=Rm; Full_S(v2,v2,1)=Rp;
+ Full_S(v1,v2,1)=Tp; Full_S(v2,v1,1)=Tm;
+    
+%  Full_S_rl(v1,v1,1)=Rm; Full_S_rl(v2,v2,1)=Rp;
+%  Full_S_rl(v1,v2,1)=Tp; Full_S_rl(v2,v1,1)=Tm;
+    
+ II = eye(size(v_vec,1)*size(v_vec,2));
+ for loop_Sc=2:Rows
+  % - left-to-right method
+  Ep = diag(exp(1i*kv*row_seps(loop_Sc-1)));
+  
+  if ~SAME_ROWS
+   [Rm,Tm,Rp,Tp,~,~,~,~,x_lim] = ...
+    fn_MultiMode_MultiFloe([Param.rho_0 Param.rho Param.nu Param.E ...
+    Param.g], Param.N, Param.Mev, TankDim, Forcing.kappa, ...
+    Param.beta.', GeomDisks(:,4).', Param.draft.', GeomDisks(:,3).', ...
+    [GeomDisks(:,1).';GeomDisks(:,2).'], ...
+    Mesh.r_vec, Mesh.th_vec, Mesh.x_vec, Mesh.y_vec, Mesh.FS_mesh, ...
+    [Param.res_green, Param.terms_green, Param.cutoff_green, Param.tolres], ...
+    Param.extra_pts, scatyp, COMM);
+  else
+    x_lim  = x_lim + row_seps(loop_Sc-1) + (x_lim(2)-x_lim(1));  
+  end
+  
+  R0m = Full_S(v1,v1,loop_Sc-1); T0p = Full_S(v1,v2,loop_Sc-1);
+  T0m = Full_S(v2,v1,loop_Sc-1); R0p = Full_S(v2,v2,loop_Sc-1);
 
-R_vec{loop_lam} = Rm; T_vec{loop_lam} = Tm; %En_vec{loop_lam} = En;
+  IV1 = II/(II - Rm*Ep*R0p*Ep); IV2 = II/(II - R0p*Ep*Rm*Ep);
 
-v_vecs{loop_lam} = v_vec(1,:); %k_vec(loop_lam) = k0(1);
+  Full_S(v1,v1,loop_Sc) = R0m + T0p*Ep*IV1*Rm*Ep*T0m;
+  Full_S(v1,v2,loop_Sc) = T0p*Ep*IV1*Tp;
+  Full_S(v2,v2,loop_Sc) = Rp + Tm*Ep*IV2*R0p*Ep*Tp;
+  Full_S(v2,v1,loop_Sc) = Tm*Ep*IV2*T0m;
+
+%   if 0
+%    % - right-to-left method
+%    Ep = diag(exp(1i*kv*row_seps(Rows-loop_Sc+1)));
+% 
+%    R0m = RR; T0p = TT; T0m = TT; R0p = RR; 
+%    Rm = Full_S_rl(v1,v1,loop_Sc-1); Tp = Full_S_rl(v1,v2,loop_Sc-1);
+%    Tm = Full_S_rl(v2,v1,loop_Sc-1); Rp = Full_S_rl(v2,v2,loop_Sc-1);
+% 
+%    IV1 = II/(II - Rm*Ep*R0p*Ep); IV2 = II/(II - R0p*Ep*Rm*Ep);
+% 
+%    Full_S_rl(v1,v1,loop_Sc) = R0m + T0p*Ep*IV1*Rm*Ep*T0m;
+%    Full_S_rl(v1,v2,loop_Sc) = T0p*Ep*IV1*Tp;
+%    Full_S_rl(v2,v2,loop_Sc) = Rp + Tm*Ep*IV2*R0p*Ep*Tp;
+%    Full_S_rl(v2,v1,loop_Sc) = Tm*Ep*IV2*T0m;
+%   end
+ end
+ 
+%  Rm = Rm/Ep0; Tm = Tm/Ep0;
+%  Ep = diag(exp(-1i*kv*(x_lim(2)-TankDim(1)) ));
+%  Rp = Rp*Ep; Tp = Tp*Ep;
+ 
+ R_vec{loop_lam} = Full_S(v1,v1,Rows)/Ep0; 
+ T_vec{loop_lam} = Full_S(v2,v1,Rows)/Ep0; 
+
+ v_vecs{loop_lam} = v_vec(1,:); %k_vec(loop_lam) = k0(1);
 
 end
 
-if and(~file_marker, length(lam_vec)==1)
- disp('Rm='); disp(abs(Rm))
- disp('Tm='); disp(abs(Tm))
-%  disp('Rp='); disp(abs(Rm))
-%  disp('Tp='); disp(abs(Tm))
+if and(and(~file_marker, length(lam_vec)==1),length(v_vecs{1})<6)
+ disp('Rm='); disp(R_vec{1})
+ disp('|Rm|='); disp(abs(Rm))
+ disp('Tm='); disp(T_vec{1})
+ disp('|Tm|='); disp(abs(Tm))
 end
 
 if file_marker~=0
@@ -126,6 +228,11 @@ else
  beep; beep; beep
 end
 
+if POOL; matlabpool close; end
+
+if COMM
 disp('%----------- END: Main_Channel_freq ------------%')
+disp('%-----------------------------------------------%')
+end
 
 return

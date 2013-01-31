@@ -4,9 +4,9 @@
 
 jjj = run
 
-eval(['ex=exist([''yw'',int2str(jjj),''.mat'']);'])
+eval(['ex=exist([''../WDM/yw'',int2str(jjj),''.mat'']);'])
 if ex==2
-eval(['load yw',int2str(jjj)])
+eval(['load ../WDM/yw',int2str(jjj)])
 jjj  
 stdh=mean(std(detrend(ws)));
 varh=stdh*stdh;
@@ -22,20 +22,20 @@ ii=find(ddd == 0); ddd(ii)=ddd(ii)+360;
 [m,n]=size(ddd);
 runl=m;
 df=f*log(2)/nv;
-for j=1:n
+for j=1:n %%% (LB COMM) loop over freqs
 j;
-for k=1:360
+for k=1:360 %%% (LB COMM) loop over degrees
  kk=k;
  %if k==361;kk=400;end
  ii=find(ddd(:,j)==kk);
- E(k,j)=sum(AA(ii,j).^2)/nv*1.03565/runl;
+ E(k,j)=sum(AA(ii,j).^2)/nv*1.03565/runl; %%% (LB COMM) energy=E(freq,ang) 
 end
 end
 E=(E./(ones(360,1)*(df.*f)))*180/pi;
 corr=varh/(sum(sum(E).*df.*f)*pi/180);
 Hs=4*sqrt(sum(sum(E).*df.*f)*pi/180);
 
-fnsave=['fspect\fsp_',int2str(jjj)];
+fnsave=['../WDM/fspect/fsp_',int2str(jjj)];
 eval(['save ',fnsave,' E f Hs corr runl run wsstats']) 
 
 figure(run);clf;

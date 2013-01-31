@@ -9,7 +9,7 @@ function Param = ModParam_def(Param,extra_pts)
 Param.N = 1;
 
 %%% Number of evanescent horizontal modes
-Param.Mev = 1;
+Param.Mev = 0;
 
 %%% Number of extra points for irregular frequencies
 if ~exist('extra_pts','var')
@@ -33,6 +33,6 @@ Param.cutoff_green = 1e-1;
 
 %%% Tolerance on resonances
 
-Param.tolres=1e-5; 7.5e-4; %0; %
+Param.tolres=1e-5; %7.5e-4; %0; %
 
 return

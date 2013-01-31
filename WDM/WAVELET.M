@@ -29,6 +29,7 @@ k=1;
 for i=omin:omax,
       for j=0:nv-1,
       a(k)=2^(i+j/nv);
+      %%% (LB comm) w is fft(Morlet wavelet): w^hat in Donelan et al 96 
       w(:,k)=momo(1/a(k),n,ns);
       k=k+1;
       end
