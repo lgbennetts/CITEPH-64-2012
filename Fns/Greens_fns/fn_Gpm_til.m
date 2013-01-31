@@ -11,9 +11,9 @@ function [Gpm,gp] = fn_Gpm_til(xm,ypm,vars,skip,Tols)
 % - 27.05.10 - after noting mistake in Green's fn
 % - 26.04.10 - adjusted for resonances -> nb. always 2 as normal incidence
 
-% - last modified: 27.05.10
+% - last modified: 31.01.13
 
-%skipinfo = [];
+%USE_POLYLOGS = 1;
 
 width = vars(2); % - y \in (-width,width)
 kk = vars(3); % - wavenumber
@@ -21,9 +21,9 @@ pp = pi/width;
 
 Gpm = 0; 
 
-loop=1; enough=0; sv_vec = 8*width*Tols(2)*ones(3,1);
+loop=1; %enough=0; sv_vec = 8*width*Tols(2)*ones(3,1);
 
-while and(enough == 0, loop<=Tols(1))
+while loop<=Tols(1) %and(enough == 0, loop<=Tols(1))
     
     mu_m = loop*pp;
     u_m = sqrt(kk^2-mu_m^2);
@@ -46,19 +46,19 @@ while and(enough == 0, loop<=Tols(1))
     
     Gpm = Gpm + sm-tm;
     
-    sv_vec(1:2) = sv_vec(2:3); sv_vec(3) = abs(sm-tm); 
-    
-    if max(sv_vec)<Tols(2)
-      enough = 1;
-    end
+%     sv_vec(1:2) = sv_vec(2:3); sv_vec(3) = abs(sm-tm); 
+%     
+%     if max(sv_vec)<Tols(2)
+%       enough = 1;
+%     end
             
     loop = loop + 1;
     
 end
 
-if loop>Tols(1)
-    display(['terms=',num2str(loop)])
-end
+% if loop>Tols(1)
+%     display(['terms=',num2str(loop)])
+% end
 
 Gpm = Gpm/4i/width; 
 

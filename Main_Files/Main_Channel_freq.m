@@ -75,7 +75,7 @@ Mesh = Mesh_FS_def(GeomDisks, TankDim);
 %%% Modal parameters and accuracy
 Param = ModParam_def(Param,extra_pts);
 
-for loop_lam=1:length(lam_vec)
+parfor loop_lam=1:length(lam_vec)
          
  %%% Forcing
  Forcing = Force_def(Param.g(1), TankDim(3), fortyp, lam_vec(loop_lam));
@@ -217,7 +217,9 @@ if file_marker~=0
      ', angular res=' int2str(Param.res_green) ...
      ', Green fn terms=' int2str(Param.terms_green) ...
      ', Greens fn cutoff=' int2str(Param.cutoff_green) ...
-     ', resonance tol=' int2str(Param.tolres)] };
+     ', resonance tol=' int2str(Param.tolres)],
+     ['Version 1.1: changed Greens fn cutoff to fixed truncation' ...
+     'rather than size of terms']};
      
  file_name = ['Main_Channel_freq_',scatyp,'_',file_marker,'.mat'];
 
