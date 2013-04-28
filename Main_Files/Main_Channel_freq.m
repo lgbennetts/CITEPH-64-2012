@@ -1,4 +1,19 @@
-function Main_Channel_freq(Np,lam_vec,scatyp,row_seps,file_marker,COMM,POOL)
+% function Main_Channel_freq(Np,lam_vec,scatyp,row_seps,file_marker,COMM,POOL)
+%
+% INPUTS:
+%
+% Np = number of floes
+% fortyp = 'freq' or 'wlength' or 'waveno'
+% lam_vec = a vector of forcing fortyp
+% scatyp = 'none' (no scatterers) or 'soft' (sound soft cylinders) or 'cyl'
+%           (sound hard cylinders) or `ela_plt' (elastic plates)
+% row_seps = a vector of row separations (of closest points); use [] if a
+%            single row only
+% file_marker = string for file identifier; use 0 for no write
+% COMM = flag for comments on (1) or off (0)
+% POOL = flag for matlabpool on (number of cpus) or off (0)
+
+function Main_Channel_freq(Np,fortyp,lam_vec,scatyp,row_seps,file_marker,COMM,POOL)
 
 if ~exist('POOL','var'); POOL=0; end
 if ~exist('COMM','var'); COMM=1; end
@@ -9,9 +24,11 @@ end
 
 if ~exist('Np','var'); Np=1; end
 if ~exist('extra_pts','var'); extra_pts=[]; end
+if ~exist('terms_grn','var'); terms_grn=100; end
 if ~exist('file_marker','var'); file_marker=0; end
-if ~exist('lam_vec','var'); lam_vec=2*pi/0.6; end %4.0317;1.0472;%2*pi-0.1:0.1:2*pi+0.1;0.95*pi/16:0.05*pi/16:1.05*pi/16;
-if ~exist('scatyp','var'); scatyp='cyl'; end
+if ~exist('fortyp','var'); fortyp='waveno'; end
+if ~exist('lam_vec','var'); lam_vec=2*pi/1.5; end %4.0317;1.0472;%2*pi-0.1:0.1:2*pi+0.1;0.95*pi/16:0.05*pi/16:1.05*pi/16;
+if ~exist('scatyp','var'); scatyp='ela_plt'; end
 if ~exist('row_seps','var'); Rows=1; row_seps = 3 + zeros(1,Rows-1); end
 
 % if file_marker~=0
@@ -23,12 +40,14 @@ if ~exist('row_seps','var'); Rows=1; row_seps = 3 + zeros(1,Rows-1); end
 
 Rows = length(row_seps)+1;
 
-fortyp = 'waveno';
+%fortyp = 'waveno';
 
 if COMM
 disp('%-----------------------------------------------%')
 disp('%---------- START: Main_Channel_freq -----------%')
 end
+
+tic
 
 %% Creation of local paths
 %CreatePaths_Mac
@@ -43,7 +62,7 @@ end
 % left corner of the wave tank and coincides with the free-surface at rest.
 
 %%% Geometry of the wave tank: [length width height]
-TankDim = [40 16 2]; %[15 10 0.5]; %
+TankDim = [40 2 2]; %[15 10 0.5]; % [40 16 2];
 
 %%% Separation of the rows
 SAME_ROWS = 1; % =0 DIFFERENT ROWS; =1 SAME ROWS-> NO NEED TO RECALC SCATS
@@ -73,9 +92,9 @@ Param = ParamDef3d(GeomDisks);
 Mesh = Mesh_FS_def(GeomDisks, TankDim);
 
 %%% Modal parameters and accuracy
-Param = ModParam_def(Param,extra_pts);
+Param = ModParam_def(Param,extra_pts,terms_grn);
 
-parfor loop_lam=1:length(lam_vec)
+for loop_lam=1:length(lam_vec)
          
  %%% Forcing
  Forcing = Force_def(Param.g(1), TankDim(3), fortyp, lam_vec(loop_lam));
@@ -183,7 +202,16 @@ if and(and(~file_marker, length(lam_vec)==1),length(v_vecs{1})<6)
  disp('|Tm|='); disp(abs(Tm))
 end
 
+tm=toc;
+ 
 if file_marker~=0
+    
+ %%% CHANGE TO LOCAL DIRECTORY' %%%   
+ file_pre = '../../../../../Documents/MatLab/Data/3d_Wavetank/Tests/';
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+ hrs = floor(tm/3600);mins = floor((tm - hrs*3600)/60);secs = tm - hrs*3600 - mins*60;
+ clockout = clock; duration = [hrs,mins,secs];
     
  w = TankDim(2);
  
@@ -196,10 +224,9 @@ if file_marker~=0
  end
  clear loopi loopii
  dum_str{5} = num2str(Param.E(1));    
-  for loopii=2:Np   
-    dum_str{5} = [ dum_str{5}, ', ' ...
-        num2str(Param.E(loopii)) ];
-  end
+ for loopii=2:Np   
+  dum_str{5} = [ dum_str{5}, ', ' num2str(Param.E(loopii)) ];
+ end
   clear loopii 
 
  description = {['Problem: ' scatyp], ...
@@ -217,14 +244,17 @@ if file_marker~=0
      ', angular res=' int2str(Param.res_green) ...
      ', Green fn terms=' int2str(Param.terms_green) ...
      ', Greens fn cutoff=' int2str(Param.cutoff_green) ...
-     ', resonance tol=' int2str(Param.tolres)],
-     ['Version 1.1: changed Greens fn cutoff to fixed truncation' ...
-     'rather than size of terms']};
+     ', resonance tol=' int2str(Param.tolres)]};
+ 
+ v_info = {'Version 1.1:'; 
+     ['31.01.2013: changed Greens fn cutoff to fixed truncation' ...
+     ' rather than size of terms']};
      
  file_name = ['Main_Channel_freq_',scatyp,'_',file_marker,'.mat'];
 
- save(['../../../../../Documents/MatLab/Data/3d_Wavetank/Tests/',file_name],...
-    'R_vec', 'T_vec', 'lam_vec', 'v_vecs', 'w', 'description','reson_mkr')
+ save([file_pre,file_name],...
+    'R_vec', 'T_vec', 'lam_vec', 'v_vecs', 'w', 'description',...
+    'reson_mkr', 'v_info', 'clockout', 'duration')
 
 else
  beep; beep; beep

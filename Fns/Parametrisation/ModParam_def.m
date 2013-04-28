@@ -1,4 +1,4 @@
-function Param = ModParam_def(Param,extra_pts)
+function Param = ModParam_def(Param,extra_pts,terms)
 
 % Param = ModParam_def(Param)
 %
@@ -26,7 +26,15 @@ end
 Param.res_green = 100;
 
 %%% Max number of terms used in Green's function
-Param.terms_green = 100;
+if ~exist('terms','var')
+ Param.terms_green = 100;
+else
+ if isempty(terms)
+  Param.terms_green = 100;
+ else
+  Param.terms_green = terms;
+ end
+end
 
 %%% Limit for cutoff of Greens fn series
 Param.cutoff_green = 1e-1;

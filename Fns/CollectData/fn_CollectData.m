@@ -14,8 +14,22 @@ file_name = ['Main_Channel_freq_',file_marker,'.mat'];
 
 load([path_root,file_name],'lam_vec','R_vec','T_vec','v_vecs','w','reson_mkr')
 
+warning off
+load([path_root,file_name],'clockout','duration','v_info')
+warning on
+
+if exist('clockout','var'); 
+ display(['Created: ' int2str(clockout(3)),'/', int2str(clockout(2)),'/',int2str(clockout(1)),' ' ,...
+  int2str(clockout(4)),':', int2str(clockout(5)),':',int2str(round(clockout(6)))] ); 
+end
+if exist('duration','var'); 
+ display(['Lasted: ' int2str(round(duration(1))),' hours ', ...
+     int2str(round(duration(2))),' mins ',int2str(round(duration(3))) ' secs'] ); 
+end
+if exist('v_info','var'); disp(v_info); end
+
 %% - ENERGY CHECK & Tranmitted energy- %%
-for loop_lam=61 %1:length(lam_vec)
+for loop_lam=1:length(lam_vec)
  disp_error = []; mkr = 1;
  real_inds = find(real(v_vecs{loop_lam})~=0); Y0_Dim = length(real_inds);
  Vert_Dim = size(R_vec{loop_lam},1)/length(v_vecs{loop_lam});
@@ -26,7 +40,7 @@ for loop_lam=61 %1:length(lam_vec)
        ( abs(R_vec{loop_lam}(real_inds,real_inds(loop_Y)).').^2 ...
        + abs(T_vec{loop_lam}(real_inds,real_inds(loop_Y)).').^2 ) );
 
-  if abs(EngErr)>1e-3
+  if abs(EngErr)>1e-5
    if mkr 
     disp_error{1} = ['Energy error ' 'wk/pi = ' num2str(w*lam_vec(loop_lam)/pi)]; 
     disp_error{2} = '; Modes: '; disp_error{3} = ' -> '; mkr=0;
@@ -63,8 +77,8 @@ else
  end
 end
 
-for loop=1:3
- h(loop) = subplot(3,1,loop); hold on
+for loop=1:2
+ h(loop) = subplot(2,1,loop); hold on
 end
 
 if ~exist('w','var'); w=16; end
@@ -72,11 +86,11 @@ if ~exist('w','var'); w=16; end
 plot(h(1),w*lam_vec/pi,abs(R).^2,col{1})
 plot(h(1),w*lam_vec/pi,reson_mkr.*abs(R).^2,col{1},'linestyle','none','marker','o')
 ylabel(h(1),'|R|^2')
-plot(h(2),w*lam_vec/pi,M,col{2}); set(h(2),'ylim',[0,max(M)])
-ylabel(h(2),'No modes')
-plot(h(3),w*lam_vec/pi,En,col{3})
-plot(h(3),w*lam_vec/pi,reson_mkr.*En,col{3},'linestyle','none','marker','o')
-ylabel(h(3),'Trans energy')
-xlabel(h(3),'w*k/\pi')
+% plot(h(2),w*lam_vec/pi,M,col{2}); set(h(2),'ylim',[0,max(M)])
+% ylabel(h(2),'No modes')
+plot(h(2),w*lam_vec/pi,En,col{3})
+plot(h(2),w*lam_vec/pi,reson_mkr.*En,col{3},'linestyle','none','marker','o')
+ylabel(h(2),'Trans energy')
+xlabel(h(2),'w*k/\pi')
 
 return
