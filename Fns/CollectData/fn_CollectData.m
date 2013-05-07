@@ -1,4 +1,6 @@
 % function fn_CollectData(file_marker,fig,col)
+%
+% displays transmitted energy and 1st mode reflected energy
 
 function fn_CollectData(file_marker,fig,col)
 

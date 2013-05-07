@@ -1,3 +1,7 @@
+% function fn_WhatData(flpre)
+%
+% display the help data or selected data (with prefix flpre) 
+
 function fn_WhatData(flpre)
 
 if ~exist('flpre','var'); flpre=[]; end
