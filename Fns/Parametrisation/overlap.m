@@ -1,8 +1,12 @@
-function overlap(GeomPlate, TankDim)
+function flg=overlap(GeomPlate, TankDim, COMM)
 
 % overlap(GeomPlate, TankDim)
 % 
 % Check that plates don't overlap &/or touch side walls
+
+if ~exist('COMM','var'); COMM=1; end
+
+flg=0;
 
 %% Extract parameters
 Np = size(GeomPlate,1);     % Number of disks
@@ -28,6 +32,7 @@ for loop1 = 1:Np-1
         if distij(loop1,loop2) < sumRads
             disp(['plates ',num2str(loop1),' & ',...
                 num2str(loop2),' overlapping!!!!!'])
+            flg=1;
             return
         end
         clear sumRads
@@ -37,22 +42,26 @@ end
 %% Plate/Walls overlap
 if min(cy-rads) < 0
     [mny,pl] = min(cy-rads);
-    disp(['plate ',num2str(pl),' overlaps y=0'])
+    if COMM; disp(['plate ',num2str(pl),' overlaps y=0']); end
+    flg=2;
 end
 
 if max(cy-rads) > TankDim(2)
     [mxy,pl] = max(cy-rads);
-    disp(['plate ',num2str(pl),' overlaps y=w'])
+    if COMM; disp(['plate ',num2str(pl),' overlaps y=w']); end
+    flg=3;
 end
 
 if min(cx-rads) < 0
     [mnx,pl] = min(cx-rads);
-    disp(['plate ',num2str(pl),' overlaps x=0'])
+    if COMM; disp(['plate ',num2str(pl),' overlaps x=0']); end
+    flg=4;
 end
 
 if max(cx-rads) > TankDim(1)
     [mxx,pl] = max(cx-rads);
-    disp(['plate ',num2str(pl),' overlaps x=l'])
+    if COMM; disp(['plate ',num2str(pl),' overlaps x=l']); end
+    flg=5;
 end
 
 return

@@ -1,4 +1,9 @@
-% function Main_Channel_freq(Np,lam_vec,scatyp,row_seps,file_marker,COMM,POOL)
+% function Main_Channel_freq(Np,fortyp,lam_vec,scatyp,row_seps,file_marker,COMM,POOL)
+%
+% Calculates reflection/transmission by a single realisation of scatterers
+% enclosed by walls.
+% Location of scatterers is deterministic.
+% Can be arranged into rows for numerical efficiency.
 %
 % INPUTS:
 %

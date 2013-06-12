@@ -1,3 +1,52 @@
+% function fn_MultiMode_MultiFloe
+%
+% Calculates the reflection and transmission matrices for a given
+% configuration of circular scatterers contained within parallel walls
+% 
+% y  z
+% | /
+% |/----------------------------------------------------------------- 
+%                     |              |
+%     inc             |              |
+%    -|-|->           |  SCATTERERS  |  
+%     wav             |              | 
+%                     |              |    
+%  ----------------------------------------------------------------- --> x
+%                     x0             x1
+%
+% INPUT:
+%
+% PVec = 
+% Vert_Dim = number of vertical modes used (integer>=1) 
+% evs = the number of evanescent modes retained in the horizontal plane
+%       for the first vertical mode (integer>=0)
+% Geom_Vec = 
+% kappa = frequency parameter (scalar=omega^2/g)
+% beta_vec = scaled rigidity (length-Np vector)
+% thick_vec = thickness of floes (length-Np vector)
+% draft_vec = draught of floes (length-Np vector)
+% R_vec = radii of scatterers (length-Np vector)
+% posit_vec = x-y coords of scatterer centres (2xNp array)
+% rad_vec = set of discrete points along radii within scatterers (array)
+% x_vec = discrete points in horiz direction within scatterers (array)
+% y_vec = discrete points in vert direction within scatterers (array)
+% FS_mesh = 
+% GrnTols =
+% extra_pts = how many extra points to use in case of hitting irreg freq 
+%             (interger>=0)
+% scatyp = 'none' (no scatterers) or 'soft' (sound soft cylinders) or 'cyl'
+%           (sound hard cylinders) or `ela_plt' (elastic plates)
+% COMM = flag for comments on (1) or off (0)
+%
+% OUTPUT:
+%
+% Rm, Tm, Rp, Tp = Reflection and transmission matrices
+% v_vec = wavenos in x-direction
+% u_vec = wavenos in y-direction
+% k0 = wavenos in z-direction
+% xNm = [x0,x1]
+% reson_mkr = 
+
 function [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,wt_0,xNm,reson_mkr] = ...  %displ_fs, floe_displ, 
     fn_MultiMode_MultiFloe(...
     PVec, Vert_Dim, evs, Geom_Vec, kappa, beta_vec, thick_vec, ...
@@ -107,7 +156,7 @@ end
 
 [PhiInc, G, Gdr_add, v_vec, u_vec, theta_inc, ExtraOut] = ... 
     fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, R_vec, width, lth, posits, ...
-    GrnTols, Amp0, evs, extra_pts);
+    GrnTols, Amp0, evs, extra_pts,COMM);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -427,7 +476,7 @@ return
 
 function [PhiInc, G, Gdr_add, al_vec, be_vec, theta_inc, ExtraOut] = ...
     fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, Rad_vec, width, lth, ...
-    posits, GrnTol, Amp0, evs, extra_pts)
+    posits, GrnTol, Amp0, evs, extra_pts, COMM)
 
 %%% INPUTS
 %
@@ -454,7 +503,11 @@ while and(be_vec(1,count)-1<tol,isempty(skip))
   skipinfo(2) = be_vec(1,count+1);
   skipinfo(3) = al_vec(1,count+1);
   skip=count;
-  disp(['***** Resonant case |alpha_m|=', num2str(abs(al_vec(1,count+1))), ' *****'])
+  if COMM
+   path(path,'../../EXTRA_MATLAB_Fns')
+   cprintf('magenta',['Resonant case |alpha_m|=', ...
+       num2str(abs(al_vec(1,count+1))), '\n'])
+  end
  end
  count=count+1;
 end
