@@ -1,5 +1,8 @@
 % function fn_MultiMode_MultiFloe
 %
+% 27.09.10 created by LGB
+% adapted from fn_SingleMode_MultiFloe_v2
+%
 % Calculates the reflection and transmission matrices for a given
 % configuration of circular scatterers contained within parallel walls
 % 
@@ -7,9 +10,9 @@
 % | /
 % |/----------------------------------------------------------------- 
 %                     |              |
-%     inc             |              |
+%     inc                           
 %    -|-|->           |  SCATTERERS  |  
-%     wav             |              | 
+%     wav                            
 %                     |              |    
 %  ----------------------------------------------------------------- --> x
 %                     x0             x1
@@ -17,7 +20,9 @@
 % INPUT:
 %
 % PVec = 
-% Vert_Dim = number of vertical modes used (integer>=1) 
+% Vert_Dim = number of vertical modes in free-surface region, 
+%            i.e for interaction theory (integer>=1) 
+% Vert_Dim0 = number of vertical modes used for scatterer (int>=Vert_Dim)
 % evs = the number of evanescent modes retained in the horizontal plane
 %       for the first vertical mode (integer>=0)
 % Geom_Vec = 
@@ -49,22 +54,27 @@
 
 function [Rm,Tm,Rp,Tp,v_vec,u_vec,k0,wt_0,xNm,reson_mkr] = ...  %displ_fs, floe_displ, 
     fn_MultiMode_MultiFloe(...
-    PVec, Vert_Dim, evs, Geom_Vec, kappa, beta_vec, thick_vec, ...
+    PVec, Vert_Dim, Vert_Dim0, evs, Geom_Vec, kappa, beta_vec, thick_vec, ...
     draft_vec, R_vec, posits, rad_vec, th_vec, x_vec, y_vec, FS_mesh, ...
     GrnTols, extra_pts,scatyp, COMM)
 
 if ~exist('COMM','var'); COMM=1; end
 
+if Vert_Dim0<Vert_Dim
+ if COMM
+  cprintf('red',['Vert_Dim0 < Vert_Dim... setting Vert_Dim0=Vert_Dim','\n'])
+ end
+ Vert_Dim0=Vert_Dim;
+end
+
 if COMM
 disp('%-----------------------------------------------%')
 disp(['Problem = ' scatyp])
-disp(['Vertical modes = ' int2str(Vert_Dim)])
+disp(['Vertical modes = ' int2str(Vert_Dim), '(free-surf); '...
+    int2str(Vert_Dim0), '(scatterer)'])
 end
 
 % - Geom_Vec = [scaling No.plates depth thickness l w]
-
-% - 27.09.10 created by LGB
-% - adapted from fn_SingleMode_MultiFloe_v2
 
 Tol_vec(1) = 1e-16; % - Real root error - %
 Tol_vec(2) = 1e-16; % - Imag root error (init) - %
@@ -114,18 +124,17 @@ for loop_P=1:Np
     % NB. pv_plate(11): alpha = draft
     pv_plate = [parameter_vector(loop_P,:),draft_vec(loop_P),thick_vec(loop_P),...
         bed-draft_vec(loop_P),draft_vec(loop_P),beta_vec(loop_P)];
- for loop_Dim = 1:Vert_Dim
+ for loop_Dim = 1:Vert_Dim0
     kk(loop_Dim,loop_P) = GetRootsMMA_PWC(pv_plate, loop_Dim, Tol_vec);
     wt(loop_Dim,loop_P) = weight_PWC(pv_plate, kk(loop_Dim,loop_P));
  end
-    [mu_0(loop_P), mu_1(loop_P)] = mu_new_PWC(pv_plate, Vert_Dim, ...
+    [mu_0(loop_P), mu_1(loop_P)] = mu_new_PWC(pv_plate, Vert_Dim0, ...
         kk(:,loop_P), wt(:,loop_P));
     clear pv_plate
 end
 
 %%%% - Amplitude of the x-derivative !!!!! - %%%%%
 Amp0 = 1;
-
 %%%%%%%%%%%%%%%%%%%%%%%
 
 %%% Angular dimension %%%
@@ -146,25 +155,6 @@ if COMM
  disp(['Azimuthal modes = ' int2str(Az_Dim) ' (x2 + 1)'])
  disp(['Extra points = ' int2str(extra_pts)])
 end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% Greens functions evauated around the plates %%%
-%%% - PhiInc = sum_{m=Az_Dims} J_m*PhiInc_{m}*exp{i*m*theta}
-%%% - PhiInc_dr = sum_{m=Az_Dims} PhiInc_dr_{m}*exp{i*m*theta}
-
-[PhiInc, G, Gdr_add, v_vec, u_vec, theta_inc, ExtraOut] = ... 
-    fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, R_vec, width, lth, posits, ...
-    GrnTols, Amp0, evs, extra_pts,COMM);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%% Set Y-DIM %%%
-Y_Dim=length(u_vec(1,:)); Y0_Dim=Y_Dim-evs; 
-%%%%%%%%%%%%%%%%%
-
-if COMM; disp(['Tank modes = ',num2str(Y0_Dim)]); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Dirichlet 2 Neumann on plate boundaries %%%
@@ -215,16 +205,36 @@ for loop_P=1:Np
 %         bed-PVec(loop_P,3),PVec(loop_P,5),PVec(loop_P,4)];
  pv_plate = [parameter_vector(loop_P,:),draft_vec(loop_P),thick_vec(loop_P),...
         bed-draft_vec(loop_P),draft_vec(loop_P),beta_vec(loop_P)];
- [PsiMat(v1,v1),PsidrMat(v1,v1),Disp_mat(:,:,loop_P),...
-     Amp_mu_Mat(:,:,:,loop_P)] = ...
-    fn_SingleFloe(pv_plate, Vert_Dim, Az_Dim, kk(:,loop_P), ...
-     wt(:,loop_P), mu_0(loop_P), mu_1(loop_P), R_vec(loop_P), rad_vec{loop_P});
+ [PsiMat(v1,v1),PsidrMat(v1,v1),...
+       Disp_mat(:,:,loop_P), Amp_mu_Mat(:,:,:,loop_P)] = ...
+  fn_SingleFloe(pv_plate, [Vert_Dim0,Vert_Dim], Az_Dim, kk(:,loop_P), ...
+    wt(:,loop_P), mu_0(loop_P), mu_1(loop_P), R_vec(loop_P), rad_vec{loop_P});
  [AW0(v1,v1),AW(v1,v1),VT0(v1,v1),VT(v1,v1)] = fn_JumpMats(pv_plate,...
     Vert_Dim, Vert_Dim, Az_Dim, k0, kk(:,loop_P), wt_0, wt(:,loop_P));
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  end
  v1=v1+Vert_Dim*(2*Az_Dim+1);
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Greens functions evauated around the plates %%%
+%%% - PhiInc = sum_{m=Az_Dims} J_m*PhiInc_{m}*exp{i*m*theta}
+%%% - PhiInc_dr = sum_{m=Az_Dims} PhiInc_dr_{m}*exp{i*m*theta}
+
+[PhiInc, G, Gdr_add, v_vec, u_vec, theta_inc, ExtraOut] = ... 
+    fn_IntEqn_Reson(Vert_Dim, Az_Dim, k0, R_vec, width, lth, posits, ...
+    GrnTols, Amp0, evs, extra_pts,COMM);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Set Y-DIM %%%
+Y_Dim=length(u_vec(1,:)); Y0_Dim=Y_Dim-evs; 
+%%%%%%%%%%%%%%%%%
+
+if COMM; disp(['Tank modes = ',num2str(Y0_Dim)]); end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% SOLVE THE INTEGRAL SYSTEM %%%
@@ -1502,8 +1512,11 @@ return
 %% - THE FLOE STUFF - %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [Big_Psi, Big_Psi_dr, disp, Amp_mu_Mat] = ...
-    fn_SingleFloe(pv, Vert_Dim, Az_Dim, kk, wt, mu_0, mu_1, Rad, r_vec)
+function [Big_Psi, Big_Psi_dr, displ, Amp_mu_Mat] = ...
+    fn_SingleFloe(pv, Vert_Dims, Az_Dim, kk, wt, mu_0, mu_1, Rad, r_vec)
+
+% Nb. notation for vert dims is different to outer function
+Vert_Dim = Vert_Dims(1); Vert_Dim0 = Vert_Dims(2);
 
 %% - The ice-covered disc (uniform case) - %
 %% -- Coeffs - %
@@ -1591,7 +1604,7 @@ res_r = length(r_vec);
 xi_vec = C_mat(Vert_Dim+1, 1:Vert_Dim);
 chi_vec = C_mat(Vert_Dim+1, Vert_Dim+1:Vert_Dim+2);
 
-disp = zeros(Vert_Dim*(2*Az_Dim+1), res_r);
+displ = zeros(Vert_Dim*(2*Az_Dim+1), res_r);
 
 for loop_r=1:res_r   
  for loop_Az=-Az_Dim:Az_Dim
@@ -1601,10 +1614,27 @@ for loop_r=1:res_r
   J_mat = diag(besselj(loop_Az, kk*r_vec(loop_r) ));
   Jmu = diag(besselj(loop_Az, [ mu_0; mu_1 ].*r_vec(loop_r)) );
    
-  disp(Az_Dim+loop_Az+[1:Vert_Dim],loop_r) = ( xi_vec*J_mat + chi_vec*Jmu*Amp_mu );
+  displ(Az_Dim+loop_Az+[1:Vert_Dim],loop_r) = ( xi_vec*J_mat + chi_vec*Jmu*Amp_mu );
   
  end
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% - Restrict dimension for interactions - %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+inds = [];
+
+count=0;
+for loop_Az=-Az_Dim:Az_Dim
+ inds = [inds,count*Vert_Dim + (1:Vert_Dim0)]; count=count+1;
+end
+clear count
+
+displ = displ(inds,:);
+Big_Psi = Big_Psi(inds,inds); 
+Big_Psi_dr = Big_Psi_dr(inds,inds);
+Amp_mu_Mat = Amp_mu_Mat(:,1:Vert_Dim0,:);
 
 return
 

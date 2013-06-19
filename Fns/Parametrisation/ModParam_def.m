@@ -1,12 +1,15 @@
-function Param = ModParam_def(Param,extra_pts,terms)
-
 % Param = ModParam_def(Param)
 %
 % Setup of modal parameters and accuracy parameters for the solution
 % method.
 
+function Param = ModParam_def(Param,extra_pts,terms)
+
+%%% Number of vertical modes (travel + evan) for free-surf interactions
+Param.Nint = 1;
+
 %%% Number of vertical modes (travel + evan)
-Param.N = 1;
+Param.Ndtm = 5;
 
 %%% Number of evanescent horizontal modes
 Param.Mev = 0;

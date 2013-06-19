@@ -1,14 +1,27 @@
-function Forcing = Force_def(g,H,type_freq,lam0)
-
-% Forcing = Force_def()
+% function Forcing = Force_def(g,H,type_freq,lam0)
 %
-% Setup of forcing parameters
+% INPUTS
+%
+% g = gravity
+% H = fluid depth
+% type_freq = 'freq' (angular frequency)
+%             'wlength' (open water wavelength)
+%             'waveno' (open water wave number)
+% lam0 = value of freq_type
+%
+% OUTPUT
+% 
+% Forcing = field: f (frequency in Hz)
+%                  kappa = freq^2/g (freq param)
+%                  lam0 = wavelength
+
+function Forcing = Force_def(g,H,type_freq,lam0)
 
 %% Frequency forcing
 
 %%% Type of frequency forcing 'freq' or 'wlength'
 if ~exist('type_freq','var'); type_freq = 'freq'; end
-if isempty(type_freq); type_freq = 'freqh'; end
+if isempty(type_freq); type_freq = 'freq'; end
 
 if strcmp(type_freq,'freq')
     %%% Frequency (in Hz)

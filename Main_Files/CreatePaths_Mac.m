@@ -10,6 +10,7 @@ path(path,'../Fns/Greens_fns')
 path(path,'../Fns/Misc')
 path(path,'../Fns/Parametrisation')
 path(path,'../Fns/CollectData')
+path(path,'../Fns/Floe')
 
 path(path,'../Fns/Misc/Weight_Norm')
 

@@ -1,4 +1,6 @@
-function Param = ParamDef3d(GeomDisks)
+function Param = ParamDef3d(GeomDisks,RIGID)
+
+if ~exist('RIGID','var'); RIGID=0; end
 
 % Param = ParamDef(Geom)
 %
@@ -20,8 +22,12 @@ Param.rho = 500*ones(Param.Np,1);
 Param.nu = 0.3*ones(Param.Np,1);
 
 % Young modulii (in MPa)
-Param.E = 750*1e6*ones(Param.Np,1);
-
+if ~RIGID
+ Param.E = 750*1e6*ones(Param.Np,1);
+else
+ Param.E = 750*1e18*ones(Param.Np,1);
+end
+    
 % Draughts (in m)
 Param.draft = GeomDisks(:,4).*Param.rho./Param.rho_0; 
 
