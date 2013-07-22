@@ -14,13 +14,14 @@
 %
 % INPUT
 %
+% N =  vertical modes
 % Param = field: g (gravity), rho_0 (water density), rho (disk density)
 %                nu (Poisson's ratio), E (Young's mod), draft,
 %                D (flexural rigid), beta (scaled flex rigid),
 %                N (vertical modes trav + ev)
 % GeomDisk = [0,0,radius, thickness] 
 % forceinput = {forcing type, value}
-%  -> forcing type = 'p' wave period; 'k' wavenumber water; 'i' wavenumber ice
+% -> fortyp = 'freq' (in Hz) or 'wlength' (2*pi/k0) or 'waveno' (k0)
 % bed = depth of fluid
 % th_vec = discrete angular spectrum
 % RIGID = make the rigidity effectively infinite (0=off, 1=on)
@@ -32,7 +33,7 @@
 %                                                  Meylan et al JGR `97)
 
 %%
-function [E0, E, E_Fourier] = fn_ElasticDisk(Param, GeomDisk, Forcing, bed, th_vec, COMM)
+function [E0, E, E_Fourier] = fn_ElasticDisk(Param, GeomDisk, Forcing, bed, th_vec, RIGID, COMM)
 
 Tol_vec(1) = 1e-16; % - Real root error - %
 Tol_vec(2) = 1e-16; % - Imag root error (init) - %
@@ -48,9 +49,11 @@ if COMM
  path(path,'../../EXTRA_MATLAB_Fns')
 end
 
-if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.5,1e-1]; end
+if ~exist('N','var'); N=10; end
+
+if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.5,33e-3]; end
 if ~exist('Param','var'); Param = ParamDef3d(GeomDisk,RIGID); 
-    Param = ModParam_def(Param,0,0); end
+    Param = ModParam_def(Param,1,N,0,0); end
 
 draught = Param.draft; 
 radius = GeomDisk(3);
@@ -58,7 +61,7 @@ Vert_Modes = Param.Ndtm;
 
 if ~exist('bed','var'); bed=2; end
 
-if ~exist('Forcing','var'); Forcing = Force_def(Param.g,bed,'wlength',4*radius); end
+if ~exist('Forcing','var'); Forcing = Force_def(Param.g,bed,'freq',1/2); end
 
 if ~exist('th_vec','var'); th_vec=linspace(-pi,pi,101); end
 
@@ -88,7 +91,11 @@ kk = zeros(Vert_Modes,1); k0 = zeros(Vert_Modes,1); % - wvnos in ice (kk) and wa
 wt = zeros(Vert_Modes,1); wt_0 = zeros(Vert_Modes,1); % - weight (normalising fn) attached to each vert mode
 
 for loop_Dim=1:Vert_Modes
- kk(loop_Dim) = GetRootsMMA_PWC(parameter_vector, loop_Dim, Tol_vec);
+ if or(loop_Dim==1,~RIGID)   
+  kk(loop_Dim) = GetRootsMMA_PWC(parameter_vector, loop_Dim, Tol_vec);
+ else
+  kk(loop_Dim) = (loop_Dim-1)*1i*pi/(bed-draught); 
+ end
  wt(loop_Dim) = weight_PWC(parameter_vector, kk(loop_Dim));
  k0(loop_Dim) = GetRootsMMA_FS_PWC(parameter_vector(1,:), loop_Dim, Tol_vec);
  wt_0(loop_Dim) = weight_0_PWC(bed, k0(loop_Dim));   
@@ -194,7 +201,6 @@ Phiz_Out = diag(k0.*Hz_water);
 % - fn psi = %
 
 Psi_S = diag(J_ice) + v_01*diag(Jmu_ice)*Amp_mu;
-
 Psiz_S = diag(kk.*Jz_ice) + v_01*diag([mu_0, mu_1].*Jzmu_ice)*Amp_mu;
 
 w1 = 1:Vert_Modes; w2 = Vert_Modes+1:Vert_Modes+2;
@@ -294,33 +300,85 @@ if abs(E0+E1) > Tol_vec(5)
  cprintf('red',['energy error = ', num2str(E0+E1), '\n'])
 end
 
+%% Output
+
+% FF_Amp = Far-field amplitude (function of theta) 
+% E ~ |A|^2 -> scattered energy (function of energy)
+% E0 = int_{0}^{2\pi} E dtheta
+
+% nb. incang not required as axisymm problem
+% incang = 0;
+% Normalise inc wave energy to unity with incamp = sqrt(2/rho0*g)
+% incamp = sqrt(2/Param.rho_0*Param.g);
+% but this simply cancels with below, so leave !!!!
+% (CC Mei book Chap 1)
+
+% A(theta) = \sum_{n=-N}^{N}Bvec(1,n)*exp(i*n*(theta-\pi/2)) as above
+FF_Amp = (Bvec0.*conj(Ip))*exp(1i*[-s_Modes:s_Modes].'*th_vec);
+% Set the inc wave amplitude to 1 at this point:
+FF_Amp = FF_Amp/wt_0(1)/cosh(k0(1)*bed);
+
+E = 2*(abs(FF_Amp).^2)/k0(1)/pi;
+
+E0 = 4*sum(abs(Bvec0.*conj(Ip)/wt_0(1)/cosh(k0(1)*bed)).^2)/k0(1);
+
+%E0 = E0/2/pi;
+
+% Fourier basis representation
+% Array E(i,j) such that E = sum_{p.q=-N}^{N}E(p,q)*exp(i*(p-q)*theta)
+
+Bvec0 = (Bvec0.*conj(Ip));
+
+E_Fourier = zeros(2*s_Modes+1,2*s_Modes+1);
+
+for loop_s1=1:2*s_Modes+1    
+ for loop_s2=1:2*s_Modes+1
+  E_Fourier(loop_s1,loop_s2)=Bvec0(loop_s1)*conj(Bvec0(loop_s2));
+ end
+end
+
+E_Fourier = 2*E_Fourier./k0(1)./pi;
+
 %% Natural modes of vibration
 
 Jmax=5;
 
 % Displacement
 
-res = 101;
+res = 1001;
 displ=zeros(2*s_Modes+1,res);
 r_vec = linspace(0,radius,res);
 
-for loop_r=1:length(r_vec)
- count=1;
- for loop_Az=-s_Modes:s_Modes
-  JJ = besselj(loop_Az, kk*r_vec(loop_r));
-  JJ_mu = besselj(loop_Az, [mu_0;mu_1]*r_vec(loop_r));
+if 1 
+ for loop_r=1:length(r_vec)
+  count=1;
+  for loop_Az=-s_Modes:s_Modes
+   JJ = besselj(loop_Az, kk*r_vec(loop_r));
+   JJ_mu = besselj(loop_Az, [mu_0;mu_1]*r_vec(loop_r));
     
-  dum = C_mat(Vert_Modes+1,w1)*diag(JJ) + ...
-   C_mat(Vert_Modes+1,w2(1))*JJ_mu(1)*Amp_mu_Mat(1,:,s_Modes+1+loop_Az) + ...
-   C_mat(Vert_Modes+1,w2(2))*JJ_mu(2)*Amp_mu_Mat(2,:,s_Modes+1+loop_Az);
+   dum = C_mat(Vert_Modes+1,w1)*diag(JJ) + ...
+    C_mat(Vert_Modes+1,w2(1))*JJ_mu(1)*Amp_mu_Mat(1,:,s_Modes+1+loop_Az) + ...
+    C_mat(Vert_Modes+1,w2(2))*JJ_mu(2)*Amp_mu_Mat(2,:,s_Modes+1+loop_Az);
 
-  displ(count,loop_r) = dum*Avec(:,s_Modes+1+loop_Az);
-  count = count+1;
+   displ(count,loop_r) = dum*Avec(:,s_Modes+1+loop_Az);
+   count = count+1;
+  end
+ end
+ clear count dum
+else
+ % TEST
+
+ if 0
+  % HEAVE
+  displ(s_Modes+1,:)= 1 + 0*r_vec;
+ elseif 1
+  % PITCH
+  displ(s_Modes,:) = r_vec/2;
+  displ(s_Modes+2,:) = r_vec/2;
  end
 end
-clear count dum
 
-if 1
+if 0
  th=0;
  
  evec = exp(1i*[-s_Modes:s_Modes]*th);
@@ -333,8 +391,10 @@ if 1
  
  full_displ = full_displ/cosh(k0(1)*bed)/wt_0(1);
  
- figure; plot(r_vec,real(full_displ),'r'); hold on
- plot(r_vec,real(exp(1i*k0(1)*r_vec)),'ko');
+ figure; plot(r_vec,real(full_displ),'r'); 
+ if 0
+  hold on; plot(r_vec,real(exp(1i*k0(1)*r_vec)),'ko');
+ end
  clear evec full_displ
 end
      
@@ -343,21 +403,19 @@ end
 A_even=zeros(s_Modes+1,Jmax+1);
 A_odd =zeros(s_Modes+1,Jmax+1);
 
-%[freq,shape] = Circ_plate_nat_freq(nu,N,J)
-
 for loop_Az=0:s_Modes
- for loop_j=0:Jmax   
-  [wnj,Nnj] = fn_NatModes(loop_Az,loop_j,Param.nu,r_vec,radius);
+ [wnj,Nnj] = fn_NatModes(loop_Az,Jmax,Param.nu,r_vec,radius);
+ for loop_j=1:Jmax+1   
   if loop_Az~=0
-   A_even(loop_Az+1,loop_j+1) = ...
-       pi*fn_Trap(r_vec.*(displ(s_Modes+1+loop_Az,:)+...
-             displ(s_Modes+1-loop_Az,:)),wnj,r_vec)/Nnj;
-   A_odd(loop_Az+1,loop_j+1) = ...
-       pi*fn_Trap(r_vec.*(displ(s_Modes+1+loop_Az,:)-...
-             displ(s_Modes+1-loop_Az,:)),wnj,r_vec)/Nnj;
+   A_even(loop_Az+1,loop_j) = ...
+       pi*fn_Trap(r_vec.*( displ(s_Modes+1+loop_Az,:) +...
+             displ(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
+   A_odd(loop_Az+1,loop_j) = ...
+       pi*fn_Trap(r_vec.*( displ(s_Modes+1+loop_Az,:) -...
+             displ(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
   else
-   A_even(loop_Az+1,loop_j+1) = ...
-       2*pi*fn_Trap(r_vec.*displ(s_Modes+1,:),wnj,r_vec)/Nnj;
+   A_even(loop_Az+1,loop_j) = ...
+    2*pi*fn_Trap(r_vec.*displ(s_Modes+1,:),wnj(loop_j,:),r_vec)/Nnj(loop_j);
   end
  end
 end 
@@ -378,43 +436,6 @@ if RIGID
  clear dum_A
 end
 
-%% Output
-
-% FF_Amp = Far-field amplitude (function of theta) 
-% E ~ |A|^2 -> scattered energy (function of energy)
-% E0 = int_{0}^{2\pi} E dtheta
-
-% nb. incamp not required as axisymm problem
-% incang = 0;
-% Normalise inc wave energy to unity with incamp = sqrt(2/rho0*g)
-% incamp = sqrt(2/Param.rho_0*Param.g);
-% but this simply cancels with below, so leave !!!!
-% (CC Mei book Chap 1)
-
-% A(theta) = \sum_{n=-N}^{N}Bvec(1,n)*exp(i*n*(theta-\pi/2)) as above
-FF_Amp = (Bvec0.*conj(Ip))*exp(1i*[-s_Modes:s_Modes].'*th_vec);
-% Set the inc wave amplitude to 1 at this point:
-FF_Amp = FF_Amp/wt_0(1)/cosh(k0(1)*bed);
-
-E = 2*(abs(FF_Amp).^2)/k0(1)/pi;
-
-E0 = E0/2/pi;
-
-% Fourier basis representation
-% Array E(i,j) such that E = sum_{p.q=-N}^{N}E(p,q)*exp(i*(p-q)*theta)
-
-Bvec0 = (Bvec0.*conj(Ip));
-
-E_Fourier = zeros(2*s_Modes+1,2*s_Modes+1);
-
-for loop_s1=1:2*s_Modes+1    
- for loop_s2=1:2*s_Modes+1
-  E_Fourier(loop_s1,loop_s2)=Bvec0(loop_s1)*conj(Bvec0(loop_s2));
- end
-end
-
-E_Fourier = 2*E_Fourier./k0(1)./pi;
- 
 return
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -462,7 +483,7 @@ end
 
 return
 
-% NATURAL MODES 
+% NATURAL MODES: PLATE IN-VACUO 
 %
 % see Montiel 2012 (Thesis, p.150)
 %
@@ -476,54 +497,75 @@ return
 % Knj = (pi/2)(n+2j)   (Leissa, 1969)
 % Thus use interval [(pi/2)(n+2(j-1)), (pi/2)(n+2j)] in fzero.  
 
-function [wnj,Nnj] = fn_NatModes(n,j,nu,r_vec,R)
+function [wnj,Nnj] = fn_NatModes(n,Jmax,nu,r_vec,R)
 
-if and(n==0,j==0)
+if ~exist('COMM','var'); COMM=1; end
+
+params(1) = n; params(2)=nu;
+
+% int = [(pi/2)*(n+2*(j-1)), (pi/2)*(n+2*j)];
+
+int = [(pi/2)*(n+2*(-1)), (pi/2)*(n)];
+
+wnj = zeros(Jmax+1,length(r_vec)); Nnj = zeros(Jmax+1,1);
+
+for j=0:Jmax
+
+ if and(n==0,j==0)
     
- wnj = 1+0*r_vec;
+  wnj = 1+0*r_vec; int = int + pi;
  
-elseif and(abs(n)==1,j==0)
+ elseif and(abs(n)==1,j==0)
     
- wnj = r_vec;
+  wnj = r_vec; int = int + pi;
  
-else
-    
- params(1) = n; params(2)=nu;
+ else
+   
+  Knj = inf;   
+  
+  while isinf(Knj)
+   Knj = fn_bisection(@fn_disprelNM, int, params);
+   int = int + pi;
+  end
+  
+  fj = (Knj.^3).*fn_dbesselj(n,Knj) + (n^2)*(1-nu)*(...
+    Knj.*fn_dbesselj(n,Knj) - besselj(n,Knj) );
+
+  fi = (Knj.^3).*fn_dbesseli(n,Knj) - (n^2)*(1-nu)*(...
+    Knj.*fn_dbesseli(n,Knj) - besseli(n,Knj) );
+
+  Cnj = fj/fi; clear fi fj
+  
+  % CHECK????
+  if COMM
+   mj = (Knj.^2).*besselj(n,Knj) + (1-nu)*(...
+    Knj.*fn_dbesselj(n,Knj) - (n^2)*besselj(n,Knj) );
+
+   mi = (Knj.^2).*besseli(n,Knj) - (1-nu)*(...
+    Knj.*fn_dbesseli(n,Knj) - (n^2)*besseli(n,Knj) );
+
+   if abs(Cnj- mj/mi)>1e-5
+    cprintf('red',['error in NMV: (n,j) = (' ...
+        int2str(n) ',' int2str(j) ')\n'])   
+   end
+   clear mi mj 
+  end
+  
+  wnj(j+1,:) = besselj(n,Knj*r_vec/R) + Cnj*besseli(n,Knj*r_vec/R);
  
- int = [(pi/2)*(n+2*(j-1)), (pi/2)*(n+2*j)];
+ end
 
- Knj = fn_bisection(@fn_disprelNM, int, params);
-
-%  fj = (Knj.^3).*Bessel_dz(@besselj,n,Knj) + (n^2)*(1-nu)*(...
-%     Knj.*Bessel_dz(@besselj,n,Knj) - besselj(n,Knj) );
-% 
-%  fi = (Knj.^3).*Bessel_dz(@besseli,n,Knj) - (n^2)*(1-nu)*(...
-%     Knj.*Bessel_dz(@besseli,n,Knj) - besseli(n,Knj) );
-% 
-%  Cnj = fj/fi; clear fi fj
-
- mj = (Knj.^2).*besselj(n,Knj) + (1-nu)*(...
-    Knj.*Bessel_dz(@besselj,n,Knj) - (n^2)*besselj(n,Knj) );
-
- mi = (Knj.^2).*besseli(n,Knj) - (1-nu)*(...
-    Knj.*Bessel_dz(@besseli,n,Knj) - (n^2)*besseli(n,Knj) );
-
- Cnj = mj/mi; clear mi mj
-
- wnj = besselj(n,Knj*r_vec/R) + Cnj*besseli(n,Knj*r_vec/R);
- 
-end
-
-if and(n==0,j==0)
- Nnj=pi*(R^2);
-elseif and(abs(n)==1,j==0)
- Nnj = pi*(R^4)/4;
-else
- Nnj = besselj(n,Knj)^2 - besselj(n-1,Knj)*besselj(n+1,Knj) + ...
-     (Cnj/Knj)*(besselj(n,Knj)*besseli(n-1,Knj) - ...
+ if and(n==0,j==0)
+  Nnj(j+1)=pi*(R^2);
+ elseif and(abs(n)==1,j==0)
+  Nnj(j+1) = pi*(R^4)/4;
+ else
+  Nnj(j+1) = besselj(n,Knj)^2 - besselj(n-1,Knj)*besselj(n+1,Knj) + ...
+     (2*Cnj/Knj)*( besselj(n,Knj)*besseli(n-1,Knj) - ...
       besselj(n-1,Knj)*besseli(n,Knj) ) + ...
-     (Cnj^2)*(besseli(n,Knj)^2 - besseli(n-1,Knj)*besseli(n+1,Knj) );
- Nnj = pi*Nnj*(R^2)/2;   
+     (Cnj^2)*( besseli(n,Knj)^2 - besseli(n-1,Knj)*besseli(n+1,Knj) );
+  Nnj(j+1) = pi*Nnj(j+1)*(R^2)/2;   
+ end
 end
 
 return
@@ -534,17 +576,19 @@ function D=fn_disprelNM(K,params)
 
 n = params(1); nu=params(2);
 
-fj = (K.^3).*Bessel_dz(@besselj,n,K) + (n^2)*(1-nu)*(...
-    K.*Bessel_dz(@besselj,n,K) - besselj(n,K) );
+fj = (K.^3).*fn_dbesselj(n,K) + (n^2)*(1-nu)*(...
+    K.*fn_dbesselj(n,K) - besselj(n,K) );
 
-fi = (K.^3).*Bessel_dz(@besseli,n,K) - (n^2)*(1-nu)*(...
-    K.*Bessel_dz(@besseli,n,K) - besseli(n,K) );
+fi = (K.^3).*fn_dbesseli(n,K) - (n^2)*(1-nu)*(...
+    K.*fn_dbesseli(n,K) - besseli(n,K) );
 
 mj = (K.^2).*besselj(n,K) + (1-nu)*(...
-    K.*Bessel_dz(@besselj,n,K) - (n^2)*besselj(n,K) );
+    K.*fn_dbesselj(n,K) - (n^2)*besselj(n,K) );
 
 mi = (K.^2).*besseli(n,K) - (1-nu)*(...
-    K.*Bessel_dz(@besseli,n,K) - (n^2)*besseli(n,K) );
+    K.*fn_dbesseli(n,K) - (n^2)*besseli(n,K) );
+
+D = zeros(1,length(K));
 
 for loop=1:length(K)
  D(loop)=det([fj(loop),mj(loop);fi(loop),mi(loop)]);
@@ -556,25 +600,37 @@ return
 
 function out = fn_bisection(fn_name,int,params)
 
+if ~exist('COMM','var'); COMM=0; end
+
 guess_min=int(1); guess_max=int(2); clear int
 
 if guess_min == 0
     guess_min = guess_min+0.01;
 end
 
-ans1 = guess_min; ans2 = guess_max;
+if feval(fn_name,guess_min, params)*feval(fn_name,guess_max, params)>0
+ if COMM
+  cprintf('red','no roots found on this interval or multiple roots\n')
+ end
+ out = inf;
 
-while abs(ans2 - ans1) > 1e-9
+else
+
+ ans1 = guess_min; ans2 = guess_max;
+
+ while abs(ans2 - ans1) > 1e-9
     fval = feval(fn_name,(ans1+ans2)/2, params);
     if fval*feval(fn_name,ans1,params) < 0
         ans2 = (ans1+ans2)/2;
     else
         ans1 = (ans1+ans2)/2;
     end
+ end
+
+ out = ans2;
+
 end
-
-out = ans2;
-
+ 
 return
 
 % 
@@ -593,6 +649,22 @@ I(1) = I(1)/2; I(end) = I(end)/2;
 I = dx*sum(I);
 
 return
+
+function out = fn_dbesselj(n,z,scal)
+% this function calcualtes the derivative of besselj(n,z)
+if nargin==3
+    out = (besselj(n-1,z,scal) - besselj(n+1,z,scal))/2;
+else
+    out = (besselj(n-1,z) - besselj(n+1,z))/2;
+end
+
+function out = fn_dbesseli(n,z,scal)
+% this function calcualtes the derivative of besseli(n,z)
+if nargin==3
+    out = (besseli(n+1,z,scal) + besseli(n-1,z,scal))/2;
+else
+    out = (besseli(n+1,z) + besseli(n-1,z))/2;
+end
 
 %% OLD OUTPUT CODE
 

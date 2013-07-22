@@ -5,7 +5,7 @@ function [freq,shape] = Circ_plate_nat_freq(nu,N,J)
 if nargin == 0
     N = 10;
     J = 5;
-    nu = 0.3;
+    nu = 0.33;
 elseif nargin == 1
     N = 10;
     J = 5;
@@ -148,34 +148,18 @@ out = lambda^3*ddbesseli(n,lambda) + 3*lambda^2*dbesseli(n,lambda) - ...
 
 % ADDED BY LUKE
 
-function Besdz=dbesselj(N,z)
-
-BesselFn='besselj';
-
-if N == 0
-    
-    Besdz = - feval( BesselFn, 1, z);
-    
+function out = dbesselj(n,z,scal)
+% this function calcualtes the derivative of besselj(n,z)
+if nargin==3
+    out = (besselj(n-1,z,scal) - besselj(n+1,z,scal))/2;
 else
-    
-    Besdz = feval( BesselFn, N-1, z) - feval( BesselFn, N+1, z);
-    
-    Besdz = Besdz / 2;
-    
+    out = (besselj(n-1,z) - besselj(n+1,z))/2;
 end
 
-function Besdz=dbesseli(N,z)
-
-BesselFn='besseli';
-
-if N == 0
-    
-    Besdz = - feval( BesselFn, 1, z);
-    
+function out = dbesseli(n,z,scal)
+% this function calcualtes the derivative of besseli(n,z)
+if nargin==3
+    out = (besseli(n+1,z,scal) + besseli(n-1,z,scal))/2;
 else
-    
-    Besdz = feval( BesselFn, N-1, z) - feval( BesselFn, N+1, z);
-    
-    Besdz = Besdz / 2;
-    
+    out = (besseli(n+1,z) + besseli(n-1,z))/2;
 end

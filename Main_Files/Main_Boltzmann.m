@@ -1,45 +1,79 @@
-% function Main_Boltzmann
+% function [I,th_vec] = Main_Boltzmann(TEST, fortyp, lam0, conc, th_res, COMM)
 %
 % INPUTS:
 %
 % fortyp = 'freq' or 'wlength' or 'waveno'
 % lam0 = value of forcing fortyp
+% GeomDisk = [x-location y-location Radius thickess] (coords not needed!)
 % file_marker = string for file identifier; use 0 for no write
 % tol = tolerance on eigenvalues being real/imag
 % DTYP = flag for discretisation type: point-wise (0) or Fourier (1)
 % COMM = flag for comments on (1) or off (0)
+% PLOT = flag for plots on (1) or off (0)
 
-function Main_Boltzmann
+function [I,th_vec] = Main_Boltzmann(TEST, fortyp, lam0, conc, th_res, COMM, PLOT)
+
+if ~exist('TEST','var'); TEST='Oceanide'; end
+if ~exist('PLOT','var'); PLOT=1; end
 
 %% Prelims
 
-if ~exist('tol','var'); tol=1e-3; end
+if ~exist('tol','var'); tol=1e-5; end
 
 if ~exist('COMM','var'); COMM=1; end
 if COMM; path(path,'../../EXTRA_MATLAB_Fns'); end
 if ~exist('DTYP','var'); DTYP=0; end
 
-if ~exist('th_res','var'); th_res=25; end
-th_vec = pi*linspace(-1,1,4*th_res+1);
-th_vec(4*th_res+1)=[];
+if ~exist('th_res','var'); th_res=5; end
+th_vec = linspace(0,1,2*th_res); th_vec = unique([-th_vec,th_vec]);
+th_vec(1)=[];
+refs = find(or(th_vec>0.5,th_vec<-0.5));
+incs = find(~or(th_vec>0.5,th_vec<-0.5));
+th_vec = pi*th_vec;
 
-if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.5,0.1]; end
-if ~exist('Param','var'); Param = ParamDef3d(GeomDisk); 
-    Param = ModParam_def(Param,0,0); end
+%% Define test
 
-if ~exist('fortyp','var'); fortyp='waveno'; end
-if ~exist('lam','var'); lam0=2*pi./5; end
+if strcmp(TEST,'Oceanide')
+    
+ if ~exist('RIGID','var'); RIGID=1; end   
 
-if ~exist('bed','var'); bed=2; end
-if ~exist('conc','var'); conc=0.5; end
+ if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.495,33e-3]; end
+ if ~exist('Param','var'); Param = ParamDef3d_Oceanide(GeomDisk); 
+    Param = ModParam_def(Param,1,10,0,0); end
 
+ if ~exist('fortyp','var'); fortyp='waveno'; end
+ if ~exist('lam0','var'); lam0=2*pi./3; end
+
+ if ~exist('bed','var'); bed=3; end
+ if ~exist('conc','var'); conc=0.79; end % [0.39,0.79]
+ 
+ %if ~exist('fn_inc','var'); fn_inc = 'kron_delta(0,th_vec)'; end
+ 
+ if ~exist('fn_inc','var'); fn_inc = 'cos(th_vec).^100'; end
+ 
+ dist = 5;
+ 
+else
+    
+ if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.495,0.1]; end
+ if ~exist('Param','var'); Param = ParamDef3d(GeomDisk); 
+    Param = ModParam_def(Param,1,10,0,0); end
+
+ if ~exist('fortyp','var'); fortyp='waveno'; end
+ if ~exist('lam','var'); lam0=2*pi./5; end
+
+ if ~exist('bed','var'); bed=2; end
+ if ~exist('conc','var'); conc=0.5; end
+ 
+ if ~exist('fn_inc','var'); fn_inc = 'cos(th_vec).^2'; end
+
+end 
+ 
 if ~exist('absorb','var'); absorb=0; end
 
 Forcing = Force_def(Param.g(1), bed, fortyp, lam0);
 
-if ~exist('fn_inc','var'); fn_inc = 'cos(th_vec).^2'; end
-
-[beta, S, S_Fou] = fn_ElasticDisk(Param, GeomDisk, Forcing, bed, th_vec, COMM);
+[beta, S, S_Fou] = fn_ElasticDisk(Param, GeomDisk, Forcing, bed, th_vec, RIGID, COMM);
 
 beta = beta + absorb;
 
@@ -74,7 +108,9 @@ if ~DTYP
  clear mk
  R_mat1 = dx*R_mat1;
  
- else
+ R_mat = conc*(diag(R_mat0)+R_mat1)/pi/(GeomDisk(3)^2);
+ 
+else % Using Fourier series (CHECK!!!!)
 
  N = (length(S_Fou(:,1))-1)/2;
 
@@ -101,14 +137,14 @@ if ~DTYP
   end
   count_n=count_n+1;
  end
+ 
+ R_mat = conc*(diag(R_mat0)+2*pi*R_mat1)/pi/(GeomDisk(3)^2);
 
 end
 
-R_mat = conc*(diag(R_mat0)+2*pi*R_mat1)/pi/(GeomDisk(3)^2);
-
 %% Eigenvalues & eigenvectors
 
-[V,D] = eig(L_mat,R_mat); D = diag(D);
+[V,D] = eig(R_mat,L_mat); D = diag(D);
 
 % min(abs(D))
 % abs(det(V))
@@ -119,15 +155,17 @@ R_mat = conc*(diag(R_mat0)+2*pi*R_mat1)/pi/(GeomDisk(3)^2);
 
 if ~DTYP
 
- eval(['I0 = ' fn_inc '; I0([1:th_res,3*th_res+2:4*th_res])=[];'])
+ [Im,Iz] = fn_ArrangeEvals(D,tol);
  
- I0 = reshape(I0,2*th_res+1,1);
+ if length([Im;Iz])~=length(incs)
+  cprintf('red',['Check evals' '\n'])
+ end
  
- [Im,Ii,Iz] = fn_ArrangeEvals(D,tol);
+ V0 = V(incs,[Im;Iz]);
  
- inds0 = th_res+1:3*th_res+1;
+ eval(['I0 = ' fn_inc '; I0(refs)=[];'])
  
- V0 = [V(inds0,[Im;Iz]),real(V(inds0,Ii))];
+ I0 = reshape(I0,length(I0),1);
  
  c0 = V0\I0;
 
@@ -136,7 +174,76 @@ else
  cprintf('red',['Not coded yet' '\n'])
  
 end
+
+Vx = V(:,[Im;Iz]);
  
+%% Energy conservation
+   
+% I = Vx*c0;
+% 
+% EnInc = dx*sum(I(incs));
+% EnRef = dx*sum(I(refs));
+% 
+% I = V(1,Iz)*c0(end);
+%    
+% EnTra = dx*sum(I);
+% 
+% if abs(-EnInc+EnRef+EnTra)>tol
+%  cprintf('red',['energy error: ' num2str(abs(EnIn-EnOut)) '\n'])
+% end
+
+%% Plot?
+
+if PLOT
+ if ~DTYP
+    
+  figure; h1 = subplot(1,1,1);
+ 
+  x = 0:500:5000;
+ 
+  %Vx = V(:,[Im;Iz]);
+  
+  for loop_x=1:length(x)
+   I = Vx*diag(exp(D([Im;Iz])*x(loop_x)))*c0;
+   if ~isempty(find(abs(imag(I))>tol))
+    cprintf('red',['Check I: ', int2str(loop_x), ', ', ...
+       num2str(max(abs(imag(I)))), '\n'])
+   end
+   I = [I(end);I];
+   plot(h1,[-pi,th_vec]/pi,real(I))
+   set(h1, 'ylim',[0,1]); set(h1,'xlim',[-1,1])
+   title(['x=' num2str(x(loop_x))])
+   pause
+  end
+  close(gcf)
+  disp(['const=' num2str(I(1))])
+ else
+  cprintf('red',['Not coded yet' '\n'])
+ end    
+end
+
+%% Outputs
+
+if ~PLOT
+
+ incs = find(~or(th_vec>0.5*pi,th_vec<0));
+
+ I = V(:,[Im;Iz])*diag(exp(D([Im;Iz])*dist))*c0;
+ I = I(incs); 
+
+ if max(abs(imag(I)))>tol
+  cprintf('r',['check solution: ' num2str(max(abs(imag(I)))) '\n'])    
+ end
+
+ I = real(I);
+
+ th_vec = th_vec(incs);
+ 
+else
+  
+ I=[]; th_vec=[];
+
+end
  
 return
 
@@ -152,22 +259,36 @@ return
 % Ii = purely imaginary evals (arranged into conj pairs)
 % Iz = zero evals
 
-function [Im,Ii,Iz] = fn_ArrangeEvals(D,tol)
+function [Im,Iz] = fn_ArrangeEvals(D,tol)
 
 Iz = find(abs(D)<tol);
-Im = find(real(D)<=-tol);
-Ii(:,1) = find(imag(D)>=tol);
-%Ii(:,2) = find(imag(D)<=-tol);
+Im = find(and(~abs(D)<tol,real(D)<-tol));
 
 if length(Iz) ~= 2
  cprintf('red',['Check zero evals' '\n'])
 end
 
-if length(Ii(:,1)) ~= 2
- cprintf('red',['Check imag evals' '\n'])
-end
+Iz = Iz(1);
 
+if ~isempty(find(abs(imag(D))>tol))
+ cprintf('blue',['nb. imag component to evals: ' num2str(max(abs(imag(D)))) '\n'])
+end
 
 return
 
+% Kronecker Delta
+
+function out=kron_delta(u,v)
+
+out=zeros(1,length(v));
+
+for loop=1:length(v)
+    
+ if u==v(loop)
+  out(loop)=1;
+ end
+ 
+end
+
+return
 

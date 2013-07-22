@@ -3,13 +3,16 @@
 % Setup of modal parameters and accuracy parameters for the solution
 % method.
 
-function Param = ModParam_def(Param,extra_pts,terms)
+function Param = ModParam_def(Param,Ni,Nd,extra_pts,terms)
+
+if ~exist('Ni','var'); Ni=1; end
+if ~exist('Nd','var'); Nd=10; end
 
 %%% Number of vertical modes (travel + evan) for free-surf interactions
-Param.Nint = 1;
+Param.Nint = Ni;
 
 %%% Number of vertical modes (travel + evan)
-Param.Ndtm = 5;
+Param.Ndtm = Nd;
 
 %%% Number of evanescent horizontal modes
 Param.Mev = 0;

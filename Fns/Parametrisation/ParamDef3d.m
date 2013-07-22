@@ -16,7 +16,7 @@ Param.g = 9.81*ones(Param.Np,1);
 Param.rho_0 = 1025*ones(Param.Np,1);           
 
 % Densities of disks (in kg\,m^{-3})
-Param.rho = 500*ones(Param.Np,1);
+Param.rho = 1.8*Param.rho_0/3.3; %500*ones(Param.Np,1);
 
 % Poisson's ratios
 Param.nu = 0.3*ones(Param.Np,1);

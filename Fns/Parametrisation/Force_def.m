@@ -25,7 +25,15 @@ if isempty(type_freq); type_freq = 'freq'; end
 
 if strcmp(type_freq,'freq')
     %%% Frequency (in Hz)
-    Forcing.f = .5;
+    if ~exist('lam0','var') 
+     Forcing.f = .5;
+    else
+     if isempty(lam0) 
+      Forcing.f = .5; 
+     else 
+      Forcing.f = lam0;
+     end
+    end 
     
     %%% Frequency parameter
     Forcing.kappa = (2*pi*Forcing.f).^2/g;
