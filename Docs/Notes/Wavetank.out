@@ -1,0 +1,13 @@
+\BOOKMARK [1][-]{section.1}{Preliminaries}{}% 1
+\BOOKMARK [1][-]{section.2}{Solution in the open water}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Green's functions}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{Integral equations}{section.2}% 4
+\BOOKMARK [2][-]{subsection.2.3}{Numerical evaluation of integral equations}{section.2}% 5
+\BOOKMARK [3][-]{subsubsection.2.3.1}{Galerkin technique}{subsection.2.3}% 6
+\BOOKMARK [3][-]{subsubsection.2.3.2}{A relationship between G and rG}{subsection.2.3}% 7
+\BOOKMARK [3][-]{subsubsection.2.3.3}{Kummer method}{subsection.2.3}% 8
+\BOOKMARK [3][-]{subsubsection.2.3.4}{Irregular frequencies}{subsection.2.3}% 9
+\BOOKMARK [3][-]{subsubsection.2.3.5}{Resonances}{subsection.2.3}% 10
+\BOOKMARK [1][-]{section.3}{Wave tank}{}% 11
+\BOOKMARK [2][-]{subsection.3.1}{Wave maker}{section.3}% 12
+\BOOKMARK [2][-]{subsection.3.2}{Beach}{section.3}% 13
