@@ -22,7 +22,7 @@
 %
 % alpha = dimensional attenuation coefficient
 
-function alpha = Main_2dAttn(TEST,fortyp,lam0,Ens_size,conc,COMM)
+function alpha = Main_2dAttn(TEST,fortyp,lam0,Ens_size,conc,LONG,COMM)
 
 %% Inputs & prelims
 
@@ -46,18 +46,18 @@ if strcmp(TEST,'Oceanide')
     Param = ModParam_def(Param,1,10,0,0); 
  end
 
- if 1 % forcing in terms of freq (Hz)
-  per=.65:.15:2; % full scale wave period
-  ind=10;
-  if ~exist('fortyp','var'); fortyp='freq'; end
-  if ~exist('lam0','var'); lam0=per(ind); end
- else   
-  per=6.5:1.5:20; % full scale wave period
-  wlen=(per.^2)*9.81/2*pi/100; % 1:100 wavelength (deep water)
-  ind=10;  
-  if ~exist('fortyp','var'); fortyp='waveno'; end
-  if ~exist('lam0','var'); lam0=2*pi./wlen(ind); end
- end
+%  if 1 % forcing in terms of freq (Hz)
+%   per=.65:.15:2; % full scale wave period
+%   ind=10;
+%   if ~exist('fortyp','var'); fortyp='freq'; end
+%   if ~exist('lam0','var'); lam0=per(ind); end
+%  else   
+%   per=6.5:1.5:20; % full scale wave period
+%   wlen=(per.^2)*9.81/2*pi/100; % 1:100 wavelength (deep water)
+%   ind=10;  
+%   if ~exist('fortyp','var'); fortyp='waveno'; end
+%   if ~exist('lam0','var'); lam0=2*pi./wlen(ind); end
+%  end
  
  Forcing = Force_def(Param.g(1), depth, fortyp, lam0);
 
@@ -117,7 +117,7 @@ clear Param
             fn_WaterIce(parameter_vector, Vert_Dim, DimG,... 
             Roots0, mat_A0, thickness, depth, visc_rp);
         
-if ~LONG %%% LONG FLOE LIMIT %%%
+if LONG %%% LONG FLOE LIMIT %%%
  
  r11 = Rm0(1,1); 
  alpha = -2*log(1-abs(r11)^2);

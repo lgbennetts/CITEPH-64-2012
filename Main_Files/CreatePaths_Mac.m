@@ -11,9 +11,10 @@ path(path,'../Fns/Misc')
 path(path,'../Fns/Parametrisation')
 path(path,'../Fns/CollectData')
 path(path,'../Fns/Floe')
+path(path,'../Fns/WDM')
+path(path,'../Fns/MLM')
+path(path,'../Fns/CITEPH_specifics')
 
 path(path,'../Fns/Misc/Weight_Norm')
-
-path(path,'../WDM')
 
 return

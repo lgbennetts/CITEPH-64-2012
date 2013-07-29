@@ -7,6 +7,8 @@
 %
 % INPUTS:
 %
+% TEST = sting identifying the test to be performed
+%        options: `Oc79', 'Quick'
 % Np = number of floes
 % Ndtm = no. vert modes used in calc DTMs
 % fortyp = 'freq' or 'wlength' or 'waveno'
@@ -19,10 +21,10 @@
 % COMM = flag for comments on (1) or off (0)
 % POOL = flag for matlabpool on (number of cpus) or off (0)
 
-function Main_MultiFloe(Ndtm,fortyp,lam_vec,ens,epsilon,file_marker,COMM,POOL)
+function Main_MultiFloe(TEST,Ndtm,fortyp,lam_vec,ens,epsilon,file_marker,COMM,POOL)
 
 if ~exist('POOL','var'); POOL=0; end
-if ~exist('TEST','var'); TEST='Oc79'; end
+if ~exist('TEST','var'); TEST='Quick'; end
 if ~exist('COMM','var'); COMM=1; end
 
 if ~exist('extra_pts','var'); extra_pts=[]; end
@@ -49,7 +51,16 @@ if strcmp(TEST,'Oc79')
  if ~exist('Np','var'); Np=5*16; end
  if ~exist('ens','var'); ens=1; end
  if ~exist('epsilon','var'); epsilon=0.005; end
- %str_GeomDisks = 'fn_GeomDisks_Oc79';
+ str_GeomDisks = 'fn_GeomDisks_Oc79';
+ 
+elseif strcmp(TEST,'Quick')
+ 
+ if ~exist('RIGID','var'); RIGID=1; end
+ if ~exist('scatyp','var'); scatyp='ela_plt'; end
+ if ~exist('Np','var'); Np=2; end
+ if ~exist('ens','var'); ens=1; end
+ if ~exist('epsilon','var'); epsilon=0.5; end
+ str_GeomDisks = 'fn_GeomDisks_Quicky';
 
 else
     
@@ -105,7 +116,7 @@ TankDim = [40 16 3]; %[15 10 0.5]; % [40 16 2];
 % 
 % GeomDisks_sv0 = GeomDisks;
 
-parfor loop_ens=1:ens
+for loop_ens=1:ens
 
 if loop_ens~=1
  eps0=epsilon;
@@ -115,6 +126,8 @@ end
     
 if strcmp(TEST,'Oc79')
  GeomDisks=fn_GeomDisks_Oc79(TankDim,eps0,COMM,100);
+elseif strcmp(TEST,'Quick')
+ GeomDisks=fn_GeomDisks_Quicky(TankDim,eps0,COMM,100);
 end
 
 %%% Physical properties
@@ -269,6 +282,33 @@ while and(flg~=0,count<=mxc)
    GeomDisks(Np*(loop_rows-1)+loop,:) = ...
       [17.5+(loop_rows-1)+epsx epsy+(TankDim(2)/2/Np)+(TankDim(2)/Np)*(loop-1) 0.495 33e-3];
   end
+ end
+
+ %%% Check disk/disk and disk/wall overlaps
+ flg=overlap(GeomDisks, TankDim, COMM);
+end
+
+if count>mxc
+ disp('Cannot get plates configured without overlap!!!')
+ disp('Exiting')
+ exit
+end
+
+return
+
+% 
+
+function GeomDisks=fn_GeomDisks_Quicky(TankDim,epsilon,COMM,mxc)
+
+count=1; flg=1;
+Np = 2;
+
+while and(flg~=0,count<=mxc)
+ %%% Location and geometry of disks: [x_c y_c Rad thick]
+ for loop=1:Np
+   epsx = 2*(rand-0.5)*epsilon; epsy = 2*(rand-0.5)*epsilon;
+   GeomDisks(loop,:) = ...
+      [17.5+epsx epsy+(TankDim(2)/2/Np)+(TankDim(2)/Np)*(loop-1) 0.495 33e-3];
  end
 
  %%% Check disk/disk and disk/wall overlaps

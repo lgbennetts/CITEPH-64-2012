@@ -1,4 +1,4 @@
-% fn_CompareResults
+% fn_CompareAttnModels
 %
 % INPUTS:
 %
@@ -10,11 +10,11 @@
 % PRBS = [3d real geom, 3d random phases, 2d, Boltzmann steady]
 % COMM = comments on (1) or off (0)
 
-function fn_CompareResults
+function Main_CompareAttnModels
 
 if ~exist('COMM','var'); COMM=0; end
 
-if ~exist('PRBS','var'); PRBS=[1,0,1,0]; end
+if ~exist('PRBS','var'); PRBS=[0,0,1,0]; end
 
 if ~exist('col','var'); mkr='o'; end
 if ~exist('col_2d','var'); col_2d='b'; end
@@ -27,8 +27,7 @@ if ~exist('EN','var'); EN=0*102; end
 if ~exist('DIRS','var'); DIRS=0*300; end
 if ~exist('EVALS','var'); EVALS=0*401; end
 
-%if ~exist('pers','var'); pers = 0.6:0.2:2; end
-if ~exist('pers','var'); pers = [0.6,0.8,1.2:0.2:2]; end
+if ~exist('pers','var'); pers = 0.6:0.2:2; end
 
 if ATTN; figure(ATTN); hold on; end
 if EN; figure(EN); hold on; end
@@ -161,7 +160,7 @@ end
 
 end
 
-%% 2d attenuation
+%% 2d attenuation (long floe limit & no long floe limit)
 
 if PRBS(3)
 
@@ -170,9 +169,7 @@ if ~exist('ens1','var'); ens1 = 100; end
 attn_2d = zeros(1,length(pers));
 
 for loop_p=1:length(pers)
-
- attn_2d(loop_p) = Main_2dAttn('Oceanide','freq',1/pers(loop_p),ens1,conc,COMM);
- 
+ attn_2d(loop_p) = Main_2dAttn('Oceanide','freq',1/pers(loop_p),ens1,conc,1,COMM);
 end
 
 %%% PLOTS 
@@ -181,7 +178,22 @@ end
 
 if ATTN
  figure(ATTN)
- plot(pers,attn_2d,[col_2d mkr],'markersize',12)
+ plot(pers,attn_2d,'bo','markersize',12)
+end
+
+attn_2d = zeros(1,length(pers));
+
+for loop_p=1:length(pers)
+ attn_2d(loop_p) = Main_2dAttn('Oceanide','freq',1/pers(loop_p),ens1,conc,0,COMM);
+end
+
+%%% PLOTS 
+
+%%%% Attenuation coeff 
+
+if ATTN
+ figure(ATTN)
+ plot(pers,attn_2d,'rx','markersize',12)
 end
 
 end
