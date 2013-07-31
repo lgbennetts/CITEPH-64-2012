@@ -25,8 +25,10 @@ if nargin==0
 %  opt         = 'Az';
 end
 
+basedir  = citeph_user_specifics;
+
 if strcmp(test_type,'calib');%%real or calibration
-   fdir  = '/work/timill/CITEPH-data/calibration_waves/';
+   fdir  = [basedir '/calibration_waves/'];
    str1  = 'calib_houle_'; 
    %%
    [expt_dir,T_target,H_target,type,expt_name] = citeph_get_calib_prams(test_num);
@@ -40,7 +42,7 @@ if strcmp(test_type,'calib');%%real or calibration
       nfil_vec = [20 20];%%[S S_zoom]
    end
 elseif strcmp(test_type,'c79')
-   fdir  = '/work/timill/CITEPH-data/results_preliminary/conc_79/';
+   fdir  = [basedir '/results_preliminary/conc_79/'];
    str1  = 'houle_'; 
    %%
    [expt_dir,T_target,H_target,type,expt_name] = citeph_get_c79_prams(test_num);
@@ -57,7 +59,7 @@ elseif strcmp(test_type,'c79')
       str_vec  = {'wave_probes','accelerometers','oceanide_spectra'};
    end
 else%% 'c39'
-   fdir  = '/work/timill/CITEPH-data/results_preliminary/conc_39/';
+   fdir  = [basedir '/results_preliminary/conc_39/'];
    str1  = 'houle_'; 
    %%
    [expt_dir,T_target,H_target,type,expt_name] = citeph_get_c39_prams(test_num);

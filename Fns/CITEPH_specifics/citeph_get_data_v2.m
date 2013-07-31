@@ -17,9 +17,10 @@ if nargin==0
 %  opt         = 'Ay';
    opt         = 'Az';
 end
+basedir  = citeph_user_specifics;
 
 if strcmp(test_type,'calib');%%real or calibration
-   fdir  = '/work/timill/CITEPH-data/calibration_waves/';
+   fdir  = [basedir '/calibration_waves/'];
    str1  = 'calib_houle_'; 
    %%
    [expt_dir,T_target,H_target,type,expt_name] = citeph_get_calib_prams(test_num);
@@ -30,7 +31,7 @@ if strcmp(test_type,'calib');%%real or calibration
       str2  = 'irreg_';
    end
 elseif strcmp(test_type,'c79')
-   fdir  = '/work/timill/CITEPH-data/results_preliminary/conc_79/';
+   fdir  = [basedir '/results_preliminary/conc_79/'];
    str1  = 'houle_'; 
    %%
    [expt_dir,T_target,H_target,type,expt_name] = citeph_get_c79_prams(test_num);
@@ -41,7 +42,7 @@ elseif strcmp(test_type,'c79')
       str2  = 'irr_';
    end
 else%% 'c39'
-   fdir  = '/work/timill/CITEPH-data/results_preliminary/conc_39/';
+   fdir  = [basedir '/results_preliminary/conc_39/'];
    str1  = 'houle_'; 
    %%
    [expt_dir,T_target,H_target,type,expt_name] = citeph_get_c39_prams(test_num);
@@ -54,7 +55,8 @@ else%% 'c39'
 end
 
 if strcmp(opt(1),'A')
-   DD0   = dir([fdir,expt_dir '/accelerometers/*.dat']);
+   root_dir = [fdir,expt_dir '/accelerometers'];
+   DD0   = dir([root_dir '/*.dat']);
    %%
    if strcmp(opt,'Ax')
       nvec  = [2 4 6 8 11 14];
@@ -65,16 +67,18 @@ if strcmp(opt(1),'A')
    end
    DD = DD0(nvec);
 elseif strcmp(opt,'S')
-   DD = dir([fdir,expt_dir '/' wave_probes '/*.dat']);
+   root_dir = [fdir,expt_dir '/wave_probes'];
+   DD       = dir([root_dir '/*.dat']);
 elseif strcmp(opt,'S_zoom')
-   DD = dir([fdir,expt_dir '/' wave_probes_zoom '/*.dat']);
+   root_dir = [fdir,expt_dir '/wave_probes_zoom'];
+   DD       = dir([root_dir '/*.dat']);
 end
 Nprobes  = length(DD);
 
 if ~strcmp(opt,'S_zoom')%%get full time series from all probes
    file_list   = cell(Nprobes,1);
    for j=1:Nprobes
-      fname          = DD(j).name;
+      fname          = [root_dir '/' DD(j).name];
       file_list{j}   = fname;
       %%
       A     = load(fname);

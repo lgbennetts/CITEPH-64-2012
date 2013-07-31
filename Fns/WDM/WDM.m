@@ -17,11 +17,15 @@
 %             hp=log(hf)/log(2);hp=ceil(hp);
 % thm, ths = mean and std of angles as fn of freq and time
 % kkm, kks = mean and std of wavenumber as fn of freq and time
+%
+% FLAGS:
+%
+% DEL      = delete data after use (1=yes, 0=no)
 %  
 % M.Donelan / Bergen 1994.11.26; Modified by A.Babanin and M.Donelan
 % 2012.05 and earlier
 
-function WDM(run_num,TYP)
+function WDM(run_num)
 
 if ~exist('run_num','var'); run_num=1; end
 if ~exist('DEL','var'); DEL=1; end
@@ -218,16 +222,7 @@ end   % end of 'if length(data) > n' loop
 
 if DEL
  eval(['delete ../Fns/WDM/yw',int2str(run) '.mat'])
- if run > 99
-  eval(['delete ../Fns/WDM/s13',int2str(run) '.mat'])
- elseif run > 9
-  eval(['delete ../Fns/WDM/s130',int2str(run) '.mat'])
- else
-  eval(['delete ../Fns/WDM/s1300',int2str(run) '.mat'])
- end
 end % end if DEL
 end % end run=run_num
-
-
 
 return

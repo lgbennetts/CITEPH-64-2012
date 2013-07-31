@@ -1,81 +1,116 @@
 %% citeph_1sensor_movingFFT.m
 %% Author: Timothy Williams
 %% Date:   20130722, 09:20:07 CEST
-function [an_mat,Sn_mat,t_int] = citeph_1sensor_movingFFT(time,displ,T_target,outloc,inloc)
+%
+% INDEP VARIABLES:
+%
+% tm       = vector
+% displ    = vector (same size as tm)
+% Tp       = predicted wave period
+% outloc   = cell {directory, test, sensor type, sensor} 
+% inloc    = string (where the data has come from, to be inc in output)
+% 
+% DEP VARIABLES:
+%
+% an_mat 
+% Sn_mat
+% t_int 
+%
+% FLAGS:
+%
+% DEL = delete and saved data after use
 
-DO_PLOT     = 0;
+function MovingFFT(run)
+
+DO_PLOT     = 1;
 DO_SAVE     = 0;
 data_type   = 1;%%default (1) is wave elevation, 2->acceleration
-%%
-expt_name   = '';
-sensor_name = '';
 
-if nargin==0
-   basedir  = citeph_user_specifics;
-   fdir  = [basedir '/results_preliminary/conc_79/regular/'];
-   fname = [fdir,'23071525.a13/accelerometers/houle_reg_061.dat']
-   A     = load(fname);{A}
-   %%
-   scale_fac   = 100;
-   time        = A(:,1)/sqrt(scale_fac);
-   displ       = A(:,2)/scale_fac;
-   %%
-   T_target = .65;
-   if 1
-      om    = 2*pi/T_target;
-      displ = cos(om*time);
-   end
-   DO_PLOT  = 1;
-   %%
-   if 0
-      outloc   = {[basedir '/results_preliminary/conc_79/regular/23071525.a13_processed'],...
-                    '23071525.a13',...
-                    '/Az/',...
-                    'A1z'};
-   end
+% if nargin==0
+%    fdir  = '/work/timill/CITEPH-data/results_preliminary/conc_79/regular/';
+%    fname = [fdir,'23071525.a13/houle_reg_061.dat']
+%    A     = load(fname);{A}
+%    %%
+%    scale_fac   = 100;
+%    tm        = A(:,1)/sqrt(scale_fac);
+%    displ       = A(:,2)/scale_fac;
+%    %%
+%    Tp = .65;
+%    DO_PLOT  = 1;
+%    %%
+%    outloc   = {'/work/timill/CITEPH-data/results_preliminary/conc_79/regular/',...
+%                  '23071525.a13',...
+%                  '/Az/',...
+%                  'A1z'};
+% 
+% elseif 0
+%    fdir  = '/work/timill/CITEPH-data/calibration_waves/regular/';
+%    fname = [fdir,'18070828.a13/calib_houle_reg_061.dat']
+%    A     = load(fname);
+%    %%
+%    scale_fac   = 100;
+%    tm        = A(:,1)/sqrt(scale_fac);
+%    displ       = A(:,2)/scale_fac;
+%    %%
+%    Tp = 2;
+%    DO_PLOT  = 1;
+% end
+% 
+% if exist('outloc')
+%    DO_SAVE     = 1;
+%    %%
+%    dir1        = outloc{1};
+%    if ~exist(dir1)
+%       eval(['!mkdir ' dir1]);
+%    end
+%    %%
+%    expt_name   = outloc{2};%%date,time,year;
+%    outdir0     = [dir1 '/' expt_name];
+%    if ~exist(outdir0)
+%       eval(['!mkdir ' outdir0]);
+%    end
+%    %%
+%    dir3     = outloc{3};%% eg Az
+%    outdir   = [outdir0 '/' dir3]
+%    if ~exist(outdir)
+%       eval(['!mkdir ' outdir]);
+%    end
+%    %%
+%    sensor_name = outloc{4};%%eg S1,...,S20, A1x, A1y, A1z,...,A6x, A6y, A6z
+%    outfile     = [outdir,'/movingFFT_',sensor_name,'.mat'];
+% 
+%    if strcmp(sensor_name(1),'A')
+%       data_type   = 2;
+%       %data_type   = 1;%%was getting strange results with 2
+%    end
+% end
+
+if ~exist('run_num','var'); run_num=1; end
+if ~exist('DEL','var'); DEL=1; end
+
+for run=run_num  %[062]
+
+if run > 99
+ eval(['load s13',int2str(run),' data description tm Tp'])
+elseif run > 9
+ eval(['load s130',int2str(run),' data description tm Tp'])
+else
+ eval(['load s1300',int2str(run),' data description tm Tp'])
 end
 
-if exist('outloc')
-   DO_SAVE     = 1;
-   %%
-   dir1        = outloc{1};
-   if ~exist(dir1)
-      eval(['!mkdir ' dir1]);
-   end
-   %%
-   expt_name   = outloc{2};%%date,time,year;
-   outdir0     = dir1;
-   %outdir0     = [dir1 '/' expt_name];
-   %if ~exist(outdir0)
-   %   eval(['!mkdir ' outdir0]);
-   %end
-   %%
-   dir3     = outloc{3};%% eg Az
-   outdir   = [outdir0 '/' dir3]
-   if ~exist(outdir)
-      eval(['!mkdir ' outdir]);
-   end
-   %%
-   sensor_name = outloc{4};%%eg S1,...,S20, A1x, A1y, A1z,...,A6x, A6y, A6z
-   outfile     = [outdir,'/movingFFT_',sensor_name,'.mat'];
+cprintf('blue',['>>> ' description '\n'])
 
-   if strcmp(sensor_name(1),'A')
-      data_type   = 2;
-      %data_type   = 1;%%was getting strange results with 2
-   end
-end
+displ = data(:,1);
 
-
-N     = length(time);
-%%
-dt    = time(2)-time(1);
-T     = time(end)-time(1);
+N     = length(tm);
+dt    = tm(2)-tm(1);
+T     = tm(end)-tm(1);
 fs    = 1/dt;
 fmax  = fs/2;
-%figure(1),plot(time,disp);
+%figure(1),plot(tm,disp);
 %%
 
-T_window = 10*T_target
+T_window = 10*Tp;
 df       = 1/T_window;
 Nw       = 2^ceil(log2(T_window/dt))
 T_window = dt*Nw;
@@ -104,7 +139,7 @@ Hs_vec   = zeros(Nwindows);
 
 for m=m0:Nwindows
    jj          = (1+(m-1)*n_shift)+(0:Nw-1)';
-   time0       = time(jj);
+   time0       = tm(jj);
    disp0       = displ(jj);
    t_start     = time0(1);
    t_int(m,:)  = time0([1 end]);
@@ -124,7 +159,7 @@ end
 
 if DO_SAVE
    df = ff(2)-ff(1);
-   dt = time(2)-time(1);
+   dt = tm(2)-tm(1);
    %disp('saving to:')
    outfile
    %disp(outfile)
@@ -142,7 +177,8 @@ if DO_PLOT
    plot(tm_vec,Tm02_vec,'--r');
    hold off;
    GEN_proc_fig('time, s','T_p & T_m02, s');
-   tstr  = [expt_name,', ' sensor_name];
+   %tstr  = [expt_name,', ' sensor_name];
+   tstr  = description;
    ttl   = title(tstr);
    GEN_font(ttl);
 
@@ -168,19 +204,19 @@ if DO_PLOT
 
    for m=m0:Nwindows
       jj          = (1+(m-1)*n_shift)+(0:Nw-1)';
-      time0       = time(jj);
+      time0       = tm(jj);
       disp0       = displ(jj);
       disp0       = disp0-mean(disp0);
       %%
       figure(102);
-      subplot(1,3,1),plot(time,displ,'k');
+      subplot(1,3,1),plot(tm,displ,'k');
       Y  = 1.05*max(displ)*[-1 1];
       ylim(Y);
       hold on;
       plot(time0(1)+0*Y,Y,'r');
       plot(time0(end)+0*Y,Y,'r');
       hold off;
-      GEN_proc_fig('time, s',ylab1)
+      GEN_proc_fig('tm, s',ylab1)
       %%
       subplot(1,3,2);
       plot(time0,disp0,'k');
@@ -201,10 +237,10 @@ if DO_PLOT
       SS       = Sn_max*1.10*[0 1];
 
       hold off;
-      plot(T_target+0*SS,SS,'g')
+      plot(Tp+0*SS,SS,'g')
       hold on;
       plot(periods,Sn_mat(:,m),'k');
-      xlim([0 4*T_target]);
+      xlim([0 4*Tp]);
       ylim(SS);
       GEN_proc_fig('period, s',ylab2)
       drawnow;
@@ -213,7 +249,10 @@ if DO_PLOT
    end
 end
 
-function [Sn,ff,an,t_mean,xtra] = get_ft(time,displ,data_type)
+end % end run
+
+return
+
 %% CALL: [Sn,ff,an,t_mean,xtra] = get_ft(time,displ)
 %% time,displ are input vectors
 %% data_type is 1 (elevation) or 2 (acceleration - need to integrate F. series wrt time)
@@ -225,6 +264,9 @@ function [Sn,ff,an,t_mean,xtra] = get_ft(time,displ,data_type)
 %% xtra  = {Hs,Tp,T_m02}, T_m02=sqrt(m0/m2);
 
 %% high pass filter by subtracting the mean;
+
+function [Sn,ff,an,t_mean,xtra] = get_ft(time,displ,data_type)
+
 displ = displ-mean(displ);
 
 N        = length(time);
@@ -282,3 +324,5 @@ if 0
    tst_var  = [var(displ,1), sum(abs(an.^2)), sum(Sn)*df]
    pause
 end
+
+return

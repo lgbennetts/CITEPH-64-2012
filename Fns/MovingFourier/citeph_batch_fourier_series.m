@@ -1,19 +1,46 @@
-function citeph_batch_fourier_series(test_num,test_type,data_type,opt)
+function citeph_batch_fourier_series(test_type,data_type,opt)
 %% citeph_batch_fourier_series.m
 %% Author: Timothy Williams
 %% Date:   20130724, 13:36:06 CEST
 %% test_num    = test no
 %% test_type   = 'calib','c79' or 'c39'
 %% data_type   = 'S','S_zoom','Ax','Ay','Az'
+%% opt         = 1 (moving fft), 2 (look for collisions), 3 (single fft over full record)
+if nargin==0
+   test_type   = 'c79';
+   %data_type   = 'Ax';
+   %data_type   = 'Ay';
+   data_type   = 'Az';
+   %data_type   = 'S';
+   opt         = 1;
+end
+if strcmp(test_type,'c79')
+   Ntests   = 19;
+else strcmp(test_type,'c39')
+   Ntests   = 12;
+else
+   Ntests   = 17;
+end
+
+%for test_num=1:Ntests
+for test_num=1
+   batch_fourier_series(test_num,test_type,data_type,opt);
+end
+
+function batch_fourier_series(test_num,test_type,data_type,opt)
+%% test_num    = test no
+%% test_type   = 'calib','c79' or 'c39'
+%% data_type   = 'S','S_zoom','Ax','Ay','Az'
+%% opt         = 1 (moving fft), 2 (look for collisions), 3 (single fft over full record)
 
 if nargin==0
    test_num    = 1;
    test_type   = 'c79';
-   data_type   = 'Ax';
+   %data_type   = 'Ax';
    %data_type   = 'Ay';
-   %data_type   = 'Az';
+   data_type   = 'Az';
    %data_type   = 'S';
-   opt   = 3;
+   opt         = 1;
 end
 
 if strcmp(test_type,'calib')
@@ -45,13 +72,16 @@ outloc      = cell(4,1);
 jb          = find(file_list{1}=='/');
 outloc{1}   = [file_list{1}(1:jb(end-1)-1),'_processed'];
    %% eg /work/timill/CITEPH-data/results_preliminary/conc_79/regular_processed
-outloc{2}   = file_list{1}(jb(end-1)+1:jb(end)-1);%% eg 23051525.a13
+outloc{2}   = file_list{1}(jb(end-2)+1:jb(end-1)-1);%% eg 23051525.a13
 outloc{3}   = ['/' data_type '/'];
 
-%for j=1:3
-%   outloc{j}
-%end
-%return;
+if 0
+   file_list{1}
+   for j=1:3
+      outloc{j}
+   end
+   return;
+end
 
 if strcmp(data_type,'Az')
    sname_list  = {'A1z';'A4z';'A5z';'A6z'};
@@ -90,11 +120,11 @@ for n=1:Nprobes
    end
 
    inloc = file_list{n};
-   if opt==1%%moving FFT
+   if opt==1%%moving FFT;
       [an_mat,Sn_mat,t_int]   = citeph_1sensor_movingFFT(time0,displ,T_target,outloc,inloc);
-   elseif opt==2%%look for collisions
+   elseif opt==2%%look for collisions;
       [t_col,a_col]  = citeph_1sensor_collisions(time0,displ,T_target,outloc,inloc);
-   else
+   else%%single FFT over the whole record;
       [an,Sn]   = citeph_1sensor(time0,displ,T_target,outloc,inloc);
    end
 end

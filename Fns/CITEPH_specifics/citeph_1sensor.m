@@ -9,8 +9,9 @@ data_type   = 1;%%default (1) is wave elevation, 2->acceleration
 
 
 if nargin==0
-   fdir  = '/work/timill/CITEPH-data/results_preliminary/conc_79/regular/';
-   fname = [fdir,'23071525.a13/houle_reg_061.dat']
+   basedir  = citeph_user_specifics;
+   fdir  = [basedir '/results_preliminary/conc_79/regular/'];
+   fname = [fdir,'23071525.a13/accelerometers/houle_reg_061.dat']
    A     = load(fname);{A}
    %%
    scale_fac   = 100;
@@ -20,22 +21,12 @@ if nargin==0
    T_target = .65;
    DO_PLOT  = 1;
    %%
-   outloc   = {'/work/timill/CITEPH-data/results_preliminary/conc_79/regular/',...
-                 '23071525.a13',...
-                 '/Az/',...
-                 'A1z'};
-
-elseif 0
-   fdir  = '/work/timill/CITEPH-data/calibration_waves/regular/';
-   fname = [fdir,'18070828.a13/calib_houle_reg_061.dat']
-   A     = load(fname);
-   %%
-   scale_fac   = 100;
-   time        = A(:,1)/sqrt(scale_fac);
-   displ       = A(:,2)/scale_fac;
-   %%
-   T_target = 2;
-   DO_PLOT  = 1;
+   if 0
+      outloc   = {[basedir '/results_preliminary/conc_79/regular/'],...
+                    '23071525.a13_processed',...
+                    '/Az/',...
+                    'A1z'};
+   end
 end
 
 if exist('outloc')
@@ -183,14 +174,7 @@ if 0%data_type==2
    an(1) = 0;
 end
 
-Sn(1)    = abs(an(1)^2)/df;
-jj       = 2:N/2;
-Sn(jj)   = abs( an(jj).^2 )/df + abs( an(N+1-jj).^2 )/df;
-%je       = N/2+1;
-%Sn(je)   = 2*abs( an(je).^2 )/df;
-%Sn = [abs(an(1))^2;abs(an(2:N2/2)).^2+abs(an(N2:-1:N2/2+2)).^2]/df;
-
-%ff       = (0:df:fmax-df)';
+[Sn,ff]  = citeph_an2Sn(an,df);
 periods  = 1./ff;
 %%
 [Smax,jmax] = max(Sn);
@@ -207,13 +191,4 @@ xtra  = {Hs,Tp,T_m02};
 if 0
    tst_var  = [var(displ,1), sum(abs(an.^2)), sum(Sn)*df]
    periods(jmax-1:jmax+1)
-%  figure(3)
-%  subplot(2,1,1), plot(periods,Sn);
-%  %%
-%  subplot(2,1,2), plot(time,disp);
-%  hold on;
-%  disp_app = exp(-2i*pi*time*ff0')*an;
-%  plot(time,disp_app,'--r');
-%  hold off;
-%  pause
 end
