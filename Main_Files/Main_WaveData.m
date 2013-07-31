@@ -36,7 +36,7 @@
 %
 % written by L Bennetts Jan 2013 / Adelaide
 
-function Main_WaveData(RUNIT,CREATEIT,probe,conc,Tp,Hm)
+function Main_WaveData(RUNIT,CREATEIT,Tp,Hm,conc,probe)
 
 %% Prelims
 
@@ -49,7 +49,10 @@ if ~exist('DEL','var'); DEL=1; end
 if ~exist('Tp','var'); Tp=2; end 
 if ~exist('Hm','var'); Hm=100; end
 if ~exist('conc','var'); conc=79; end
-if ~exist('probe','var'); probe=10; end
+if ~exist('probe','var'); 
+ if strcmp(CREATEIT(2:3),'HS'); probe=10;
+ elseif strcmp(CREATEIT(1:3),'ACC'); probe=1; end
+end
   
 if CREATEIT~=0
  
@@ -80,11 +83,20 @@ if CREATEIT~=0
  Tp = 1/f; Hm = 2;
  
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- elseif or(strcmp(CREATEIT,'LHS'),strcmp(CREATEIT,'RHS')) % tests
+ elseif or(or(strcmp(CREATEIT,'LHS'),strcmp(CREATEIT,'RHS')),...
+   strcmp(CREATEIT(1:3),'ACC'))                                % tests
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
   basedir  = citeph_user_specifics;
   dum_path = [basedir '/results_preliminary/'];
+  
+  eval(['ex=exist(dum_path);'])
+  
+  if ex~=7
+   cprintf('red','path does not exist\n')
+   return
+  end
+  clear ex
   
   n = 2^12;
   
@@ -179,9 +191,9 @@ if CREATEIT~=0
   description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
    ' wave maker side;' ...
    ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
-   ' Tm=' num2str(c_prams(test).period/10) ' [s]' ...
-   ' f=' num2str(10/c_prams(test).period) ' [Hz]' ...
-   ' probes=' int2str(probe)] ;
+   ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
+   ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
+   CREATEIT ' probe(s)=' int2str(probe)] ;
   
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
  elseif strcmp(CREATEIT,'RHS') % data from expts RHS
@@ -209,11 +221,51 @@ if CREATEIT~=0
   description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
    ' beach side' ...
    ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
-   ' Tm=' num2str(c_prams(test).period/10) ' [s]' ...
-   ' f=' num2str(10/c_prams(test).period) ' [Hz]' ...
-   ' probes=' int2str(probe)] ;
+   ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
+   ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
+   CREATEIT ' probe(s)=' int2str(probe)] ;
   
- end
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
+  elseif strcmp(CREATEIT(1:3),'ACC') % data from expts accels
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  
+  if strcmp(CREATEIT(4),'x')
+   inds = [8,11,14,2,4,6];
+  elseif strcmp(CREATEIT(4),'y')
+   inds = [9,12,15,1,5,7];
+  elseif strcmp(CREATEIT(4),'z')
+   inds = [10,13,16,3];
+  end
+  
+  dum_nms = dir([dum_path c_prams(test).dirname '/houle_reg_*']);
+  np = length(inds);
+  count = length(dum_nms)-56+40; % 56 files(20 probes, 20 zoom, 16 accel) 
+  
+  cprintf('magenta','Need the accelerometer positions\n')
+  
+  X = 0; Y = 0;
+  
+  dum=load([dum_path c_prams(test).dirname '/' dum_nms(count+inds(1)).name]);
+  tm = dum(:,1)/10; tm = tm(:);
+  data(:,1) = dum(:,2); clear dum
+  
+  for loop_xy=2:np
+   X(loop_xy)=0; Y(loop_xy)=0;
+   dum=load([dum_path c_prams(test).dirname '/' dum_nms(count+inds(loop_xy)).name]);
+   data(:,loop_xy) = dum(:,2); clear dum 
+  end
+  ns = 1/tm(2);
+  
+  X = X(probe); Y = Y(probe); data = data(:,probe);
+  
+  description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
+   ' accelerometers' ...
+   ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
+   ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
+   ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
+   CREATEIT ' probe(s)=' int2str(probe)] ;
+  
+ end % if CREATEIT=='string'
   
   %% Save data
     
