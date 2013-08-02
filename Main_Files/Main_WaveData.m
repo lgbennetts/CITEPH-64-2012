@@ -1,6 +1,7 @@
 % Main_WaveData
 %
-% generate some simple data to test WDM method
+% either generate some simple data to test FFT/WDM analysis methods
+% or collect data from CITEPH experiments for analysis
 %
 % INPUTS:
 %
@@ -10,6 +11,7 @@
 % probe = select the probe (for Oceanide test data only) 
 %         1-10 with 10 being the centre
 %         use fn_whichprobe(side,probe,fig) to identify probe
+% zoom  = used zoomed in data (0=off,1=on)
 %
 % VARIABLES:
 % [R,A]    = location of probes/staffs (A in rads)
@@ -36,7 +38,7 @@
 %
 % written by L Bennetts Jan 2013 / Adelaide
 
-function Main_WaveData(RUNIT,CREATEIT,Tp,Hm,conc,probe)
+function Main_WaveData(RUNIT,CREATEIT,Tp,Hm,conc,probe,zoom)
 
 %% Prelims
 
@@ -53,6 +55,7 @@ if ~exist('probe','var');
  if strcmp(CREATEIT(2:3),'HS'); probe=10;
  elseif strcmp(CREATEIT(1:3),'ACC'); probe=1; end
 end
+if ~exist('zoom','var'); zoom=0; end
   
 if CREATEIT~=0
  
@@ -171,7 +174,7 @@ if CREATEIT~=0
  elseif strcmp(CREATEIT,'LHS') % data from expts LHS
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
-  count = length(dum_nms)-56+1; % 56 files(20 probes, 20 zoom, 16 accel) 
+  count = length(dum_nms)-56+1+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
   
   X(1)=xy_lhs(1,1); Y(1)=xy_lhs(1,2);
   dum=load([dum_path c_prams(test).dirname '/' dum_nms(count).name]);
@@ -195,13 +198,15 @@ if CREATEIT~=0
    ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
    CREATEIT ' probe(s)=' int2str(probe)] ;
   
+  data_type = 1;
+  
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
  elseif strcmp(CREATEIT,'RHS') % data from expts RHS
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
   dum_nms = dir([dum_path c_prams(test).dirname '/houle_reg_*']);
   np = size(xy_lhs,1);
-  count = length(dum_nms)-56+11; % 56 files(20 probes, 20 zoom, 16 accel) 
+  count = length(dum_nms)-56+11+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
   
   X(1)=xy_rhs(1,1); Y(1)=xy_rhs(1,2);
   dum=load([dum_path c_prams(test).dirname '/' dum_nms(count).name]);
@@ -209,7 +214,7 @@ if CREATEIT~=0
   data(:,1) = dum(:,2)/100; clear dum
   count=count+1;
   for loop_xy=2:np
-   X(loop_xy)=xy_lhs(loop_xy,1); Y(loop_xy)=xy_lhs(loop_xy,2);
+   X(loop_xy)=xy_rhs(loop_xy,1); Y(loop_xy)=xy_rhs(loop_xy,2);
    dum=load([dum_path c_prams(test).dirname '/' dum_nms(count).name]);
    data(:,loop_xy) = dum(:,2)/100; clear dum 
    count=count+1;
@@ -224,6 +229,8 @@ if CREATEIT~=0
    ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
    ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
    CREATEIT ' probe(s)=' int2str(probe)] ;
+  
+  data_type = 1;
   
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
   elseif strcmp(CREATEIT(1:3),'ACC') % data from expts accels
@@ -265,19 +272,21 @@ if CREATEIT~=0
    ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
    CREATEIT ' probe(s)=' int2str(probe)] ;
   
+  data_type = 2;
+  
  end % if CREATEIT=='string'
   
   %% Save data
     
   if run > 99
    eval(['save ../Fns/WDM/s13',int2str(run), ' X Y n ns data description'...
-    ' tm Tp TYP'])
+    ' tm Tp TYP data_type'])
   elseif run > 9
    eval(['save ../Fns/WDM/s130',int2str(run), ' X Y n ns data description'...
-    ' tm Tp TYP'])
+    ' tm Tp TYP data_type'])
   else
    eval(['save ../Fns/WDM/s1300',int2str(run), ' X Y n ns data description'...
-    ' tm Tp TYP'])
+    ' tm Tp TYP data_type'])
   end
 
  end % end run

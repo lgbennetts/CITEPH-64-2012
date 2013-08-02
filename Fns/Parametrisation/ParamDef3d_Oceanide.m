@@ -4,6 +4,8 @@
 
 function Param = ParamDef3d_Oceanide(GeomDisks,RIGID)
 
+if ~exist('GeomDisks','var'); GeomDisks=[0,0,0.495,33e-3]; end
+
 % Floes are rigid:
 if ~exist('RIGID','var'); RIGID=1; end
 

@@ -17,19 +17,24 @@
 % Ens_size = how many members of ensemble
 %            only necessary when long floe limit off
 % COMM = comments on or off
+% Nd   = number of vertical modes
 %
 % OUTPUTS:
 %
 % alpha = dimensional attenuation coefficient
+% Rm    = reflected energy
+% Tm    = Transmitted energy
 
-function alpha = Main_2dAttn(TEST,fortyp,lam0,Ens_size,conc,LONG,COMM)
+function [alpha, Rm, Tm] = ...
+ Main_2dAttn(TEST,fortyp,lam0,Ens_size,conc,LONG,COMM,Nd)
 
 %% Inputs & prelims
 
 path(path,'../../EXTRA_MATLAB_Fns');
 if ~exist('LONG','var'); LONG=0; end
 if ~exist('COMM','var'); COMM=1; end
-if ~exist('Ens_size','var'); Ens_size = 200; end 
+if ~exist('Ens_size','var'); Ens_size = 1; end
+if ~exist('Nd','var'); Nd = 101; end
 
 if ~exist('TEST','var'); TEST='Oceanide'; end
 
@@ -43,7 +48,7 @@ if strcmp(TEST,'Oceanide')
  
  if ~exist('Param','var'); 
     Param = ParamDef3d_Oceanide([0,0,floe_length,thickness]); 
-    Param = ModParam_def(Param,1,10,0,0); 
+    Param = ModParam_def(Param,1,Nd,0,0); 
  end
 
 %  if 1 % forcing in terms of freq (Hz)
@@ -121,6 +126,8 @@ if LONG %%% LONG FLOE LIMIT %%%
  
  r11 = Rm0(1,1); 
  alpha = -2*log(1-abs(r11)^2);
+ 
+ Rm=[]; Tm=[];
 
 else %%% NO LONG FLOE LIMIT %%% 
             
@@ -128,17 +135,24 @@ else %%% NO LONG FLOE LIMIT %%%
 
  for loop=1:Ens_size   
     
-  dum_fl = floe_length + 2*sd*(rand - 0.5);   
+  if Ens_size==1
+   dum_fl = floe_length;
+  else
+   dum_fl = floe_length + 2*sd*(rand - 0.5);
+  end
         
   [Rm,Tm,Rp,Tp] = ...
             fn_IndFloe(dum_fl, Rm0, Tm0, Rp0, Tp0, Roots);
         
+  r_vec(loop) = abs(Rm(1,1))^2;
   t_vec(loop) = abs(Tm(1,1))^2;      
         
  end
+ 
+ Rm = mean(r_vec); Tm = mean(t_vec);
 
  % Non-Dimensional attenuation coefficient
- alpha = -log(mean(t_vec));
+ alpha = -log(Tm);
 
 end
 

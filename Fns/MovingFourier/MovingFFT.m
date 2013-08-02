@@ -2,6 +2,10 @@
 %% Author: Timothy Williams
 %% Date:   20130722, 09:20:07 CEST
 %
+% INPUTS
+%
+% run_num = specifies runs to analyse via file containing data
+%
 % INDEP VARIABLES:
 %
 % tm       = vector
@@ -18,26 +22,34 @@
 %
 % FLAGS:
 %
-% DEL = delete and saved data after use
+% DO_PLOT
+% DO_SIGNAL
+% DO_VID
+% DO_SAVE
+% data_type   = 1 (default) wave elevation, 2 acceleration
+% DEL         = delete and saved data after use
 
-function MovingFFT(run)
+function MovingFFT(run_num)
 
-DO_PLOT     = 1;
-DO_SAVE     = 0;
-data_type   = 1;%%default (1) is wave elevation, 2->acceleration
+DO_SIGNAL     = 1;
+DO_PLOT       = 0;
+DO_VID        = 0;
+DO_SAVE       = 0;
 
 if ~exist('run_num','var'); run_num=1; end
 if ~exist('DEL','var'); DEL=1; end
 
-for run=run_num  %[062]
+for run=run_num  
 
 if run > 99
- eval(['load s13',int2str(run),' data description tm Tp'])
+ eval(['load s13',int2str(run),' data description tm Tp data_type X'])
 elseif run > 9
- eval(['load s130',int2str(run),' data description tm Tp'])
+ eval(['load s130',int2str(run),' data description tm Tp data_type X'])
 else
- eval(['load s1300',int2str(run),' data description tm Tp'])
+ eval(['load s1300',int2str(run),' data description tm Tp data_type X'])
 end
+
+if ~exist('data_type','var'); data_type=1; end
 
 cprintf('blue',['>>> ' description '\n'])
 
@@ -113,6 +125,8 @@ if DO_SAVE
    %GEN_pause
 end
 
+%% Plots & video
+
 if DO_PLOT
    %%plot time series:
    figure(101);
@@ -137,9 +151,12 @@ if DO_PLOT
    plot(tm_vec,Hs_vec);
    GEN_proc_fig('time, s',ylab);
    
-   pause
+end
 
-   %%plot moving window:
+if DO_VID %plot moving window:
+
+   pause
+ 
    if data_type==2
       ylab1 = 'a, ms^{-2}';
       ylab2 = 'S, m^2s^{-3}';
@@ -147,7 +164,6 @@ if DO_PLOT
       ylab1 = 'w, m';
       ylab2 = 'S, m^2s';
    end
-
 
    for m=m0:Nwindows
       jj          = (1+(m-1)*n_shift)+(0:Nw-1)';
@@ -194,6 +210,56 @@ if DO_PLOT
       hold off;
       pause(0.05);
    end
+   
+elseif DO_PLOT % spectogram
+ 
+   figure(102);
+   [Smax,jmax] = max(Sn_mat(:,m));
+   periods  = 1./ff;
+   
+   hold off;
+   surf(t_req*[0:Nwindows-1],periods,log10(Sn_mat))
+   shading interp
+   view([0,90])
+   xlim([0, t_req*(Nwindows-1)])
+   ylim([0 4*Tp]);
+   GEN_proc_fig('time, s','period, s')
+   ttl = title('log_{10}(S)');
+   GEN_font(ttl) 
+   colorbar
+   
+   drawnow;
+   
+end % end DO_VID/DO_PLOT
+
+if and(DO_SIGNAL,~DO_VID)
+ if data_type==2
+      ylab1 = 'a, ms^{-2}';
+      ylab2 = 'S, m^2s^{-3}';
+   else
+      ylab1 = 'w, m';
+      ylab2 = 'S, m^2s';
+   end
+   
+   figure(100);
+   plot(tm,data,'k');
+   Y  = 1.05*max(data)*[-1 1];
+   ylim(Y);
+   GEN_proc_fig('tm, s',ylab1)
+   
+   tstr  = description;
+   ttl   = title(tstr);
+   GEN_font(ttl);
+
+   hold on
+   
+   Tind = fn_TestTimes(1/Tp,X);
+   
+   for loop=6:length(Tind)
+    plot(Tind(loop).time + 0*Y, Y,'r--');
+   end
+   
+   %hold off
 end
 
 end % end run
