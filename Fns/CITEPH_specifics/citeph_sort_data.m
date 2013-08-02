@@ -1,7 +1,21 @@
 function citeph_sort_data(test_type)
 
-for test_num=4:19
-%for test_num=1:19
+if nargin==0
+   %test_type   = 'c39';
+   %test_type   = 'c79';
+   test_type   = 'calib';
+end
+
+if strcmp(test_type,'c79')
+   Ntests   = 19;
+elseif strcmp(test_type,'c39')
+   Ntests   = 12;
+elseif strcmp(test_type,'calib')
+   Ntests   = 17;
+end
+
+%for test_num=2:16
+for test_num=1:Ntests
    sort_data(test_type,test_num)
 end
 
@@ -35,11 +49,12 @@ if strcmp(test_type,'calib');%%real or calibration
    %%
    if strcmp(type,'Regular');%% reg/irreg waves
       str2  = 'reg_';
-      nfil_vec = [20 20];%%[S S_zoom]
-      str_vec  = {'S','S_zoom'};
+      nfil_vec = [20 20];
+      str_vec  = {'wave_probes','wave_probes_zoom'};
    else
       str2  = 'irreg_';
-      nfil_vec = [20 20];%%[S S_zoom]
+      nfil_vec = [20 2];
+      str_vec  = {'wave_probes','oceanide_spectra'};
    end
 elseif strcmp(test_type,'c79')
    fdir  = [basedir '/results_preliminary/conc_79/'];
@@ -66,12 +81,12 @@ else%% 'c39'
    %%
    if strcmp(type,'Regular');%% reg/irreg waves
       str2     = 'reg_';
-      nfil_vec = [20 20 16];
+      nfil_vec = [20 20 14];
       %str_vec  = {'S','S_zoom','A'};
       str_vec  = {'wave_probes','wave_probes_zoom','accelerometers'};
    else
       str2     = 'irr_';
-      nfil_vec = [20 16 2];
+      nfil_vec = [20 14 2];
       %str_vec  = {'S','A','oceanide_spectra'};
       str_vec  = {'wave_probes','accelerometers','oceanide_spectra'};
    end
@@ -91,7 +106,7 @@ for j=length(str_vec):-1:1
    Nmoved   = 0;
    while Nmoved<nfil_vec(j)
       nn    = nn-1;
-      fname = DD(nn).name
+      fname = DD(nn).name;
       %eval(['!ln -s ' fx_dir '/' fname ' ' dir2]);
       eval(['!mv ' fx_dir '/' fname ' ' dir2]);
       Nmoved   = Nmoved+1;

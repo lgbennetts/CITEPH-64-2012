@@ -58,12 +58,22 @@ if strcmp(opt(1),'A')
    root_dir = [fdir,expt_dir '/accelerometers'];
    DD0   = dir([root_dir '/*.dat']);
    %%
-   if strcmp(opt,'Ax')
-      nvec  = [2 4 6 8 11 14];
-   elseif strcmp(opt,'Ay')
-      nvec  = [1 5 7 9 12 15];
-   else%% 'Az'
-      nvec  = [3 10 13 16];
+   if strcmp(test_type,'c79')
+      if strcmp(opt,'Ax')
+         nvec  = [2 4 6 8 11 14];
+      elseif strcmp(opt,'Ay')
+         nvec  = [1 5 7 9 12 15];
+      else%% 'Az'
+         nvec  = [3 10 13 16];
+      end
+   elseif strcmp(test_type,'c39')
+      if strcmp(opt,'Ax')
+         nvec  = [2 4 6 9 12];
+      elseif strcmp(opt,'Ay')
+         nvec  = [1 5 7 10 13];
+      else%% 'Az'
+         nvec  = [3 8 11 14];
+      end
    end
    DD = DD0(nvec);
 elseif strcmp(opt,'S')
