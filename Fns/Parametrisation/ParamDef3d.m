@@ -25,7 +25,7 @@ Param.nu = 0.3*ones(Param.Np,1);
 if ~RIGID
  Param.E = 750*1e6*ones(Param.Np,1);
 else
- Param.E = 750*1e18*ones(Param.Np,1);
+ Param.E = 750*(10^RIGID)*ones(Param.Np,1);
 end
     
 % Draughts (in m)

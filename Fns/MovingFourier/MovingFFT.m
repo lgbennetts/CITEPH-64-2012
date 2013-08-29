@@ -1,6 +1,6 @@
-%% citeph_1sensor_movingFFT.m
-%% Author: Timothy Williams
-%% Date:   20130722, 09:20:07 CEST
+% citeph_1sensor_movingFFT.m
+% Author: Timothy Williams
+% Date:   20130722, 09:20:07 CEST
 %
 % INPUTS
 %
@@ -31,8 +31,8 @@
 
 function MovingFFT(run_num)
 
-DO_SIGNAL     = 1;
-DO_PLOT       = 0;
+DO_SIGNAL     = 0;
+DO_PLOT       = 1;
 DO_VID        = 0;
 DO_SAVE       = 0;
 
@@ -51,7 +51,9 @@ end
 
 if ~exist('data_type','var'); data_type=1; end
 
-cprintf('blue',['>>> ' description '\n'])
+%cprintf('blue',['>>> ' description '\n'])
+disp(['>>> ' description])
+
 
 % Restrict to one probe
 if size(data,2)~=1
@@ -127,9 +129,14 @@ end
 
 %% Plots & video
 
+%%% plot peak period and sqrt{m0/m2} (av no. down crossings of 0)
+
+fig=101;
+
 if DO_PLOT
+   if 0
    %%plot time series:
-   figure(101);
+   figure(fig);fig=fig+1;
    subplot(2,1,1);
    plot(tm_vec,Tp_vec,'k');
    hold on;
@@ -150,11 +157,14 @@ if DO_PLOT
    end
    plot(tm_vec,Hs_vec);
    GEN_proc_fig('time, s',ylab);
-   
+   end
 end
 
-if DO_VID %plot moving window:
+%%% plot moving window:
 
+if DO_VID 
+ 
+   cprintf('red','Paused: hit key to continue...')
    pause
  
    if data_type==2
@@ -171,7 +181,7 @@ if DO_VID %plot moving window:
       disp0       = data(jj);
       disp0       = disp0-mean(disp0);
       %%
-      figure(102);
+      figure(fig); fig=fig+1;
       subplot(1,3,1),plot(tm,data,'k');
       Y  = 1.05*max(data)*[-1 1];
       ylim(Y);
@@ -211,37 +221,75 @@ if DO_VID %plot moving window:
       pause(0.05);
    end
    
-elseif DO_PLOT % spectogram
+%%% spectogram   
+   
+elseif DO_PLOT 
  
-   figure(102);
+   figure(fig); fig=fig+1;
+   h1=subplot(2,1,1);
    [Smax,jmax] = max(Sn_mat(:,m));
    periods  = 1./ff;
    
    hold off;
-   surf(t_req*[0:Nwindows-1],periods,log10(Sn_mat))
+   surf(h1,tm_vec(:,1),periods,log10(Sn_mat))
    shading interp
-   view([0,90])
-   xlim([0, t_req*(Nwindows-1)])
-   ylim([0 4*Tp]);
+   view(h1,[0,90])
+   xlim(h1,[tm_vec(1,1), tm_vec(end,1)]) 
+   ylim(h1,[0 4*Tp]);
    GEN_proc_fig('time, s','period, s')
-   ttl = title('log_{10}(S)');
+   tstr  = description;
+   ttl   = title(tstr);
+   %title('log_{10}(S)');
    GEN_font(ttl) 
    colorbar
+   
+%%% response at harmonics   
+   
+   h2=subplot(2,1,2); hold on  
+   
+   cols = {'b','r','g','c','m','y'};
+   
+   str = [];
+   for loop=1:2
+    [~,jj]=min(abs(periods-Tp/loop));
+    plot(h2,tm_vec(:,1),Sn_mat(jj,:),cols{loop})
+    str=[str ' ''\tau_{' int2str(loop) '}=' num2str(periods(jj)) ' '' '  ',' ];
+   end
+   str = str(1:end-1);
+   set(h2,'yscale','log')
+   
+   eval(['legend(' str ', ''location'' , ''southeast'' )'])
+   
+   GEN_proc_fig('time, s','log_{10}S(\tau_{i})')
+   
+   Y = get(h2,'ylim');
+   
+   Tind = fn_TestTimes(1/Tp,X);
+   
+   hold on
+   
+   for loop=6:length(Tind)
+    plot(h2,Tind(loop).time + 0*Y, Y,'k:');
+   end
+   
+   hold off
    
    drawnow;
    
 end % end DO_VID/DO_PLOT
 
+%%% signal
+
 if and(DO_SIGNAL,~DO_VID)
  if data_type==2
-      ylab1 = 'a, ms^{-2}';
-      ylab2 = 'S, m^2s^{-3}';
-   else
-      ylab1 = 'w, m';
-      ylab2 = 'S, m^2s';
-   end
+  ylab1 = 'a, ms^{-2}';
+  ylab2 = 'S, m^2s^{-3}';
+ else
+  ylab1 = 'w, m';
+  ylab2 = 'S, m^2s';
+ end
    
-   figure(100);
+   figure(fig); fig=fig+1;
    plot(tm,data,'k');
    Y  = 1.05*max(data)*[-1 1];
    ylim(Y);

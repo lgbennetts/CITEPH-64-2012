@@ -7,7 +7,7 @@ function Param = ParamDef3d_Oceanide(GeomDisks,RIGID)
 if ~exist('GeomDisks','var'); GeomDisks=[0,0,0.495,33e-3]; end
 
 % Floes are rigid:
-if ~exist('RIGID','var'); RIGID=1; end
+if ~exist('RIGID','var'); RIGID=10; end
 
 % Number of disks
 Param.Np = size(GeomDisks,1);
@@ -32,7 +32,7 @@ Param.nu = 0.3*ones(Param.Np,1);
 if ~RIGID
  Param.E = 750*1e6*ones(Param.Np,1);
 else
- Param.E = 750*1e18*ones(Param.Np,1);
+ Param.E = 750*(10^RIGID)*ones(Param.Np,1);
 end
     
 % Draughts (in m)

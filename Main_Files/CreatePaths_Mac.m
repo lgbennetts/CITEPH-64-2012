@@ -17,6 +17,7 @@ path(path,'../Fns/CITEPH_specifics')
 path(path,'../Fns/MovingFourier')
 
 path(path,'../Fns/Misc/Weight_Norm')
+%path(path,'../Fns/Misc/Weight_Ones')
 
 if strcmp(getenv('LOGNAME'),'a1612881')
  path(path,'../../EXTRA_MATLAB_Fns'); % For colour

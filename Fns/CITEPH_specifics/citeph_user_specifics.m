@@ -6,8 +6,11 @@ function basedir = citeph_user_specifics()
 
 user_name   = getenv('LOGNAME');
 if strcmp(user_name,'timill')
-   basedir  = '/work/timill/CITEPH-data';
+   basedir  = '/work/timill/CITEPH-data/results_preliminary/';
+   cprintf('blue','Tim: your basedir needs modification\n'); 
 elseif strcmp(user_name,'a1612881')
    basedir  = ['/Volumes/My_Passport/CITEPH_2012-053_CITEPH' ...
-    '_WAVE_PROPOGATION_IN_ICE-COVERED_SEAS'];
+    '_WAVE_PROPOGATION_IN_ICE-COVERED_SEAS/attenuation_tests/'];
 end
+
+return
