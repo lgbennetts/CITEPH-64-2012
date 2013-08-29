@@ -7,13 +7,18 @@
 % GeomDisk = [x-location y-location Radius thickess] (coords not needed!)
 % file_marker = string for file identifier; use 0 for no write
 % tol = tolerance on eigenvalues being real/imag
+%
+% FLAGS:
+%
 % DTYP = flag for discretisation type: point-wise (0) or Fourier (1)
 % COMM = flag for comments on (1) or off (0)
 % PLOT = flag for plots on (1) or off (0)
+% SURGE = include surge motion
+% RIGID = rigid disk (inf) or elastic disk (rigidity=10^RIGID)
 
 function [I,th_vec] = Main_Boltzmann(TEST, fortyp, lam0, conc, th_res, COMM, PLOT)
 
-if ~exist('TEST','var'); TEST='Oceanide'; end
+if ~exist('TEST','var'); TEST = 'default'; end %TEST='Oceanide'; end %
 if ~exist('PLOT','var'); PLOT=1; end
 
 %% Prelims
@@ -21,21 +26,33 @@ if ~exist('PLOT','var'); PLOT=1; end
 if ~exist('tol','var'); tol=1e-5; end
 
 if ~exist('COMM','var'); COMM=1; end
-if COMM; path(path,'../../EXTRA_MATLAB_Fns'); end
 if ~exist('DTYP','var'); DTYP=0; end
+if ~exist('TTYP','var'); TTYP='symm'; end
 
-if ~exist('th_res','var'); th_res=5; end
-th_vec = linspace(0,1,2*th_res); th_vec = unique([-th_vec,th_vec]);
-th_vec(1)=[];
-refs = find(or(th_vec>0.5,th_vec<-0.5));
-incs = find(~or(th_vec>0.5,th_vec<-0.5));
-th_vec = pi*th_vec;
+if ~exist('th_res','var'); th_res=10; end
+
+if strcmp(TTYP,'asymm')
+ th_vec = linspace(0,1,2*th_res); th_vec = unique([-th_vec,th_vec]);
+ th_vec(1)=[];
+ refs = find(or(th_vec>0.5,th_vec<-0.5));
+ incs = find(~or(th_vec>0.5,th_vec<-0.5));
+ th_vec = pi*th_vec;
+elseif strcmp(TTYP,'symm')
+ th_vec = linspace(0,1,2*th_res+1); 
+ th_vec = 0.5*(th_vec(2:end)+th_vec(1:end-1));
+ th_vec = [-fliplr(th_vec),th_vec];
+%  th_vec = linspace(-1,1,4*th_res); 
+%  th_vec = 0.5*(th_vec(2:end)+th_vec(1:end-1));
+%  th_vec = pi*th_vec;
+end
+ 
 
 %% Define test
 
 if strcmp(TEST,'Oceanide')
     
- if ~exist('RIGID','var'); RIGID=1; end   
+ if ~exist('RIGID','var'); RIGID=6; end 
+ if ~exist('SURGE','var'); SURGE=0; end   
 
  if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.495,33e-3]; end
  if ~exist('Param','var'); Param = ParamDef3d_Oceanide(GeomDisk); 
@@ -53,9 +70,12 @@ if strcmp(TEST,'Oceanide')
  
  dist = 5;
  
-else
+elseif strcmp(TEST,'default')
+ 
+ if ~exist('RIGID','var'); RIGID=0; end 
+ if ~exist('SURGE','var'); SURGE=0; end   
     
- if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.495,0.1]; end
+ if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.5,0.1]; end
  if ~exist('Param','var'); Param = ParamDef3d(GeomDisk); 
     Param = ModParam_def(Param,1,10,0,0); end
 
@@ -71,15 +91,26 @@ end
  
 if ~exist('absorb','var'); absorb=0; end
 
-Forcing = Force_def(Param.g(1), bed, fortyp, lam0);
+out = fn_ElasticDisk(fortyp, lam0, Param, GeomDisk, bed, th_vec, ...
+ RIGID, SURGE, 0);
 
-[beta, S, S_Fou] = fn_ElasticDisk(Param, GeomDisk, Forcing, bed, th_vec, RIGID, COMM);
-
+for loop_out=1:length(out)
+ if strcmp(out(loop_out).name,'E0')
+  beta=out(loop_out).value;
+ elseif strcmp(out(loop_out).name,'E')
+  S=out(loop_out).value;
+ end
+end % end loop_out
+ 
 beta = beta + absorb;
 
 %% Discrete system
 % Boltzmann eqn: cos(theta)*dI/dx = -beta*I + int_{-pi}^{pi} S(th,th')*I(th') dth'
  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% FINITE DIFFERENCE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 if ~DTYP
     
  % Nb. This is the trap rule (because it's periodic)
@@ -110,7 +141,13 @@ if ~DTYP
  
  R_mat = conc*(diag(R_mat0)+R_mat1)/pi/(GeomDisk(3)^2);
  
-else % Using Fourier series (CHECK!!!!)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% FOURIER SERIES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+ 
+else 
+ 
+ cprintf('green','!!!This code has not been checked!!!\n')
 
  N = (length(S_Fou(:,1))-1)/2;
 

@@ -1,4 +1,4 @@
-% Main_WaveData
+% Main_AttnData
 %
 % either generate some simple data to test FFT/WDM analysis methods
 % or collect data from CITEPH experiments for analysis
@@ -31,6 +31,7 @@
 %            0=off
 % TYP      = full directional analysis (1=yes, 0=no)
 % DEL      = delete data after use (1=yes, 0=no)
+% data_type = 1 (displacement), 2 (acceleration)
 %
 % VARIABLES:
 %
@@ -38,15 +39,15 @@
 %
 % written by L Bennetts Jan 2013 / Adelaide
 
-function Main_WaveData(RUNIT,CREATEIT,Tp,Hm,conc,probe,zoom)
+function Main_AttnData(RUNIT,CREATEIT,Tp,Hm,conc,probe,zoom)
 
 %% Prelims
 
-if ~exist('RUNIT','var'); RUNIT=2; end
-if ~exist('CREATEIT','var'); CREATEIT='lhs'; end
-if ~exist('run_num','var'); run_num=1; end
-if ~exist('TYP','var'); TYP=0; end
-if ~exist('DEL','var'); DEL=1; end
+if ~exist('RUNIT','var');    RUNIT='FFT'; end
+if ~exist('CREATEIT','var'); CREATEIT='LHS'; end
+if ~exist('run_num','var');  run_num=1; end
+if ~exist('TYP','var');      TYP=0; end
+if ~exist('DEL','var');      DEL=1; end
 
 if ~exist('Tp','var'); Tp=2; end 
 if ~exist('Hm','var'); Hm=100; end
@@ -83,7 +84,9 @@ if CREATEIT~=0
  if ~exist('f','var'); f = 1; end
  if ~exist('k0','var'); k0 = (2*pi*f)^2/9.81; end
  
- Tp = 1/f; Hm = 2;
+ Tp = 1/f; Hm = 1;
+ 
+ data_type = 1;
  
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  elseif or(or(strcmp(CREATEIT,'LHS'),strcmp(CREATEIT,'RHS')),...
@@ -91,7 +94,8 @@ if CREATEIT~=0
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
   basedir  = citeph_user_specifics;
-  dum_path = [basedir '/results_preliminary/'];
+  %dum_path = [basedir '/results_preliminary/'];
+  dum_path = [basedir 'conc' int2str(conc) '/'];
   
   eval(['ex=exist(dum_path);'])
   
@@ -105,20 +109,36 @@ if CREATEIT~=0
   
   eval(['c_prams = conc',int2str(conc),'_testspecs();'])
   
+  pers = zeros(1,length(c_prams)); hts = pers;
+  
   for loop=1:length(c_prams)
-   pers(loop)=10\c_prams(loop).period;
-   hts(loop) =10*c_prams(loop).wave_height;
+   if strcmp(c_prams(loop).type,'Regular')
+    pers(loop)=10\c_prams(loop).period;
+    hts(loop) =10*c_prams(loop).wave_height;
+   end
   end
   
-  test = find(and(pers==Tp,hts==Hm));
+  test = find(and(pers==Tp,hts==Hm)); clear pers hts
   
   if isempty(test)
-   cprintf('red',['Cant find Hm=' num2str(Hm) '; Tp=' num2str(Tp) '\n'])
+   cprintf('magenta',['Cant find Hm=' num2str(Hm) '; Tp=' num2str(Tp) '\n'])
    return
+  end
+  
+  if length(test)>1
+   cprintf('magenta',['Test repeated ' int2str(length(test)) ' times\n'])
+   t0=input('Which test? ','s');
+   eval(['test = test(' t0 '); clear t0'])
   end
  
   [xy_lhs,xy_rhs] = citeph_sensor_spots();
   dum_nms = dir([dum_path c_prams(test).dirname '/houle_reg_*']);
+  
+  if isempty(dum_nms)
+   cprintf('magenta','Nothing in this folder\n')
+   return
+  end
+  
   np = size(xy_lhs,1);
  
  end
@@ -192,7 +212,7 @@ if CREATEIT~=0
   X = X(probe); Y = Y(probe); data = data(:,probe);
   
   description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
-   ' wave maker side;' ...
+   ' ' int2str(conc) '% conc;' ...
    ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
    ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
    ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
@@ -204,8 +224,6 @@ if CREATEIT~=0
  elseif strcmp(CREATEIT,'RHS') % data from expts RHS
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
-  dum_nms = dir([dum_path c_prams(test).dirname '/houle_reg_*']);
-  np = size(xy_lhs,1);
   count = length(dum_nms)-56+11+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
   
   X(1)=xy_rhs(1,1); Y(1)=xy_rhs(1,2);
@@ -224,7 +242,7 @@ if CREATEIT~=0
   X = X(probe); Y = Y(probe); data = data(:,probe);
   
   description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
-   ' beach side' ...
+   ' ' int2str(conc) '% conc;' ...
    ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
    ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
    ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
