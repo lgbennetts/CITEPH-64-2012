@@ -1,4 +1,4 @@
-% function [I,th_vec] = Main_Boltzmann(TEST, fortyp, lam0, conc, th_res, COMM)
+% function [I,th_vec] = fn_Boltzmann_Steady(TEST, fortyp, lam0, conc, th_res, COMM)
 %
 % INPUTS:
 %
@@ -16,7 +16,7 @@
 % SURGE = include surge motion
 % RIGID = rigid disk (inf) or elastic disk (rigidity=10^RIGID)
 
-function [I,th_vec] = Main_Boltzmann(TEST, fortyp, lam0, conc, th_res, COMM, PLOT)
+function [I,th_vec] = fn_Boltzmann_Steady(TEST, fortyp, lam0, conc, th_res, COMM, PLOT)
 
 if ~exist('TEST','var'); TEST = 'default'; end %TEST='Oceanide'; end %
 if ~exist('PLOT','var'); PLOT=1; end

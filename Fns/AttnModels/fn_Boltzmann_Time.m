@@ -1,4 +1,4 @@
-% function [I,th_vec] = Main_Boltzmann_Time(TEST, fortyp, lam0, conc, th_res, COMM)
+% function [I,th_vec] = fn_Boltzmann_Time(TEST, fortyp, lam0, conc, th_res, COMM)
 %
 % INPUTS:
 %
@@ -11,7 +11,7 @@
 % COMM = flag for comments on (1) or off (0)
 % PLOT = flag for plots on (1) or off (0)
 
-function Main_Boltzmann_Time(TEST, PLOT, th_res)
+function fn_Boltzmann_Time(TEST, PLOT, th_res)
 
 path(path,'../../EXTRA_MATLAB_Fns');
 

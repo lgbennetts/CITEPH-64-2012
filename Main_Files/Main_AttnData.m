@@ -1,7 +1,7 @@
 % Main_AttnData
 %
-% either generate some simple data to test FFT/WDM analysis methods
-% or collect data from CITEPH experiments for analysis
+% DESCRIPTION: either generate some simple data to test FFT/WDM analysis 
+% methods or collect data from CITEPH experiments for analysis
 %
 % INPUTS:
 %

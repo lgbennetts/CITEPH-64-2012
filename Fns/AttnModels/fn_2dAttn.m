@@ -1,4 +1,4 @@
-% function alpha = Main_2dAttn(TEST,fortyp,lam0,conc,Ens_size,COMM)
+% function alpha = fn_2dAttn(TEST,fortyp,lam0,conc,Ens_size,COMM)
 %
 % DESCRIPTION: THIS FUNCTION WILL CALCULATE THE NON-DIM ATTENUATION COEFFICIENT
 % FOR FLOES OF UNIFORM THICKNESS USING THE BERRY & KLEIN RESULT
@@ -26,7 +26,7 @@
 % Tm    = Transmitted energy
 
 function [alpha, Rm, Tm] = ...
- Main_2dAttn(TEST,fortyp,lam0,Ens_size,conc,LONG,COMM,Nd)
+ fn_2dAttn(TEST,fortyp,lam0,Ens_size,conc,LONG,COMM,Nd)
 
 %% Inputs & prelims
 

@@ -1,4 +1,4 @@
-function [xy_lhs,xy_rhs] = citeph_sensor_spots()
+function [xy_lhs,xy_rhs,lab_lhs,lab_rhs] = citeph_sensor_spots()
 
 %% citeph_data_in.m
 %% Author: Timothy Williams
@@ -68,3 +68,5 @@ x_rhs    = x_s10+x_rhs0;
 y_rhs    = y_s10+y_rhs0;
 xy_rhs   = [x_rhs y_rhs]/1e3;%m
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+return

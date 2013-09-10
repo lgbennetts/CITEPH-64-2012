@@ -1,4 +1,4 @@
-% fn_CompareAttnModels
+% fn_AttnModels
 %
 % INPUTS:
 %
@@ -16,7 +16,7 @@
 % LONG = long floe limit (for 2d code)
 % COMM = comments on (1) or off (0)
 
-function Main_CompareAttnModels(Tp,Hm)
+function Main_AttnModels(Tp,Hm)
 
 if ~exist('COMM','var'); COMM=0; end
 if ~exist('PRBS','var'); PRBS=[0,0,1,0]; end

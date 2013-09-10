@@ -1,4 +1,4 @@
-% function Main_SingleFloeData
+% function Main_SingleDiskData
 % 
 % INPUTS:
 %
@@ -39,10 +39,12 @@
 %
 % written by L Bennetts Aug 2013 / Adelaide
 
-function Main_SingleFloeData(Tp,Hm,run_num,probe,CREATEIT,DO_PLOT,DO_SAVE,file_pre)
+function Main_SingleDiskData(Tp,Hm,T_pers,data_out,...
+ run_num,probe,CREATEIT,DO_PLOT,DO_SAVE,DO_DISP,file_pre)
 
 if ~exist('Tp','var'); Tp=1.85; end
 if ~exist('Hm','var'); Hm=40; end
+if ~exist('T_pers','var'); T_pers = 10; end
 
 if ~exist('RUNIT','var');    RUNIT='FFT'; end
 if ~exist('CREATEIT','var'); CREATEIT='WP'; end
@@ -51,14 +53,17 @@ if ~exist('TYP','var');      TYP=0; end
 if ~exist('DEL','var');      DEL=1; end
 if ~exist('DO_PLOT','var');  DO_PLOT = 'Aspec-signal'; end
 if ~exist('DO_SAVE','var');  DO_SAVE = 0; end
+if ~exist('DO_DISP','var');  DO_DISP = 1; end
 
 if ~exist('probe','var');
  if strcmp(CREATEIT,'WP'); probe=2;
  elseif strcmp(CREATEIT,'RBM'); probe='surge'; end
 end
 
-if ~exist('data_out','var'); data_out.name='amp-harmo-steady-1st';
-  data_out.tint=[10,0]; end %'default';
+if ~exist('data_out','var') 
+ data_out.name='amp-harmo-steady-1st';
+ data_out.tint='t1=min(t_vec)-10;'; %'default';
+end 
 
 if ~exist('file_pre','var'); file_pre = 'Temp_data/s00'; end
 
@@ -130,7 +135,7 @@ for run=run_num
   
   ns = 1/tm(2);
   
-  description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
+  description = ['Oceanide expt: ' ...
    ' single floe;' ...
    ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
    ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
@@ -167,7 +172,7 @@ for run=run_num
   
   ns = 1/tm(2);
   
-  description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
+  description = ['Oceanide expt: ' ...
    ' single floe;' ...
    ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
    ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
@@ -181,7 +186,7 @@ for run=run_num
  file_nm=fn_get_filenm(run,file_pre);
  
  eval(['save ', file_nm, '-in X Y n ns data description'...
-  ' tm Tp TYP data_type data_out'])
+  ' tm Tp TYP data_type data_out T_pers'])
 
  end % end run
  
@@ -198,7 +203,7 @@ if RUNIT~=0
   end
  elseif strcmp(RUNIT,'FFT')
   for run=run_num
-   MovingFFT(file_nm,DO_PLOT,DO_SAVE)
+   MovingFFT(file_nm,DO_PLOT,DO_SAVE,DO_DISP)
   end
  end % end if RUNIT
  
