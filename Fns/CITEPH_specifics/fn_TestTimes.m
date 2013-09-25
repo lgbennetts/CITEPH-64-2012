@@ -21,14 +21,13 @@ if ~exist('TYP','var'); TYP='single'; end
 
 % Waves
 
-Param = ParamDef3d_Oceanide;
+Param = ParamDef_Oceanide;
 
 fortyp='freq';
-bed=3;
 
-Forcing = Force_def(Param.g, bed, fortyp, f);
+Forcing = Force_def(Param.g, Param.bed, fortyp, f);
 
-cg = fn_grpvel(2*pi/Forcing.lam0,bed,Forcing.f);
+cg = fn_grpvel(2*pi/Forcing.lam0,Param.bed,Forcing.f);
 cp = f*Forcing.lam0;
 
 %% ATTENUATION TESTS
@@ -47,7 +46,7 @@ if strcmp(TYP,'attn')
  
  t0 = 50;                   d0='wave maker switched on'; c0='k:';
  t1 = t0 + (MIZ(1)-WMK)/cg; d1='waves reach MIZ'; c1='k:';
- t2 = t0 + (MIZ(2)-WMK)/cg; d2='waves exit MIZ'; c2='k:';
+ t2 = t0 + (MIZ(2)-WMK)/cg; d2='waves leave MIZ'; c2='k:';
  t3 = t0 + (BCH-WMK)/cg;    d3='waves reach beach'; c3='k:';
  t4 = t0 + 2*(BCH-WMK)/cg;  d4='reflected waves from beach r each wave maker'; c4='k:';
  t5 = 120;                  d5='wave maker switched off'; c5='k:';
@@ -56,17 +55,17 @@ if strcmp(TYP,'attn')
  
  if x<MIZ(1) % point on LHS
   
-  tx0 = t0+(x-WMK)/cg;                   dx0='waves reach x'; cx0='k:';
-  tx1 = t0+((MIZ(1)-x)+(MIZ(1)-WMK))/cg; dx1='waves ref by MIZ reach x'; cx1='k:';
-  tx2 = t0+((BCH-x)+(BCH-WMK))/cg;       dx2='waves ref by beach reach x'; cx2='k:';
-  tx3 = t5+(x-WMK)/cg;                   dx3='final waves reach x'; cx3='k:';
+  tx0 = t0+(x-WMK)/cg;                   dx0='waves reach x'; cx0='g:';
+  tx1 = t0+((MIZ(1)-x)+(MIZ(1)-WMK))/cg; dx1='waves ref by MIZ reach x'; cx1='b:';
+  tx2 = t0+((BCH-x)+(BCH-WMK))/cg;       dx2='waves ref by beach reach x'; cx2='m:';
+  tx3 = t5+(x-WMK)/cg;                   dx3='final waves reach x'; cx3='r:';
   
  elseif x>MIZ(2) % point on RHS
   
-  tx0 = t0+(x-WMK)/cg;                   dx0='waves reach x'; cx0='k:';
-  tx1 = t0+((BCH-x)+(BCH-WMK))/cg;       dx1='waves reflected by beach reach x'; cx1='k:';
-  tx2 = tx1+2*(x-MIZ(2));                dx2='waves re-ref by MIZ reach x'; cx2='k:';
-  tx3 = t5+(x-WMK)/cg;                   dx3='final waves reach x'; cx3='k:';
+  tx0 = t0+(x-WMK)/cg;                   dx0='waves reach x'; cx0='g:';
+  tx1 = t0+((BCH-x)+(BCH-WMK))/cg;       dx1='waves reflected by beach reach x'; cx1='b:';
+  tx2 = tx1+2*(x-MIZ(2));                dx2='waves re-ref by MIZ reach x'; cx2='m:';
+  tx3 = t5+(x-WMK)/cg;                   dx3='final waves reach x'; cx3='r:';
   
  end
  

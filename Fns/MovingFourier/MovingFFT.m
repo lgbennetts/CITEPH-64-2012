@@ -94,7 +94,12 @@ if DO_SAVE
 end
 
 if DO_DISP
- cprintf(0.4*[1,1,1],['>>> ' description '\n'])
+ if strfind(description,'%')
+  dum_i=strfind(description,'%');
+  cprintf(0.4*[1,1,1],['>>> ' description(1:dum_i) '%' description(dum_i+1:end) '\n'])
+ else
+  cprintf(0.4*[1,1,1],['>>> ' description '\n'])
+ end
 end
 
 %%

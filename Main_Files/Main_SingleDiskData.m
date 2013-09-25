@@ -62,7 +62,7 @@ end
 
 if ~exist('data_out','var') 
  data_out.name='amp-harmo-steady-1st';
- data_out.tint='t1=min(t_vec)-10;'; %'default';
+ data_out.tint='t0=t0+4*Tp; t1=t0+10*Tp;'; 
 end 
 
 if ~exist('file_pre','var'); file_pre = 'Temp_data/s00'; end

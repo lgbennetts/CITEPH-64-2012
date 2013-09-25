@@ -1,5 +1,8 @@
 % function out=fn_WhatTestData(conc,TYP)
 %
+% DESCRIPTION: produces the periods, heights, wavelengths and steepnesses
+%              for the expts
+%
 % INPUTS:
 %
 % conc = for the attenuation tests either 39 or 79
@@ -190,5 +193,15 @@ elseif conc==39
  out = HT39;
  
 end % end if conc
+
+Param = ParamDef_Oceanide;
+
+for loop=1:size(out,2)
+ Forcing = Force_def(Param.g(1), Param.bed, 'freq', 1/out(2,loop));
+ out(3,loop) = Forcing.lam0;
+ out(4,loop) = out(3,loop)\out(1,loop)/10;
+end
+
+clear Forcing
 
 return

@@ -1,16 +1,21 @@
-% function Param = ParamDef3d_Oceanide(GeomDisks,RIGID)
+% function Param = ParamDef_Oceanide(GeomDisks,RIGID)
 %
 % LB July 2013: written for experiments
 
-function Param = ParamDef3d_Oceanide(GeomDisks,RIGID)
-
-if ~exist('GeomDisks','var'); GeomDisks=[0,0,0.495,33e-3]; end
+function Param = ParamDef_Oceanide(RIGID,Np)
 
 % Floes are rigid:
 if ~exist('RIGID','var'); RIGID=10; end
 
 % Number of disks
-Param.Np = size(GeomDisks,1);
+if ~exist('Np','var')
+ Param.Np = 1;
+else
+ Param.Np = Np;
+end
+
+% thickness
+Param.thickness = 33e-3;
 
 % Accelaration due to gravity (in m\,s^{-2})
 Param.g = 9.81*ones(Param.Np,1);            
@@ -23,8 +28,6 @@ Param.rho_0 = 1025*ones(Param.Np,1);
 % Densities of disks (in kg\,m^{-3})
 Param.rho = 1.8*Param.rho_0/3.3; %500*ones(Param.Np,1);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % Poisson's ratios
 Param.nu = 0.3*ones(Param.Np,1);
 
@@ -36,15 +39,24 @@ else
 end
     
 % Draughts (in m)
-Param.draft = GeomDisks(:,4).*Param.rho./Param.rho_0; 
+Param.draft = Param.thickness.*Param.rho./Param.rho_0; 
 
 % Flexural rigidities (in MPa\,m^3)
-Param.D = Param.E.*GeomDisks(:,4).^3./(12*(1-Param.nu.^2));
+Param.D = Param.E.*Param.thickness.^3./(12*(1-Param.nu.^2));
 
 % Scaled rigidity 
 Param.beta = Param.D./(Param.g.*Param.rho_0);
 
-% Reflection coefficient (at high frequency)
-Param.Rb = 0.1;
+% fluid depth (open/equilibrium)
+
+Param.bed = 3.1;
+
+% MIZ length [m]
+
+Param.MIZ_length = 5;
+
+% diameter of floes [m]
+
+Param.floe_diam = .99;
 
 return

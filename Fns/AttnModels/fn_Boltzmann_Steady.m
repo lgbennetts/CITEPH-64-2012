@@ -16,82 +16,61 @@
 % SURGE = include surge motion
 % RIGID = rigid disk (inf) or elastic disk (rigidity=10^RIGID)
 
-function [I,th_vec] = fn_Boltzmann_Steady(TEST, fortyp, lam0, conc, th_res, COMM, PLOT)
+function [I,th_vec] = fn_Boltzmann_Steady(fortyp, lam0, conc, ...
+ Param, th_res, COMM, PLOT)
 
-if ~exist('TEST','var'); TEST = 'default'; end %TEST='Oceanide'; end %
 if ~exist('PLOT','var'); PLOT=1; end
+
+if PLOT; x = 0:.5:5; end
+
+if ~exist('COMM','var'); COMM=1; end
+
+if ~exist('th_res','var'); th_res=100; end
 
 %% Prelims
 
 if ~exist('tol','var'); tol=1e-5; end
 
-if ~exist('COMM','var'); COMM=1; end
 if ~exist('DTYP','var'); DTYP=0; end
-if ~exist('TTYP','var'); TTYP='symm'; end
-
-if ~exist('th_res','var'); th_res=10; end
+if ~exist('TTYP','var'); TTYP='asymm'; end
 
 if strcmp(TTYP,'asymm')
  th_vec = linspace(0,1,2*th_res); th_vec = unique([-th_vec,th_vec]);
- th_vec(1)=[];
- refs = find(or(th_vec>0.5,th_vec<-0.5));
- incs = find(~or(th_vec>0.5,th_vec<-0.5));
- th_vec = pi*th_vec;
+ th_vec(1)=[]; 
 elseif strcmp(TTYP,'symm')
  th_vec = linspace(0,1,2*th_res+1); 
  th_vec = 0.5*(th_vec(2:end)+th_vec(1:end-1));
  th_vec = [-fliplr(th_vec),th_vec];
 %  th_vec = linspace(-1,1,4*th_res); 
 %  th_vec = 0.5*(th_vec(2:end)+th_vec(1:end-1));
-%  th_vec = pi*th_vec;
 end
  
+refs = find(or(th_vec>0.5,th_vec<-0.5));
+incs = find(~or(th_vec>0.5,th_vec<-0.5));
+th_vec = pi*th_vec;
 
 %% Define test
 
-if strcmp(TEST,'Oceanide')
-    
- if ~exist('RIGID','var'); RIGID=6; end 
- if ~exist('SURGE','var'); SURGE=0; end   
+if ~exist('RIGID','var'); RIGID=5; end
+if ~exist('SURGE','var'); SURGE=0; end
 
- if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.495,33e-3]; end
- if ~exist('Param','var'); Param = ParamDef3d_Oceanide(GeomDisk); 
-    Param = ModParam_def(Param,1,10,0,0); end
+if ~exist('Vert_Modes','var'); Vert_Modes=10; end
 
- if ~exist('fortyp','var'); fortyp='waveno'; end
- if ~exist('lam0','var'); lam0=2*pi./3; end
+if ~exist('conc','var'); conc=0.79; end % [0.39,0.79]
 
- if ~exist('bed','var'); bed=3; end
- if ~exist('conc','var'); conc=0.79; end % [0.39,0.79]
- 
- %if ~exist('fn_inc','var'); fn_inc = 'kron_delta(0,th_vec)'; end
- 
- if ~exist('fn_inc','var'); fn_inc = 'cos(th_vec).^100'; end
- 
- dist = 5;
- 
-elseif strcmp(TEST,'default')
- 
- if ~exist('RIGID','var'); RIGID=0; end 
- if ~exist('SURGE','var'); SURGE=0; end   
-    
- if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.5,0.1]; end
- if ~exist('Param','var'); Param = ParamDef3d(GeomDisk); 
-    Param = ModParam_def(Param,1,10,0,0); end
+if ~exist('Param','var'); Param = ParamDef_Oceanide(RIGID);
+ Param = ModParam_def(Param,1,Vert_Modes,0,0); end
 
- if ~exist('fortyp','var'); fortyp='waveno'; end
- if ~exist('lam','var'); lam0=2*pi./5; end
+if ~exist('fortyp','var'); fortyp='freq'; end
+if ~exist('lam0','var'); lam0=1/.65; end
 
- if ~exist('bed','var'); bed=2; end
- if ~exist('conc','var'); conc=0.5; end
- 
- if ~exist('fn_inc','var'); fn_inc = 'cos(th_vec).^2'; end
+%if ~exist('fn_inc','var'); fn_inc = 'kron_delta(0,th_vec)'; end
 
-end 
- 
+if ~exist('fn_inc','var'); fn_inc = 'cos(th_vec).^100'; end
+
 if ~exist('absorb','var'); absorb=0; end
 
-out = fn_ElasticDisk(fortyp, lam0, Param, GeomDisk, bed, th_vec, ...
+out = fn_ElasticDisk(fortyp, lam0, Param, th_vec, ...
  RIGID, SURGE, 0);
 
 for loop_out=1:length(out)
@@ -102,8 +81,6 @@ for loop_out=1:length(out)
  end
 end % end loop_out
  
-beta = beta + absorb;
-
 %% Discrete system
 % Boltzmann eqn: cos(theta)*dI/dx = -beta*I + int_{-pi}^{pi} S(th,th')*I(th') dth'
  
@@ -118,7 +95,6 @@ if ~DTYP
  dx = 2*pi/length(th_vec);
 
  L_mat = cos(th_vec);
- R_mat0 = -beta + 0*L_mat;
  L_mat = diag(L_mat);
  
  R_mat1 = zeros(length(th_vec));
@@ -139,7 +115,12 @@ if ~DTYP
  clear mk
  R_mat1 = dx*R_mat1;
  
- R_mat = conc*(diag(R_mat0)+R_mat1)/pi/(GeomDisk(3)^2);
+ if 0
+  R_mat0 = -beta + absorb + 0*L_mat;
+ else
+  R_mat0 = -sum(R_mat1,1) + absorb;
+ end
+ R_mat = conc*(diag(R_mat0)+R_mat1)/pi/((Param.floe_diam/2)^2);
  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% FOURIER SERIES
@@ -236,8 +217,6 @@ if PLOT
     
   figure; h1 = subplot(1,1,1);
  
-  x = 0:500:5000;
- 
   %Vx = V(:,[Im;Iz]);
   
   for loop_x=1:length(x)
@@ -265,7 +244,7 @@ if ~PLOT
 
  incs = find(~or(th_vec>0.5*pi,th_vec<0));
 
- I = V(:,[Im;Iz])*diag(exp(D([Im;Iz])*dist))*c0;
+ I = V(:,[Im;Iz])*diag(exp(D([Im;Iz])*Param.MIZ_length))*c0;
  I = I(incs); 
 
  if max(abs(imag(I)))>tol

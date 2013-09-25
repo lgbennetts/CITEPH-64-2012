@@ -39,28 +39,41 @@
 %
 % written by L Bennetts Jan 2013 / Adelaide
 
-function Main_AttnData(RUNIT,CREATEIT,Tp,Hm,conc,probe,zoom)
+function Main_AttnData(Tp,Hm,conc,T_pers,data_out,run_num,probe,...
+ CREATEIT,DO_PLOT,DO_SAVE,DO_DISP,file_pre)
 
-%% Prelims
+if ~exist('Tp','var'); Tp=0.65; end
+if ~exist('Hm','var'); Hm=20; end
+if ~exist('conc','var'); conc=79; end
 
-if ~exist('RUNIT','var');    RUNIT='FFT'; end
-if ~exist('CREATEIT','var'); CREATEIT='LHS'; end
+if ~exist('T_pers','var'); T_pers = 10; end
+
+if ~exist('CREATEIT','var'); CREATEIT='RHS'; end
+
 if ~exist('run_num','var');  run_num=1; end
+if ~exist('RUNIT','var');    RUNIT='FFT'; end
 if ~exist('TYP','var');      TYP=0; end
 if ~exist('DEL','var');      DEL=1; end
+if ~exist('DO_PLOT','var');  DO_PLOT = 'Aspec-signal'; end
+if ~exist('DO_SAVE','var');  DO_SAVE = 0; end
+if ~exist('DO_DISP','var');  DO_DISP = 1; end
 
-if ~exist('Tp','var'); Tp=2; end 
-if ~exist('Hm','var'); Hm=100; end
-if ~exist('conc','var'); conc=79; end
 if ~exist('probe','var'); 
  if strcmp(CREATEIT(2:3),'HS'); probe=10;
  elseif strcmp(CREATEIT(1:3),'ACC'); probe=1; end
 end
 if ~exist('zoom','var'); zoom=0; end
+
+if ~exist('data_out','var') 
+ data_out.name='amp-harmo-steady-1st';
+ data_out.tint='t0=t0+4*Tp; t1=t0+10*Tp;'; 
+end 
+
+if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
+
+dum_letters={'', 'a', 'b', 'c', 'd', 'e'};
   
 if CREATEIT~=0
- 
- %%
  
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  if or(strcmp(CREATEIT,'plane1'),strcmp(CREATEIT,'plane2'))  % idealised
@@ -94,8 +107,8 @@ if CREATEIT~=0
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
   basedir  = citeph_user_specifics;
-  %dum_path = [basedir '/results_preliminary/'];
-  dum_path = [basedir 'conc' int2str(conc) '/'];
+  if isempty(basedir); return; end
+  dum_path = [basedir 'attenuation_tests/Conc' int2str(conc) '/'];
   
   eval(['ex=exist(dum_path);'])
   
@@ -127,17 +140,13 @@ if CREATEIT~=0
   
   if length(test)>1
    cprintf('magenta',['Test repeated ' int2str(length(test)) ' times\n'])
-   t0=input('Which test? ','s');
-   eval(['test = test(' t0 '); clear t0'])
+   %t0=input('Which test(s)?');
+   t0=1:length(test);
+   test = test(t0); clear t0
+   run_num=run_num+zeros(1,length(test));
   end
  
   [xy_lhs,xy_rhs] = citeph_sensor_spots();
-  dum_nms = dir([dum_path c_prams(test).dirname '/houle_reg_*']);
-  
-  if isempty(dum_nms)
-   cprintf('magenta','Nothing in this folder\n')
-   return
-  end
   
   np = size(xy_lhs,1);
  
@@ -145,7 +154,19 @@ if CREATEIT~=0
  
  %%
  
+ run_ct=1;
+ 
  for run=run_num
+  
+  %run=[int2str(run) dum_letters{run_ct}]; 
+  
+  dum_nms = ...
+    dir([dum_path c_prams(test(run_ct)).dirname '/houle_reg_*']);
+  
+  if isempty(dum_nms)
+   cprintf('magenta','Nothing in this folder\n')
+   return
+  end
  
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  if strcmp(CREATEIT,'plane1')      % simple harmonic wave
@@ -194,16 +215,20 @@ if CREATEIT~=0
  elseif strcmp(CREATEIT,'LHS') % data from expts LHS
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
-  count = length(dum_nms)-56+1+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
+  if conc==79
+   count = length(dum_nms)-56+1+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
+  elseif conc==39
+   count = length(dum_nms)-54+1+20*zoom; % 54 files(20 probes, 20 zoom, 14 accel)
+  end
   
   X(1)=xy_lhs(1,1); Y(1)=xy_lhs(1,2);
-  dum=load([dum_path c_prams(test).dirname '/' dum_nms(count).name]);
+  dum=load([dum_path c_prams(test(run_ct)).dirname '/' dum_nms(count).name]);
   tm = dum(:,1)/10; tm = tm(:);
   data(:,1) = dum(:,2)/100; clear dum
   count=count+1;
   for loop_xy=2:np
    X(loop_xy)=xy_lhs(loop_xy,1); Y(loop_xy)=xy_lhs(loop_xy,2);
-   dum=load([dum_path c_prams(test).dirname '/' dum_nms(count).name]);
+   dum=load([dum_path c_prams(test(run_ct)).dirname '/' dum_nms(count).name]);
    data(:,loop_xy) = dum(:,2)/100; clear dum 
    count=count+1;
   end
@@ -211,11 +236,11 @@ if CREATEIT~=0
   
   X = X(probe); Y = Y(probe); data = data(:,probe);
   
-  description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
+  description = ['Oceanide expt: ' c_prams(test(run_ct)).type ' waves;' ...
    ' ' int2str(conc) '% conc;' ...
-   ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
-   ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
-   ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
+   ' Hs=' num2str(10*c_prams(test(run_ct)).wave_height) ' [mm];' ...
+   ' Tm=' num2str(c_prams(test(run_ct)).period/10) ' [s];' ...
+   ' f=' num2str(10/c_prams(test(run_ct)).period) ' [Hz]; ' ...
    CREATEIT ' probe(s)=' int2str(probe)] ;
   
   data_type = 1;
@@ -224,16 +249,20 @@ if CREATEIT~=0
  elseif strcmp(CREATEIT,'RHS') % data from expts RHS
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
-  count = length(dum_nms)-56+11+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
+  if conc==79
+   count = length(dum_nms)-56+11+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
+  elseif conc==39
+   count = length(dum_nms)-54+11+20*zoom; % 54 files(20 probes, 20 zoom, 14 accel)
+  end
   
   X(1)=xy_rhs(1,1); Y(1)=xy_rhs(1,2);
-  dum=load([dum_path c_prams(test).dirname '/' dum_nms(count).name]);
+  dum=load([dum_path c_prams(test(run_ct)).dirname '/' dum_nms(count).name]);
   tm = dum(:,1)/10; tm = tm(:);
   data(:,1) = dum(:,2)/100; clear dum
   count=count+1;
   for loop_xy=2:np
    X(loop_xy)=xy_rhs(loop_xy,1); Y(loop_xy)=xy_rhs(loop_xy,2);
-   dum=load([dum_path c_prams(test).dirname '/' dum_nms(count).name]);
+   dum=load([dum_path c_prams(test(run_ct)).dirname '/' dum_nms(count).name]);
    data(:,loop_xy) = dum(:,2)/100; clear dum 
    count=count+1;
   end
@@ -241,11 +270,11 @@ if CREATEIT~=0
   
   X = X(probe); Y = Y(probe); data = data(:,probe);
   
-  description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
+  description = ['Oceanide expt: ' c_prams(test(run_ct)).type ' waves;' ...
    ' ' int2str(conc) '% conc;' ...
-   ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
-   ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
-   ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
+   ' Hs=' num2str(10*c_prams(test(run_ct)).wave_height) ' [mm];' ...
+   ' Tm=' num2str(c_prams(test(run_ct)).period/10) ' [s];' ...
+   ' f=' num2str(10/c_prams(test(run_ct)).period) ' [Hz]; ' ...
    CREATEIT ' probe(s)=' int2str(probe)] ;
   
   data_type = 1;
@@ -262,7 +291,7 @@ if CREATEIT~=0
    inds = [10,13,16,3];
   end
   
-  dum_nms = dir([dum_path c_prams(test).dirname '/houle_reg_*']);
+  dum_nms = dir([dum_path c_prams(test(run_ct)).dirname '/houle_reg_*']);
   np = length(inds);
   count = length(dum_nms)-56+40; % 56 files(20 probes, 20 zoom, 16 accel) 
   
@@ -270,24 +299,24 @@ if CREATEIT~=0
   
   X = 0; Y = 0;
   
-  dum=load([dum_path c_prams(test).dirname '/' dum_nms(count+inds(1)).name]);
+  dum=load([dum_path c_prams(test(run_ct)).dirname '/' dum_nms(count+inds(1)).name]);
   tm = dum(:,1)/10; tm = tm(:);
   data(:,1) = dum(:,2); clear dum
   
   for loop_xy=2:np
    X(loop_xy)=0; Y(loop_xy)=0;
-   dum=load([dum_path c_prams(test).dirname '/' dum_nms(count+inds(loop_xy)).name]);
+   dum=load([dum_path c_prams(test(run_ct)).dirname '/' dum_nms(count+inds(loop_xy)).name]);
    data(:,loop_xy) = dum(:,2); clear dum 
   end
   ns = 1/tm(2);
   
   X = X(probe); Y = Y(probe); data = data(:,probe);
   
-  description = ['Oceanide expt: ' c_prams(test).type ' waves;' ...
+  description = ['Oceanide expt: ' c_prams(test(run_ct)).type ' waves;' ...
    ' accelerometers' ...
-   ' Hs=' num2str(10*c_prams(test).wave_height) ' [mm];' ...
-   ' Tm=' num2str(c_prams(test).period/10) ' [s];' ...
-   ' f=' num2str(10/c_prams(test).period) ' [Hz]; ' ...
+   ' Hs=' num2str(10*c_prams(test(run_ct)).wave_height) ' [mm];' ...
+   ' Tm=' num2str(c_prams(test(run_ct)).period/10) ' [s];' ...
+   ' f=' num2str(10/c_prams(test(run_ct)).period) ' [Hz]; ' ...
    CREATEIT ' probe(s)=' int2str(probe)] ;
   
   data_type = 2;
@@ -296,42 +325,60 @@ if CREATEIT~=0
   
   %% Save data
     
-  if run > 99
-   eval(['save ../Fns/WDM/s13',int2str(run), ' X Y n ns data description'...
-    ' tm Tp TYP data_type'])
-  elseif run > 9
-   eval(['save ../Fns/WDM/s130',int2str(run), ' X Y n ns data description'...
-    ' tm Tp TYP data_type'])
-  else
-   eval(['save ../Fns/WDM/s1300',int2str(run), ' X Y n ns data description'...
-    ' tm Tp TYP data_type'])
-  end
+  %file_nm=fn_get_filenm(run,file_pre);
+  file_nm=[file_pre sprintf('%03g',run) dum_letters{run_ct}];
+  
+  eval(['save ', file_nm, '-in X Y n ns data description'...
+  ' tm Tp TYP data_type data_out T_pers'])
+ 
+ run_ct=run_ct+1;
+ 
+ clear data dum description
 
  end % end run
+ 
+ clear run_ct
+ 
 end % end if CREATEIT
  
 %% Run data
- 
-if     strcmp(RUNIT,'WDM')
- for run=run_num   
-  WDM(run)
- end  
-elseif strcmp(RUNIT,'FFT')
- for run=run_num   
-  MovingFFT(run)
- end 
-end % end if RUNIT
 
-if DEL
- if run > 99
-  eval(['delete ../Fns/WDM/s13',int2str(run) '.mat'])
- elseif run > 9
-  eval(['delete ../Fns/WDM/s130',int2str(run) '.mat'])
- else
-  eval(['delete ../Fns/WDM/s1300',int2str(run) '.mat'])
+if RUNIT
+ run_ct=1;
+ for run=run_num
+  %run=[int2str(run) dum_letters{run_ct}];
+  file_nm=[file_pre sprintf('%03g',run) dum_letters{run_ct}];
+  if     strcmp(RUNIT,'WDM')
+   cprintf('green','>> WDM NEEDS WORK\n'); return
+   WDM(run)
+  elseif strcmp(RUNIT,'FFT')
+   MovingFFT(file_nm,DO_PLOT,DO_SAVE,DO_DISP)
+  end % end if RUNIT
+  
+  %if ~exist('file_nm','var'); file_nm=fn_get_filenm(run); end
+  if DEL
+   eval(['delete ' file_nm '-in.mat'])
+  end
+  run_ct=run_ct+1;
  end
-end % end if DEL
-    
+ clear run_ct
+end % END RUNIT
     
 return   
+
+%%% SUBFUNCTIONS %%%
+
+function file_nm=fn_get_filenm(run,file_pre)
+
+if ~exist('file_pre','var'); file_pre = 'Temp_data/a13'; end
+
+if run > 99
+  file_nm = [file_pre run];
+ elseif run > 9
+  file_nm = [file_pre '0' run];
+ else
+  file_nm = [file_pre '00' run];
+end
+
+return 
     

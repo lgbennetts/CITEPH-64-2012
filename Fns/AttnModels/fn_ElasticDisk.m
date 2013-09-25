@@ -64,8 +64,8 @@
 % modified from directory Arb_Floe_Pool/fn_Circ_Floe_Nov09 (Otago, 2009)
 
 %%
-function out = fn_ElasticDisk(fortyp, forval, Param, GeomDisk, ...
- bed, th_vec, RIGID, SURGE, COMM, PLT)
+function out = fn_ElasticDisk(fortyp, forval, Param, ...
+ th_vec, RIGID, SURGE, COMM, PLT)
 
 Tol_vec(1) = 1e-16; % - Real root error - %
 Tol_vec(2) = 1e-16; % - Imag root error (init) - %
@@ -78,7 +78,7 @@ if ~exist('COMM','var'); COMM=1; end
 if ~exist('INC','var'); INC=1; end
 
 if ~exist('SURGE','var'); SURGE=0; end
-if ~exist('RIGID','var'); RIGID=0; end
+if ~exist('RIGID','var'); RIGID=5; end
 
 if ~exist('FOU','var'); FOU=0; end
 if ~exist('RAO','var'); RAO=1; end
@@ -87,19 +87,17 @@ if ~exist('BESNM','var'); BESNM=2; end
 
 if ~exist('PLT','var'); PLT=0; end
 
-if ~exist('N','var'); N=10; end
+if ~exist('N','var'); N=1; end
 
 %% Set up problem
 
-if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.495,33e-3]; end
-if ~exist('Param','var'); Param = ParamDef3d(GeomDisk,RIGID);
+if ~exist('Param','var'); Param = ParamDef_Oceanide(RIGID);
  Param = ModParam_def(Param,1,N,0,0); end
 
+radius=Param.floe_diam/2;
 draught = Param.draft;
-radius = GeomDisk(3);
 Vert_Modes = Param.Ndtm;
-
-if ~exist('bed','var'); bed=3.1; end
+bed = Param.bed;
 
 if ~exist('fortyp','var'); fortyp = 'freq'; end
 if ~exist('forval','var'); forval = 1/.5; end
@@ -114,7 +112,7 @@ parameter_vector = [Param.rho_0, Param.rho, Param.nu, Param.E, Param.g];
 
 if COMM
  if RIGID; disp('-> Rigid disk problem'); else; disp('-> Elastic disk problem'); end
- disp(['--> Radius = ' num2str(GeomDisk(3))])
+ disp(['--> Radius = ' num2str(radius)])
  disp(['--> Draught = ' num2str(draught)])
  if SURGE; display('--> with surge'); else; display('--> without surge'); end
  disp(['---> wavelength = ',num2str(Forcing.lam0)])
@@ -125,7 +123,7 @@ end
 
 Norm_fac = 1;
 
-thickness = GeomDisk(4)/Norm_fac; draught = draught/Norm_fac;
+thickness = Param.thickness/Norm_fac; draught = draught/Norm_fac;
 radius = radius/Norm_fac; bed = bed/Norm_fac; freq = 2*pi*Forcing.f/sqrt(Norm_fac);
 
 al = draught;
@@ -137,7 +135,7 @@ parameter_vector = [parameter_vector, ...
 % Surge
 
 if SURGE
- modMass = GeomDisk(3)*draught;
+ modMass = radius*draught;
  damp = 0;
  spring = 0;
  modDamp = 2*Forcing.f*damp/Param.g/Param.rho_0;
@@ -981,7 +979,7 @@ if max(max(abs(A_odd)))>1e-5
 end
 
 % Ensure rigid plate (if specified)
-if RIGID
+if and(RIGID,COMM)
  dum_A=A_even; dum_A(1,1)=0; dum_A(2,1)=0;
  if max(max(abs(dum_A)))>1e-3
   if 1

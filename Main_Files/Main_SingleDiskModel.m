@@ -44,15 +44,14 @@ if ~exist('COMM','var');  COMM=0; end
 if strcmp(TEST,'Oceanide')
     
  if ~exist('RIGID','var'); RIGID=5; end   
+ 
+ if ~exist('SURGE','var'); SURGE=1; end  
 
- if ~exist('GeomDisk','var'); GeomDisk=[0,0,0.495,33e-3]; end
- if ~exist('Param','var'); Param = ParamDef3d_Oceanide(GeomDisk,RIGID); 
+ if ~exist('Param','var'); Param = ParamDef_Oceanide(RIGID); 
     Param = ModParam_def(Param,1,Vert_Modes,0,0); end
 
  if ~exist('fortyp','var'); fortyp='freq'; end
- if ~exist('lam0','var'); lam0=1./(.3:0.1:1.85); end
-
- if ~exist('bed','var'); bed=3.1; end
+ if ~exist('lam0','var'); lam0=1./.65; end
  
 else
  cprintf('green', 'Code another test!!! \n')
@@ -65,8 +64,8 @@ RAO = zeros(length(outputs),length(lam0));
 
 for loop_lam=1:length(lam0)
 
- out = fn_ElasticDisk(fortyp, lam0(loop_lam), Param, GeomDisk, bed, ...
-  th_vec, RIGID, 1, COMM, 0);
+ out = fn_ElasticDisk(fortyp, lam0(loop_lam), Param, ...
+  th_vec, RIGID, SURGE, COMM, 0);
 
  for loop_out=1:length(out)
   for loop_outs=1:length(outputs)

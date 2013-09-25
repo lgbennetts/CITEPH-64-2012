@@ -1,11 +1,11 @@
-% function alpha = fn_2dAttn(TEST,fortyp,lam0,conc,Ens_size,COMM)
+% function fn_2dFloe(TEST,fortyp,lam0,conc,Ens_size,COMM)
 %
-% DESCRIPTION: THIS FUNCTION WILL CALCULATE THE NON-DIM ATTENUATION COEFFICIENT
-% FOR FLOES OF UNIFORM THICKNESS USING THE BERRY & KLEIN RESULT
-% THE LENGTH OF THE FLOES IS RANDOMLY SELECTED FROM A UNIFORM DIST.
+% DESCRIPTION: THIS FUNCTION WILL CALCULATE REFLECTION & TRANSMISSION
+% COEFFICIENTS FOR FLOES OF UNIFORM THICKNESS: THE LENGTH OF THE FLOES
+% IS EITHER (A) LONG; OR (B) RANDOMLY SELECTED FROM A UNIFORM DIST.
 %
-% This is the attenuation model used in the WIM as at July 2013 (with
-% addition of floe length)
+% nb. Attn model used in the WIM as at July 2013 (+ floe length dep)
+% nb. vertical modes cosh(k(z+h))/cosh(kh) fixed
 %
 % INPUTS:
 %
@@ -21,74 +21,70 @@
 %
 % OUTPUTS:
 %
-% alpha = dimensional attenuation coefficient
-% Rm    = reflected energy
-% Tm    = Transmitted energy
+% TT    = Transmitted energy
+%
+% EXTRA VARIABLES:
+%
+% parameter_vector = [liq_dens, ice_dens, poiss, youngs, grav, freq^2/g]
+% visc_rp          = viscosity parameter (default = 0)
 
-function [alpha, Rm, Tm] = ...
- fn_2dAttn(TEST,fortyp,lam0,Ens_size,conc,LONG,COMM,Nd)
+function out = ...
+ fn_2dFloe(fortyp,lam0,Param,outputs,LONG,COMM,Ens_size)
 
 %% Inputs & prelims
 
-path(path,'../../EXTRA_MATLAB_Fns');
+if ~exist('DO_PLOT','var'); DO_PLOT=0; end
+
+if ~exist('fortyp','var'); fortyp='freq'; end
+if ~exist('lam0','var');   lam0=1/2.5; end
+
 if ~exist('LONG','var'); LONG=0; end
 if ~exist('COMM','var'); COMM=1; end
-if ~exist('Ens_size','var'); Ens_size = 1; end
-if ~exist('Nd','var'); Nd = 101; end
 
-if ~exist('TEST','var'); TEST='Oceanide'; end
+if ~exist('Param','var'); Param = ParamDef_Oceanide(5); 
+    Param = ModParam_def(Param,1,5,0,0); end
 
-if strcmp(TEST,'Oceanide')
-    
- if ~exist('thickness','var'); thickness=33e-3; end
- if ~exist('floe_length','var'); floe_length=.99; end
- 
- if ~exist('depth','var'); depth=3; end
- if ~exist('conc','var'); conc=0.79; end % [0.39,0.79]
- 
- if ~exist('Param','var'); 
-    Param = ParamDef3d_Oceanide([0,0,floe_length,thickness]); 
-    Param = ModParam_def(Param,1,Nd,0,0); 
- end
+if ~LONG; if ~exist('Ens_size','var'); Ens_size = 1; end; end
 
-%  if 1 % forcing in terms of freq (Hz)
-%   per=.65:.15:2; % full scale wave period
-%   ind=10;
-%   if ~exist('fortyp','var'); fortyp='freq'; end
-%   if ~exist('lam0','var'); lam0=per(ind); end
-%  else   
-%   per=6.5:1.5:20; % full scale wave period
-%   wlen=(per.^2)*9.81/2*pi/100; % 1:100 wavelength (deep water)
-%   ind=10;  
-%   if ~exist('fortyp','var'); fortyp='waveno'; end
-%   if ~exist('lam0','var'); lam0=2*pi./wlen(ind); end
-%  end
- 
- Forcing = Force_def(Param.g(1), depth, fortyp, lam0);
+if ~exist('outputs','var'); outputs='transmitted energy heave pitch'; end
 
- Vert_Dim = Param.Ndtm;
- 
-else
-    
- cprintf('red',['Not set up yet' '\n'])
- 
-end
+depth = Param.bed;
+
+Forcing = Force_def(Param.g(1), depth, fortyp, lam0);
+
+Vert_Dim = Param.Ndtm;
+
+thickness = Param.thickness;
+
+floe_length = Param.floe_diam;
 
 DimG = Vert_Dim; clear Dims
 
-%%% PRODUCE THE VECTOR 
-%%% parameter_vector = [liq_dens, ice_dens, poiss, youngs, grav, freq^2/g]
-parameter_vector = [Param.rho_0, Param.rho, Param.nu, Param.beta, ...
-    Param.g, (2*pi*Forcing.f)^2/Param.g]; 
+draught = Param.draft; al = draught;
 
-%%% ADD VISCOSITY
-visc_rp = 0; %1e-1; %1e-1; % 
+be = Param.beta;
 
-%%% NEED TO CALC FREE-SURF ROOTS & WEIGHTS 
+fq = (2*pi*Forcing.f)^2/Param.g;
 
-Roots0 = roots_rp0(parameter_vector, 0, Vert_Dim-1, 0, depth, 0);
+parameter_vector = [Param.rho_0, Param.rho, Param.nu, Param.E, ...
+    Param.g, fq]; 
 
-Roots0=Roots0.';
+%visc_rp = 0; %1e-1; %1e-1; % 
+
+%% FREE-SURF ROOTS
+
+%Roots0 = roots_rp0(parameter_vector, 0, Vert_Dim-1, 0, depth, 0);
+%Roots0=Roots0.';
+
+Roots0 = zeros(Vert_Dim,1); 
+
+Roots0(1)   = fn_RealRoot([depth*parameter_vector(6)], ...
+          'fn_ReDispRel_water', 'fn_UppLimReal_water', 1e-16)/depth; 
+
+for loop_Dim = 2:Vert_Dim
+ Roots0(loop_Dim) = 1i*fn_ImagRoot_water(loop_Dim-1, depth, ...
+  parameter_vector(6), 1e-16); 
+end
 
 mat_A0 = wtd_cosh_cosh(Vert_Dim, Roots0, depth);     
 
@@ -100,18 +96,17 @@ if COMM
 end
 
 if COMM
- cprintf([0.3,0.3,0.3],[TEST ' test:\n'])   
- cprintf([0.3,0.3,0.3],[fortyp ' = ' num2str(lam0) '\n'])
- if LONG 
-  cprintf([0.3,0.3,0.3],['floe length = ' num2str(floe_length) '\n'])
-  cprintf([0.3,0.3,0.3],['ensemble = ' num2str(Ens_size) '\n'])
+ cprintf([0.3,0.3,0.3],['>> ' fortyp ' = ' num2str(lam0) '\n'])
+ if ~LONG 
+  cprintf([0.3,0.3,0.3],['>> floe length = ' num2str(floe_length) '\n'])
+  cprintf([0.3,0.3,0.3],['>> ensemble = ' num2str(Ens_size) '\n'])
  else
-  cprintf([0.3,0.3,0.3],'long floe limit\n')
+  cprintf([0.3,0.3,0.3],'>> long floe limit\n')
  end
- cprintf([0.3,0.3,0.3],['concentration = ' num2str(conc) '\n'])
- cprintf([0.3,0.3,0.3],[int2str(Vert_Dim) ' vertical modes\n'])
- cprintf([0.3,0.3,0.3],[num2str(thickness) ' thick\n'])
- cprintf([0.3,0.3,0.3],['rigidity = ' num2str(Param.E) '\n'])
+ cprintf([0.3,0.3,0.3],['>> ' num2str(thickness) ' thick\n'])
+ cprintf([0.3,0.3,0.3],['>> rigidity = ' sprintf('%0.5g',Param.E) '\n'])
+ cprintf([0.3,0.3,0.3],['>>> ' int2str(Vert_Dim) ' vertical modes\n'])
+ cprintf([0.3,0.3,0.3],['>>> lam0/k0 = ' num2str(2*pi/Roots0(1)) '/' num2str(Roots0(1)) '\n'])
 end
      
 clear Param
@@ -120,14 +115,17 @@ clear Param
 
 [Rm0,Tm0,Rp0,Tp0,Roots] = ...
             fn_WaterIce(parameter_vector, Vert_Dim, DimG,... 
-            Roots0, mat_A0, thickness, depth, visc_rp);
+            Roots0, mat_A0, thickness, depth, draught, al, be, 0);
+           
+if COMM; cprintf([0.3,0.3,0.3],['>>> lam/k   = ' ...
+  num2str(2*pi/Roots(1)) '/' num2str(Roots(1)) '\n']); end           
         
 if LONG %%% LONG FLOE LIMIT %%%
  
  r11 = Rm0(1,1); 
- alpha = -2*log(1-abs(r11)^2);
+ %alpha = -2*log(1-abs(r11)^2);
  
- Rm=[]; Tm=[];
+ TT = (1-abs(r11)^2)^2; RR = [];
 
 else %%% NO LONG FLOE LIMIT %%% 
             
@@ -151,19 +149,94 @@ else %%% NO LONG FLOE LIMIT %%%
  
  Rm = mean(r_vec); Tm = mean(t_vec);
 
- % Non-Dimensional attenuation coefficient
- alpha = -log(Tm);
+ TT = Tm; RR = Rm;
 
 end
 
-% if COMM
-%  cprintf('b',['alpha (per floe)=' num2str(alpha) '\n'])
-%  cprintf('b',['alpha (per m)=' num2str(conc*alpha/floe_length) '\n'])
-% end
+%% PLOT:
 
-alpha = conc*alpha/floe_length;
+if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
+  ~isempty(strfind(outputs,'pitch'))))
+ 
+ x_res = 501;
+ 
+ [wts,xx,fac] = fn_NumInt(x_res,-floe_length/2,floe_length/2);
+ 
+ xx_ext = (floe_length/2+2*pi/Roots0(1))*linspace(-1,1,x_res);
+ 
+ v1 = 1:Vert_Dim+2; v2 = v1 + Vert_Dim+2;
+ 
+ am = eye(Vert_Dim,1); bm = zeros(Vert_Dim,1);
+ 
+ %%% Amplitudes in floe
+ 
+ El = exp(1i*Roots*floe_length);
+ 
+ dum_M(v1,v1)=eye(Vert_Dim+2); dum_M(v2,v2)=eye(Vert_Dim+2);
+ dum_M(v1,v2)=-Rp0*diag(El); dum_M(v2,v1)=-Rp0*diag(El);
+ 
+ dum_v(v1,1) = Tm0*am;       dum_v(v2,1) =Tm0*bm;
+ 
+ dum_amps = dum_M\dum_v;
+ 
+ %%% The floe profile
+ 
+ eta=zeros(x_res,1);
+ for loop_x=1:length(xx)
+  eta(loop_x) = ((Roots.*tanh(Roots*(depth-draught))).')*...
+   (diag(exp(1i*Roots*(xx(loop_x)+floe_length/2)))*dum_amps(v1) ...
+   + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
+ end
+ 
+ eta = eta/fq;
+ 
+ %%% Plot
+ 
+ if DO_PLOT
+  figure(fn_getfig)
+  
+  h1 = subplot(2,1,1); hold on; h2 = subplot(2,1,2); hold on
+  
+  plot(h1,xx_ext,real(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
+  plot(h1,xx,real(eta),'r')
+  plot(h2,xx_ext,imag(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
+  plot(h2,xx,imag(eta),'r')
+ end
+ 
+end
+
+ 
+%% OUTPUTS & FINISH 
+
+out_str = ' ''dummy'' '; out_val = ' 0 ';
+
+if strfind(outputs,'reflected energy')
+ out_str = [out_str '; ''reflected energy'' '];
+ out_val = [out_val '; RR'];
+end
+
+if strfind(outputs,'transmitted energy')
+ out_str = [out_str '; ''transmitted energy'' '];
+ out_val = [out_val '; TT'];
+end
+
+if strfind(outputs,'heave')
+ out_str = [out_str '; ''heave'' '];
+ out_val = [out_val '; abs((fac/floe_length)*wts*eta)'];
+end
+
+if strfind(outputs,'pitch')
+ out_str = [out_str '; ''pitch'' '];
+ out_val = [out_val '; abs((12*fac/floe_length^3)*wts*(eta.*xx))'];
+end
+
+eval(['out=struct( ''name'', {' out_str ...
+ '}, ''value'', {' out_val '});']) 
+out(1)=[];
 
 if COMM
+ disp(['>>>> reflected energy  : ' num2str(RR)])
+ disp(['>>>> transmitted energy: ' num2str(TT)])  
  cprintf([0.3,0.3,0.3],'-----------    END: 2d Attn   ------------\n')
  cprintf([0.3,0.3,0.3],'------------------------------------------\n')
 end
@@ -292,17 +365,17 @@ return
 
 function [Rm,Tm,Rp,Tp,Roots_mat] = ...
     fn_WaterIce(parameter_vector, Vert_Dim, DimG,...
-    Roots0, mat_A0, Di, depth, visc_rp)
+    Roots0, mat_A0, capD_vec, depth, d_vec, al_vec, be_vec, visc_rp)
     
 No_Sects = 1;
 
-capD_vec = Di;
+% capD_vec = Di;
 
-d_vec = (parameter_vector(2)/parameter_vector(1))*capD_vec; %(5/6)*capD_vec;
+% d_vec = (parameter_vector(2)/parameter_vector(1))*capD_vec; %(5/6)*capD_vec;
 
-al_vec = (parameter_vector(2)/parameter_vector(1))*capD_vec;
-be_vec = parameter_vector(4)*(capD_vec.^3)./...
-    (12*parameter_vector(1)*(1-(parameter_vector(3)^2))*parameter_vector(5));
+% al_vec = (parameter_vector(2)/parameter_vector(1))*capD_vec;
+% be_vec = parameter_vector(4)*(capD_vec.^3)./...
+%     (12*parameter_vector(1)*(1-(parameter_vector(3)^2))*parameter_vector(5));
 
 % - INITIALISE - %
 
@@ -312,17 +385,32 @@ A_mats = zeros(Vert_Dim,Vert_Dim,No_Sects);
 
 % - CALC THE ICE COVERED ROOTS & WEIGHTS - %
 
-[Roots_mat, errs]  = roots_rp(parameter_vector, visc_rp, Vert_Dim-1, ...
-    capD_vec, depth - d_vec, 0);
-Roots_mat=Roots_mat.';
-if Vert_Dim>1
- dum_perm=[1,4:Vert_Dim+2,2:3];
- Roots_mat = Roots_mat(dum_perm,:);
-end
-if sum(sum(errs))>0, disp('There are errors in the roots.'), end
+% [Roots_mat, errs]  = roots_rp(parameter_vector, visc_rp, Vert_Dim-1, ...
+%     capD_vec, depth - d_vec, 0);
+% Roots_mat=Roots_mat.';
+% if Vert_Dim>1
+%  dum_perm=[1,4:Vert_Dim+2,2:3];
+%  Roots_mat = Roots_mat(dum_perm,:);
+% end
+% if sum(sum(errs))>0, disp('There are errors in the roots.'), end
+
+Roots_mat = zeros(Vert_Dim+2,No_Sects);
+ 
 for loop_s=1:No_Sects
+ 
  pv = [parameter_vector(1:6), depth, d_vec(loop_s), capD_vec(loop_s),...
      depth-d_vec(loop_s), al_vec(loop_s), be_vec(loop_s)];
+    
+ Roots_mat(1,loop_s) = fn_RealRoot([1-pv(6)*al_vec(loop_s), ...
+  be_vec(loop_s)/((depth-d_vec(loop_s))^4),...
+  (depth-d_vec(loop_s))*pv(6)],...
+  'fn_ReDispRel_ice', 'fn_UppLimReal_ice', 1e-16)/(depth-d_vec(loop_s)); 
+ 
+ for loop_Dim = 2:Vert_Dim
+  Roots_mat(loop_Dim,loop_s) = 1i*fn_ImagRoot_ice(loop_Dim-1, ...
+   al_vec(loop_s), be_vec(loop_s), depth-d_vec(loop_s), ...
+   pv(6), 1e-16*[1,1]);
+ end
 
  A_mats(:,:,loop_s) = wtd_cosh_cosh(Vert_Dim, ...
      Roots_mat(1:Vert_Dim,loop_s), depth-d_vec(loop_s));
@@ -341,9 +429,7 @@ Roots_mat(Vert_Dim+[1:2],:) = Mu_vec;
 
 Inter_Dim=Vert_Dim; cmpx_mkr=1; Inter_Dim0=Vert_Dim;
 
-if cmpx_mkr == 1 % - Keep the cmplx rts
-    
- %cmpx_mkr = 1;   
+if cmpx_mkr == 1 % - Keep the cmplx rts 
     
  Roots_Inter = Roots_mat;
  Roots_Inter(Inter_Dim+1:Vert_Dim,:)=[];
@@ -353,8 +439,6 @@ if cmpx_mkr == 1 % - Keep the cmplx rts
  til_Inter_Dim = Inter_Dim+2;
  
 else % - Eliminate the cmplx rts
-    
- %cmpx_mkr = 0;   
     
  Roots_Inter = Roots_mat;
  Roots_Inter(Inter_Dim+1:Vert_Dim+2,:)=[];
@@ -1703,3 +1787,105 @@ else
 end
 
 return
+
+% - NUMERICAL INTEGRATION - %
+
+% approximate int_{a}^{b}f(x)dx = fac*wts*f(x_abs)
+
+function [wts,x_abs,fac] = fn_NumInt(Nint,x0,x1)
+
+%%% CHEBYSHEV %%%
+
+% fac=(x1-x0)/2;
+% 
+% [x,w]=OP_numint_chebyshev(Nint);
+% 
+% x_abs = fac*(x+1) + x0;
+% 
+% wts = (w.*sqrt(1-x.^2)).';
+
+%%% LEGENDRE %%%
+
+fac=(x1-x0)/2;
+
+[x,wts]=OP_numint_legendre(Nint,[-1,1]);
+
+x_abs = fac*(x+1) + x0;
+
+wts = wts.';
+
+return
+
+% this module provides the subroutine GEN_gauleg, which computes
+% N-vectors x & w of abscissae and weights
+% to use for Gauss-Legendre integration
+% given N and the endpoints x1 & x2.
+% CALL [x,w]=GEN_gauleg(x1,x2,N)function
+
+function [x,w]=OP_numint_legendre(N,x1x2)
+
+if nargin==1
+  x1=-1;
+  x2=1;
+else
+  x1=x1x2(1);
+  x2=x1x2(2);
+end
+
+ndp=14;
+EPS=5/10^(1+ndp);
+MAXIT=10;
+
+M=floor((N+1)/2); % The roots are symmetric in the interval,
+          % so we only have to ﬁnd half of them.
+xm=0.5*(x2+x1);
+xl=0.5*(x2-x1);
+
+% Initial approximations to the roots:
+zz=cos(pi*((1:M)'-0.25)/(N+0.5));
+ppvec=0*zz;
+zzvec=ppvec;
+x=zeros(N,1);
+w=x;
+
+for jj=1:M
+  unfinished=1;
+  z=zz(jj);
+  % Newton’s method carried out individually on the roots.
+  for its=1:MAXIT
+    p1=1;
+    p2=0;
+    % Loop up the recurrence relation to get
+    % the Legendre polynomials evaluated at z
+    if unfinished
+      for j=1:N
+         p3=p2;
+         p2=p1;
+         p1=((2*j-1)*z*p2-(j-1)*p3)/j;
+      end
+      % p1 now contains the desired Legendre polynomials.
+      % We next compute pp, the derivatives, by a standard relation
+      % involving also p2, the polynomials of one lower order.
+      pp=N*(z*p1-p2)/(z*z-1);
+      z1=z;
+      z=z1-p1/pp;
+      unfinished=(abs(z-z1) > EPS);
+    else
+      zzvec(jj)=z;
+      ppvec(jj)=pp;
+      break
+    end
+  end
+  if (its == MAXIT+1)
+    disp('too many iterations in GEN_gauleg')
+  end
+end
+
+%OUTPUTS
+x(1:M)=xm-xl*zzvec;        % Scale the root to the desired interval
+x(N:-1:N-M+1)=xm+xl*zzvec; % Put in its symmetric counterpart.
+w(1:M)=2*xl./((1-zzvec.^2).*ppvec.^2);  % Compute the weight
+w(N:-1:N-M+1)=w(1:M);                   % and its symmetric counterpart
+
+return
+
