@@ -2,6 +2,40 @@
 %
 % DESCRIPTION: Compare model & data attenuations
 %
+% INPUTS:
+%
+% General:
+%
+% conc      = either 39 or 79
+% DO_FDSP   = comments on/off for each frequency
+% DO_PLOT   = plot data on/off
+% DO_DISP   = print data on/off
+% DO_SVFG   = save figure on/off
+% COMM      = comments on/off
+% fig       = figure handle (fig=0 picks the next available figure handle)
+% col       = colout/linestyle for data
+% col_model = as above for model data
+%
+% Data:
+%
+% probes   = probes used for analysis
+% DO_DATA  = analyse experimental data on/off
+% file_pre = prefix for data files (temporary only)
+% T_pers   = number of periods used for moving Fourier window
+% data_out = what data are we after? 
+%            data_out.name usually 'amp-harmo-steady-1st'
+%            data_out.tint = steady state time interval
+%            see MovingFFT.m for full description
+% DO_FPLT  = plots on/off for each frequency
+% DEL      = delete temporary files after use on/off
+% 
+% Model:
+%
+% DO_MODEL   = analyse model on/off
+% Vert_Modes = number of vertical modes used for EMM method (if used)
+% model_pers = abscissa (periods) used for model
+% what_model = what model to use (see Main_AttnModel)           
+%
 % L Bennetts Sept 2013 / Adelaide
 
 function Main_Attn
@@ -14,23 +48,25 @@ function Main_Attn
 
 if ~exist('conc','var');     conc=39; end
 
-if ~exist('DO_FDSP','var');  DO_FDSP=0; end
+if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 if ~exist('DO_PLOT','var');  DO_PLOT=1; end
 if ~exist('DO_DISP','var');  DO_DISP=0; end
-if ~exist('DO_SVFG','var');  DO_SVFG=1; end
-if ~exist('COMM','var');     COMM=1; end
+if ~exist('COMM','var');     COMM   =1; end
 
 if DO_PLOT
- if ~exist('fig','var'); fig=0; end
+ if ~exist('fig','var'); fig=1; end
  if ~exist('col','var'); 
   col=' ''r.'' , ''markersize'' , 12'; 
-  col_model=' ''g'' ';
+  col_nl=' ''ro'' , ''markersize'' , 12';
+  col_model=' ''c'' ';
  end
 end
 
+if ~exist('DO_FDSP','var');  DO_FDSP=0; end
+
 %% DATA
 
-if ~exist('DO_DATA','var'); DO_DATA=1; end
+if ~exist('DO_DATA','var'); DO_DATA=0; end
 
 if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
@@ -51,13 +87,13 @@ probes=[1,2,3,8,9]; %1:10;
 
 %% MODEL 
 
-if ~exist('DO_MODEL','var'); DO_MODEL=0; end
+if ~exist('DO_MODEL','var'); DO_MODEL=1; end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=1*1e2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
 if ~exist('model_pers','var'); model_pers=0.65:0.05:1.85; end
 
-what_mod = '2d EMM'; %'2d BIE'; %'Boltzmann steady'; %'2d no long';
+what_mod = '2d BIE'; %'Boltzmann steady'; %'2d EMM'; %'2d no long';
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -202,13 +238,29 @@ if DO_PLOT
  if fig==0; fig = fn_getfig; end
  figure(fig)
  if DO_DATA
+  %%% Higest amplitude waves
+  [~,IA] = unique(T_vec); IA = [0,IA];
+  jj_nl=[]; ct=1;
+  for loop=find(diff(IA)>1)
+   dum_inds=IA(loop)+1:IA(loop+1);
+   if unique(H_vec(dum_inds))>1
+    [~,jj_nl(ct)]=max(H_vec(dum_inds));
+    jj_nl(ct)=dum_inds(jj_nl(ct)); ct=ct+1;
+   end 
+  end
+  clear ct IA dum_inds
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%
   eval(['plot(T_vec,trans_coeff,' col ')'])
+  if ~isempty(jj_nl)
+   hold on
+   eval(['plot(T_vec(jj_nl),trans_coeff(jj_nl),' col_nl ')']) 
+  end % END ~ISEMPTY(jj_nl)
   prb_str=int2str(probes(1));
   for loop=2:length(probes)
    prb_str=[prb_str ', ' int2str(probes(loop))];
   end
-  title(['Moving FFT :' int2str(T_pers) 'periods; interval' ...
-   data_out.tint ' probes' prb_str],'fontsize',14)
+  title(['Moving FFT:' int2str(T_pers) ' periods; interval ' ...
+   data_out.tint ' probes ' prb_str],'fontsize',14)
  end
  xlabel('period [s]','fontsize',14)
  ylabel('Trans coeff','fontsize',14)

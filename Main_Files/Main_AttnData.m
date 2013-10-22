@@ -48,13 +48,13 @@ if ~exist('conc','var'); conc=79; end
 
 if ~exist('T_pers','var'); T_pers = 10; end
 
-if ~exist('CREATEIT','var'); CREATEIT='RHS'; end
+if ~exist('CREATEIT','var'); CREATEIT='LHS'; end
 
 if ~exist('run_num','var');  run_num=1; end
 if ~exist('RUNIT','var');    RUNIT='FFT'; end
 if ~exist('TYP','var');      TYP=0; end
 if ~exist('DEL','var');      DEL=1; end
-if ~exist('DO_PLOT','var');  DO_PLOT = 'Aspec-signal'; end
+if ~exist('DO_PLOT','var');  DO_PLOT = 'Aspec'; end
 if ~exist('DO_SAVE','var');  DO_SAVE = 0; end
 if ~exist('DO_DISP','var');  DO_DISP = 1; end
 

@@ -43,7 +43,7 @@ if ~exist('COMM','var');  COMM=0; end
 
 if strcmp(TEST,'Oceanide')
     
- if ~exist('RIGID','var'); RIGID=5; end   
+ if ~exist('RIGID','var'); RIGID=10; end   
  
  if ~exist('SURGE','var'); SURGE=1; end  
 

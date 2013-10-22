@@ -33,9 +33,9 @@ Param.nu = 0.3*ones(Param.Np,1);
 
 % Young modulii (in MPa)
 if ~RIGID
- Param.E = 750*1e6*ones(Param.Np,1);
+ Param.E = 10e10*ones(Param.Np,1);
 else
- Param.E = 750*(10^RIGID)*ones(Param.Np,1);
+ Param.E = (10^RIGID)*ones(Param.Np,1);
 end
     
 % Draughts (in m)

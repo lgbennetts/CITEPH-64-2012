@@ -2,6 +2,38 @@
 %
 % DESCRIPTION: Compare model & data RAOs for a single disk
 %
+% INPUTS:
+%
+% General:
+%
+% DO_FDSP   = comments on/off for each frequency
+% DO_PLOT   = plot data on/off
+% DO_DISP   = print data on/off
+% DO_SVFG   = save figure on/off
+% fig       = figure handle (fig=0 picks the next available figure handle)
+% col       = colout/linestyle for data
+% col_model = as above for model data
+%
+% Data:
+%
+% rbms     = rigid body modes: heave, surge, sway, pitch & roll
+% DO_DATA  = analyse experimental data on/off
+% file_pre = prefix for data files (temporary only)
+% T_pers   = number of periods used for moving Fourier window
+% data_out = what data are we after? 
+%            data_out.name usually 'amp-harmo-steady-1st'
+%            data_out.tint = steady state time interval
+%            see MovingFFT.m for full description
+% DO_FPLT  = plots on/off for each frequency
+% DEL      = delete temporary files after use on/off
+% 
+% Model:
+%
+% DO_MODEL   = analyse model on/off
+% Vert_Modes = number of vertical modes used for EMM method (if used)
+% model_pers = abscissa (periods) used for model
+% WHAT_MODEL = what model to use (see Main_AttnModel)    
+%
 % L Bennetts Aug 2013 / Adelaide
 
 function Main_RAO
@@ -12,19 +44,21 @@ function Main_RAO
 
 %% GENERAL
 
-if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 if ~exist('DO_PLOT','var');  DO_PLOT=1; end
 if ~exist('DO_DISP','var');  DO_DISP=0; end
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 
 if DO_PLOT
  if ~exist('col','var'); 
-  col=' ''r.'' , ''markersize'' , 12'; 
-  col_model={' ''b'' ',' ''r'' '};
+  col=' ''r.'' , ''markersize'' , 12';
+  col_nl=' ''ro'' , ''markersize'' , 12';
+  col_model={' ''m'' ',' ''r'' '};
  end
 end
 
-fig = 1:3;
+if DO_PLOT; fig = 1:3; end
+
+if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 
 %% DATA
 
@@ -51,11 +85,11 @@ rbms={'heave','roll+pitch','surge+sway'}; %
 %% MODEL 
 
 if ~exist('DO_MODEL','var');   DO_MODEL  =1; end
-if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d'; end
+if ~exist('WHAT_MODEL','var'); WHAT_MODEL='3d'; end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=10^2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
 if DO_DISP; model_pers=HT(2,ht_inds); end
-if ~exist('model_pers','var'); model_pers=0.3:0.05:1.85; end
+if ~exist('model_pers','var'); model_pers=0.6:0.05:2; end
 
 count_rbm=1;
 for loop_rbm=1:length(rbms)
@@ -80,8 +114,9 @@ if DO_MODEL
  %%% Using EMM during runtime:
  
  if strfind(WHAT_MODEL,'2d-EMM')
-  cprintf('green','More checks of EMM required\n')
-  if ~exist('Param','var'); Param = ParamDef_Oceanide(5);
+  cprintf('green','More checks of EMM required ?!?\n')
+  if ~exist('rigid','var'); rigid=10; end
+  if ~exist('Param','var'); Param = ParamDef_Oceanide(rigid);
    Param = ModParam_def(Param,1,Vert_Modes,0,0); end
   for loop_p=1:length(model_pers)
    out = fn_2dFloe('freq',1/model_pers(loop_p),Param,'heave pitch',0,0);
@@ -292,16 +327,33 @@ end % IF DO_DATA
 
 if DO_PLOT
  if ~exist('fig','var'); fig = fn_getfig(length(rbms)); end
+ %%% Higest amplitude waves
+ [~,IA] = unique(HT(2,ht_inds)); IA = [0,IA];
+ jj_nl=[]; ct=1;
+ for loop=find(diff(IA)>1)
+  dum_inds=IA(loop)+1:IA(loop+1);
+  if unique(HT(1,dum_inds))>1
+   [~,jj_nl(ct)]=max(HT(1,dum_inds));
+   jj_nl(ct)=dum_inds(jj_nl(ct)); ct=ct+1;
+  end
+ end
+ clear ct IA dum_inds
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%
  for loop_rbm=1:length(rbms)
   figure(fig(loop_rbm))
   if DO_DATA
    eval(['plot(HT(2,ht_inds),RAO(:,loop_rbm),' col ')'])
+   if ~isempty(jj_nl)
+    hold on
+    eval(['plot(HT(2,ht_inds(jj_nl)),RAO(jj_nl,loop_rbm),' col_nl ')'])
+    hold off
+   end
    prb_str=int2str(probes(1));
    for loop=2:length(probes)
     prb_str=[prb_str ', ' int2str(probes(loop))];
    end
-   title([rbms{loop_rbm} ': ' int2str(T_pers) ' periods; interval' ...
-    data_out.tint ' probes' prb_str],'fontsize',14)
+   title([rbms{loop_rbm} ': ' int2str(T_pers) ' periods; interval ' ...
+    data_out.tint ' probes ' prb_str],'fontsize',14)
   end 
   xlabel('period [s]','fontsize',14)
   ylabel('RAO','fontsize',14)

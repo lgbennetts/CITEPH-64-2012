@@ -13,16 +13,17 @@
 %
 % INPUTS:
 %
-% N =  vertical modes
-% Param = field: g (gravity), rho_0 (water density), rho (disk density)
+% N        =  vertical modes
+% Param    = field: g (gravity), rho_0 (water density), rho (disk density)
 %                nu (Poisson's ratio), E (Young's mod), draft,
 %                D (flexural rigid), beta (scaled flex rigid),
 %                N (vertical modes trav + ev)
 % GeomDisk = [0,0,radius, thickness]
 % fortyp   = 'freq' (in Hz) or 'wlength' (2*pi/k0) or 'waveno' (k0)
 % forval   = associated value
-% bed = depth of fluid
-% th_vec = discrete angular spectrum
+% bed      = depth of fluid
+% th_vec   = discrete angular spectrum
+% outputs  = see below
 %
 % PARAMETERS
 %
@@ -47,24 +48,29 @@
 %         1 = plane wave, unit amplitude, travelling in x-dir
 % SURGE = include surge motion
 % RIGID = rigid disk (inf) or elastic disk (rigidity=10^RIGID)
-% FOU   = calculate Fourier basis rep of disk motion
-% RAO   = calculate the response amplitude operators
+% FOU   = calculate Fourier basis rep of disk motion XXX DEFUNCT XXX
+% RAO   = calculate the response amplitude operators XXX DEFUNCT XXX
 % PLT   = plot a contour of constant angle
 % COMM  = comments on/off (1/0)
 % BESNM = normalisation used for Bessel fns
 %
 % OUTPUTS:
 %
-% E0 = int_{0}^{2\pi} E dtheta where ...
-% E  = energy radiated in unit time per unit angle (Meylan & Squire, JGR `96
-%                                                   Meylan et al JGR `97)
+% 'Energy' = [E0, E] where
+%            E0 = int_{0}^{2\pi} E dtheta where ...
+%            E  = energy radiated in unit time per unit angle 
+%                (Meylan & Squire, JGR `96; Meylan et al JGR `97)
+% 'En-Fou' = Fourier basis representation of energy
+% 'DTM'    = diffraction transfer matrix
+% 'RAOs'   = [Heave, Pitch, Surge]
 %
 % L Bennetts May 2013 / Adelaide
 %
-% modified from directory Arb_Floe_Pool/fn_Circ_Floe_Nov09 (Otago, 2009)
+% REVISION HISTORY:
+% - modified from directory Arb_Floe_Pool/fn_Circ_Floe_Nov09 (Otago, 2009)
 
 %%
-function out = fn_ElasticDisk(fortyp, forval, Param, ...
+function out = fn_ElasticDisk(fortyp, forval, Param, outputs, ...
  th_vec, RIGID, SURGE, COMM, PLT)
 
 Tol_vec(1) = 1e-16; % - Real root error - %
@@ -80,14 +86,16 @@ if ~exist('INC','var'); INC=1; end
 if ~exist('SURGE','var'); SURGE=0; end
 if ~exist('RIGID','var'); RIGID=5; end
 
-if ~exist('FOU','var'); FOU=0; end
-if ~exist('RAO','var'); RAO=1; end
+% if ~exist('FOU','var'); FOU=0; end
+% if ~exist('RAO','var'); RAO=1; end
 
 if ~exist('BESNM','var'); BESNM=2; end
 
 if ~exist('PLT','var'); PLT=0; end
 
 if ~exist('N','var'); N=1; end
+
+if ~exist('outputs','var'); outputs='E E0'; end
 
 %% Set up problem
 
@@ -111,12 +119,14 @@ Forcing = Force_def(Param.g,bed,fortyp,forval);
 parameter_vector = [Param.rho_0, Param.rho, Param.nu, Param.E, Param.g];
 
 if COMM
- if RIGID; disp('-> Rigid disk problem'); else; disp('-> Elastic disk problem'); end
- disp(['--> Radius = ' num2str(radius)])
- disp(['--> Draught = ' num2str(draught)])
- if SURGE; display('--> with surge'); else; display('--> without surge'); end
- disp(['---> wavelength = ',num2str(Forcing.lam0)])
- disp(['----> ' int2str(Vert_Modes) ' modes'])
+ if RIGID; cprintf(0.4*[1,1,1],'-> Rigid disk problem\n'); 
+ else cprintf(0.4*[1,1,1],'-> Elastic disk problem\n'); end
+ cprintf(0.4*[1,1,1],['--> Radius = ' num2str(radius) '\n'])
+ cprintf(0.4*[1,1,1],['--> Draught = ' num2str(draught) '\n'])
+ if SURGE; cprintf(0.4*[1,1,1],'--> with surge\n'); 
+ else cprintf(0.4*[1,1,1],'--> without surge\n'); end
+ cprintf(0.4*[1,1,1],['---> wavelength = ',num2str(Forcing.lam0) '\n'])
+ cprintf(0.4*[1,1,1],['----> ' int2str(Vert_Modes) ' vertical mode(s)\n'])
 end
 
 % Normalise
@@ -149,10 +159,20 @@ end
 kk = zeros(Vert_Modes,1); k0 = zeros(Vert_Modes,1);
 wt = zeros(Vert_Modes,1); wt_0 = zeros(Vert_Modes,1);
 
-for loop_Dim=1:Vert_Modes
- k0(loop_Dim) = GetRootsMMA_FS_PWC(parameter_vector(1,:), loop_Dim, Tol_vec);
+k0(1)   = fn_RealRoot([bed*parameter_vector(6)], ...
+          'fn_ReDispRel_water', 'fn_UppLimReal_water', 1e-16)/bed; 
+wt_0(1) = weight_0_PWC(bed, k0(1));
+
+for loop_Dim = 2:Vert_Modes
+ k0(loop_Dim)   = 1i*fn_ImagRoot_water(loop_Dim-1, bed, ...
+                                       parameter_vector(6), 1e-16); 
  wt_0(loop_Dim) = weight_0_PWC(bed, k0(loop_Dim));
 end
+
+% for loop_Dim=1:Vert_Modes
+%  k0(loop_Dim) = GetRootsMMA_FS_PWC(parameter_vector(1,:), loop_Dim, Tol_vec);
+%  wt_0(loop_Dim) = weight_0_PWC(bed, k0(loop_Dim));
+% end
 
 Az_Dim_vec = 2*Tol_vec(4)*ones(3,1);
 Az_Dim = 0;
@@ -174,15 +194,26 @@ Az_Dim=Az_Dim-2; s_Modes = Az_Dim; clear Az_Dim
 
 if ~isinf(RIGID)
  
- for loop_Dim=1:Vert_Modes
-  %  if or(loop_Dim==1,~RIGID)
-  %   kk(loop_Dim) = GetRootsMMA_PWC(parameter_vector, loop_Dim, Tol_vec);
-  %  else
-  %   kk(loop_Dim) = (loop_Dim-1)*1i*pi/(bed-draught);
-  %  end
-  kk(loop_Dim) = GetRootsMMA_PWC(parameter_vector, loop_Dim, Tol_vec);
+ kk(1) = fn_RealRoot([1-parameter_vector(6)*al, be/((bed-draught)^4),...
+  (bed-draught)*parameter_vector(6)],...
+  'fn_ReDispRel_ice', 'fn_UppLimReal_ice', 1e-16)/(bed-draught);
+ wt(1) = weight_PWC(parameter_vector, kk(1));
+ 
+ for loop_Dim = 2:Vert_Modes
+  kk(loop_Dim) = 1i*fn_ImagRoot_ice(loop_Dim-1, ...
+   al, be, bed-draught, parameter_vector(6), 1e-16*[1,1]);
   wt(loop_Dim) = weight_PWC(parameter_vector, kk(loop_Dim));
  end
+ 
+%  for loop_Dim=1:Vert_Modes
+%   %  if or(loop_Dim==1,~RIGID)
+%   %   kk(loop_Dim) = GetRootsMMA_PWC(parameter_vector, loop_Dim, Tol_vec);
+%   %  else
+%   %   kk(loop_Dim) = (loop_Dim-1)*1i*pi/(bed-draught);
+%   %  end
+%   kk(loop_Dim) = GetRootsMMA_PWC(parameter_vector, loop_Dim, Tol_vec);
+%   wt(loop_Dim) = weight_PWC(parameter_vector, kk(loop_Dim));
+%  end
  
  [mu_0, mu_1] = mu_new_PWC(parameter_vector, Vert_Modes, kk, wt);
  
@@ -806,7 +837,11 @@ end % end isinf(RIGID)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+out_str = ' ''dummy'' '; out_val = ' 0 ';
+
 %% Energy check
+
+if INC~=1; cprintf('green','Energy checks will not work!!!\n'); end
 
 % In far-field:
 % \phi=\sqrt{2/pi/k0/r}exp(i*k0*r)\sum_{n=-N}^{N}Bvec(1,n)*exp(i*n*(theta-\pi/2))
@@ -837,41 +872,61 @@ if abs(E0+E1) > Tol_vec(5)
   'period=' num2str(1/Forcing.f) '\n'])
 end
 
+%%% For circular geometry following should hold:
+
+if max( abs( abs(Bvec0.*conj(Ip)).^2 + ...
+  real(conj(Ip).*Bvec0)/wt_0(1)/cosh(k0(1)*bed) ) ) > Tol_vec(5)
+ cprintf('red',['energy error: ' ...
+  'period=' num2str(1/Forcing.f) '\n'])
+end
+
+%%% Output the diffraction transfer matrix/vector
+
+if strfind(outputs,'DTM')
+
+ DTM = Bvec0.*conj(Ip)*wt_0(1)*cosh(k0(1)*bed);
+
+ out_str = [out_str '; ''DTM'' '];
+ out_val = [out_val '; DTM '];
+ 
+end
+
 %% Energy
 
-out_str = []; out_val = [];
-
-% FF_Amp = Far-field amplitude (function of theta)
-% E ~ |A|^2 -> scattered energy (function of energy)
-% E0 = int_{0}^{2\pi} E dtheta
-
-% nb. incang not required as axisymm problem
-% incang = 0;
-% Normalise inc wave energy to unity with incamp = sqrt(2/rho0*g)
-% incamp = sqrt(2/Param.rho_0*Param.g);
-% but this simply cancels with below, so leave !!!!
-% (CC Mei book Chap 1)
-
-% A(theta) = \sum_{n=-N}^{N}Bvec(1,n)*exp(i*n*(theta-\pi/2)) as above
-FF_Amp = (Bvec0.*conj(Ip))*exp(1i*[-s_Modes:s_Modes].'*th_vec);
-
-E = 2*(abs(FF_Amp).^2)/k0(1)/pi;
-
-out_str = [out_str ' ''E'' '];
-out_val = [out_val ' E '];
-
-E0 = 4*sum(abs(Bvec0.*conj(Ip)).^2)/k0(1);
-
-out_str = [out_str '; ''E0'' '];
-out_val = [out_val '; E0 '];
-
-%E0 = E0/2/pi;
+if strfind(outputs,'Energy')
+ 
+ % FF_Amp = Far-field amplitude (function of theta)
+ % E ~ |A|^2 -> scattered energy (function of energy)
+ % E0 = int_{0}^{2\pi} E dtheta
+ 
+ % nb. incang not required as axisymm problem
+ % incang = 0;
+ % Normalise inc wave energy to unity with incamp = sqrt(2/rho0*g)
+ % incamp = sqrt(2/Param.rho_0*Param.g);
+ % but this simply cancels with below, so leave !!!!
+ % (CC Mei book Chap 1)
+ 
+ % A(theta) = \sum_{n=-N}^{N}Bvec(1,n)*exp(i*n*(theta-\pi/2)) as above
+ FF_Amp = (Bvec0.*conj(Ip))*exp(1i*[-s_Modes:s_Modes].'*th_vec);
+ 
+ 
+ E = 2*(abs(FF_Amp).^2)/k0(1)/pi;
+ 
+ out_str = [out_str '; ''E'' '];
+ out_val = [out_val '; E '];
+ 
+ E0 = 4*sum(abs(Bvec0.*conj(Ip)).^2)/k0(1);
+ 
+ out_str = [out_str '; ''E0'' '];
+ out_val = [out_val '; E0 '];
+ 
+end
 
 % FOURIER BASIS REPRESENTATION
 % Array E(i,j) such that E = sum_{p,q=-N}^{N}E(p,q)*exp(i*(p-q)*theta)
 
-if FOU
- 
+if strfind(outputs,'En-Fou')
+
  Bvec0 = (Bvec0.*conj(Ip));
  
  E_Fourier = zeros(2*s_Modes+1,2*s_Modes+1);
@@ -891,111 +946,111 @@ end % end if FOU
 
 %% Natural modes of vibration
 
-Jmax=5;
-
-% Displacement
-
-res = 1001;
-displ=zeros(2*s_Modes+1,res);
-r_vec = linspace(0,radius,res);
-
-for loop_r=1:length(r_vec)
- count=1;
- for loop_Az=-s_Modes:s_Modes
-  if BESNM==1
-   JJ = besselj(loop_Az, kk*r_vec(loop_r)).*exp(-abs(imag(kk*radius)));
-   JJ_mu = besselj(loop_Az, [mu_0;mu_1]*r_vec(loop_r)).*...
-    exp(-abs(imag([mu_0;mu_1]*radius)));
-  elseif BESNM==2
-   JJ = besselj(loop_Az, kk*r_vec(loop_r))./besselj(loop_Az, kk*radius);
-   JJ_mu = besselj(loop_Az, [mu_0;mu_1]*r_vec(loop_r))./...
-    besselj(loop_Az, [mu_0;mu_1]*radius);
-  end
-  
-  dum = C_mat(Vert_Modes+1,w1)*diag(JJ) + ...
-   C_mat(Vert_Modes+1,w2(1))*JJ_mu(1)*Amp_mu_Mat(1,:,s_Modes+1+loop_Az) + ...
-   C_mat(Vert_Modes+1,w2(2))*JJ_mu(2)*Amp_mu_Mat(2,:,s_Modes+1+loop_Az);
-  
-  displ(count,loop_r) = dum*Avec(:,s_Modes+1+loop_Az);
-  count = count+1;
- end
-end
-clear count dum
-
-% TEST
-if 0
- % HEAVE
- displ(s_Modes+1,:)= 1 + 0*r_vec;
-elseif 0
- % PITCH
- displ(s_Modes,:) = r_vec/2;
- displ(s_Modes+2,:) = r_vec/2;
-end
-
-if PLT
- th=0;
+if strfind(outputs,'RAOs')
  
- evec = exp(1i*[-s_Modes:s_Modes]*th);
- evec = reshape(evec,1,2*s_Modes+1);
- full_displ = zeros(1,length(r_vec));
+ Jmax=5;
+ 
+ % Displacement
+ 
+ res = 1001;
+ displ=zeros(2*s_Modes+1,res);
+ r_vec = linspace(0,radius,res);
  
  for loop_r=1:length(r_vec)
-  full_displ(loop_r) = evec*displ(:,loop_r);
+  count=1;
+  for loop_Az=-s_Modes:s_Modes
+   if BESNM==1
+    JJ = besselj(loop_Az, kk*r_vec(loop_r)).*exp(-abs(imag(kk*radius)));
+    JJ_mu = besselj(loop_Az, [mu_0;mu_1]*r_vec(loop_r)).*...
+     exp(-abs(imag([mu_0;mu_1]*radius)));
+   elseif BESNM==2
+    JJ = besselj(loop_Az, kk*r_vec(loop_r))./besselj(loop_Az, kk*radius);
+    JJ_mu = besselj(loop_Az, [mu_0;mu_1]*r_vec(loop_r))./...
+     besselj(loop_Az, [mu_0;mu_1]*radius);
+   end
+   
+   dum = C_mat(Vert_Modes+1,w1)*diag(JJ) + ...
+    C_mat(Vert_Modes+1,w2(1))*JJ_mu(1)*Amp_mu_Mat(1,:,s_Modes+1+loop_Az) + ...
+    C_mat(Vert_Modes+1,w2(2))*JJ_mu(2)*Amp_mu_Mat(2,:,s_Modes+1+loop_Az);
+   
+   displ(count,loop_r) = dum*Avec(:,s_Modes+1+loop_Az);
+   count = count+1;
+  end
+ end
+ clear count dum
+ 
+ % TEST
+ if 0
+  % HEAVE
+  displ(s_Modes+1,:)= 1 + 0*r_vec;
+ elseif 0
+  % PITCH
+  displ(s_Modes,:) = r_vec/2;
+  displ(s_Modes+2,:) = r_vec/2;
  end
  
- figure; plot(r_vec,real(full_displ),'r');
- if 1
-  hold on; plot(r_vec,real(exp(1i*k0(1)*r_vec)),'k:');
- end
- clear evec full_displ
-end
-
-% Inner-products
-
-A_even=zeros(s_Modes+1,Jmax+1);
-A_odd =zeros(s_Modes+1,Jmax+1);
-
-for loop_Az=0:s_Modes
- [wnj,Nnj] = fn_NatModes(loop_Az,Jmax,Param.nu,r_vec,radius);
- for loop_j=1:Jmax+1
-  if loop_Az~=0
-   A_even(loop_Az+1,loop_j) = ...
-    pi*fn_Trap(r_vec.*( displ(s_Modes+1+loop_Az,:) +...
-    displ(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
-   A_odd(loop_Az+1,loop_j) = ...
-    pi*fn_Trap(r_vec.*( displ(s_Modes+1+loop_Az,:) -...
-    displ(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
-  else
-   A_even(loop_Az+1,loop_j) = ...
-    2*pi*fn_Trap(r_vec.*displ(s_Modes+1,:),wnj(loop_j,:),r_vec)/Nnj(loop_j);
+ if PLT
+  th=0;
+  
+  evec = exp(1i*[-s_Modes:s_Modes]*th);
+  evec = reshape(evec,1,2*s_Modes+1);
+  full_displ = zeros(1,length(r_vec));
+  
+  for loop_r=1:length(r_vec)
+   full_displ(loop_r) = evec*displ(:,loop_r);
   end
- end
-end
-
-% Ensure even solution
-if max(max(abs(A_odd)))>1e-5
- disp('A_odd = ')
- disp(abs(A_odd))
-end
-
-% Ensure rigid plate (if specified)
-if and(RIGID,COMM)
- dum_A=A_even; dum_A(1,1)=0; dum_A(2,1)=0;
- if max(max(abs(dum_A)))>1e-3
+  
+  figure; plot(r_vec,real(full_displ),'r');
   if 1
-   cprintf('green',['elastic modes excited: max=' num2str(max(max(abs(dum_A)))) '\n'])
-   cprintf('green',[fortyp '=' num2str(forval) '\n'])
-  else
-   disp('A_even = ')
-   disp(abs(A_even))
+   hold on; plot(r_vec,real(exp(1i*k0(1)*r_vec)),'k:');
+  end
+  clear evec full_displ
+ end
+ 
+ % Inner-products
+ 
+ A_even=zeros(s_Modes+1,Jmax+1);
+ A_odd =zeros(s_Modes+1,Jmax+1);
+ 
+ for loop_Az=0:s_Modes
+  [wnj,Nnj] = fn_NatModes(loop_Az,Jmax,Param.nu,r_vec,radius);
+  for loop_j=1:Jmax+1
+   if loop_Az~=0
+    A_even(loop_Az+1,loop_j) = ...
+     pi*fn_Trap(r_vec.*( displ(s_Modes+1+loop_Az,:) +...
+     displ(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
+    A_odd(loop_Az+1,loop_j) = ...
+     pi*fn_Trap(r_vec.*( displ(s_Modes+1+loop_Az,:) -...
+     displ(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
+   else
+    A_even(loop_Az+1,loop_j) = ...
+     2*pi*fn_Trap(r_vec.*displ(s_Modes+1,:),wnj(loop_j,:),r_vec)/Nnj(loop_j);
+   end
   end
  end
- clear dum_A
-end
-
-%% RAOs
-
-if RAO
+ 
+ % Ensure even solution
+ if max(max(abs(A_odd)))>1e-5
+  disp('A_odd = ')
+  disp(abs(A_odd))
+ end
+ 
+ % Ensure rigid plate (if specified)
+ if and(RIGID,COMM)
+  dum_A=A_even; dum_A(1,1)=0; dum_A(2,1)=0;
+  if max(max(abs(dum_A)))>1e-3
+   if 1
+    cprintf('green',['elastic modes excited: max=' num2str(max(max(abs(dum_A)))) '\n'])
+    cprintf('green',[fortyp '=' num2str(forval) '\n'])
+   else
+    disp('A_even = ')
+    disp(abs(A_even))
+   end
+  end
+  clear dum_A
+ end
+ 
+ %% RAOs
  
  % Heave
  H_inc = 1;
@@ -1051,12 +1106,14 @@ if RAO
     '(eccentricity=' num2str(coth(k0(1)*bed)) ')' '\n'])
   end
  end
+ 
 end % end RAO
 
 %% Form structured output
 
 eval(['out=struct( ''name'', {' out_str ...
  '}, ''value'', {' out_val '});'])
+out(1)=[];
 
 return
 

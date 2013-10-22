@@ -41,6 +41,8 @@ if ~exist('lam0','var');   lam0=1/2.5; end
 if ~exist('LONG','var'); LONG=0; end
 if ~exist('COMM','var'); COMM=1; end
 
+if ~exist('RIGID','var'); RIGID=10; end
+
 if ~exist('Param','var'); Param = ParamDef_Oceanide(5); 
     Param = ModParam_def(Param,1,5,0,0); end
 

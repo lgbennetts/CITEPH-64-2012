@@ -35,6 +35,7 @@
 %             'TpHm'   peak period & sig wave height spectra
 % DO_DISP   = display output (on by default)
 % DO_SAVE   = save data (off by default)
+% DO_MOV    = create movie 'Mov' if 'vid' is specified in DO_PLOT
 % data_type = 1 (default) wave elevation, 2 acceleration
 % data_out
 %
@@ -47,6 +48,7 @@ function MovingFFT(file_nm,DO_PLOT,DO_SAVE,DO_DISP)
 if ~exist('DO_PLOT','var'); DO_PLOT = 'Aspec-signal'; end
 if ~exist('DO_DISP','var'); DO_DISP    = 1;           end
 if ~exist('DO_SAVE','var'); DO_SAVE    = 0;           end
+if ~exist('DO_MOV','var');  DO_MOV     = 1;           end
 
 if ~exist('file_nm','var'); file_nm='s00001'; end
 
@@ -161,7 +163,7 @@ clear T_pers
 
 %%% plot peak period and sqrt{m0/m2} (av no. down crossings of 0)
 
-fig=101;
+fig=fn_getfig;
 
 %%% PEAK PERIOD & SIG WAVE HT %%%
 if strfind(DO_PLOT,'TpHm')
@@ -197,8 +199,8 @@ end
 
 if findstr('vid',DO_PLOT)
  
- cprintf('red','Paused: hit key to continue...')
- pause
+%  cprintf('red','Paused: hit key to continue...')
+%  pause
  
  if data_type==3
   ylab1 = '\theta, degs';
@@ -207,8 +209,7 @@ if findstr('vid',DO_PLOT)
   ylab1 = 'a, ms^{-2}';
   ylab2 = 'S, m^2s^{-3}';
  else
-  ylab1 = 'w, m';
-  ylab2 = 'S, m^2s';
+  ylab1 = 'w [m]';
  end
  
  for m=m0:Nwindows
@@ -217,7 +218,7 @@ if findstr('vid',DO_PLOT)
   disp0       = data(jj);
   disp0       = disp0-mean(disp0);
   %%
-  figure(fig); fig=fig+1;
+  figure(fig); 
   subplot(1,3,1),plot(tm,data,'k');
   Y  = 1.05*max(data)*[-1 1];
   ylim(Y);
@@ -225,40 +226,67 @@ if findstr('vid',DO_PLOT)
   plot(time0(1)+0*Y,Y,'r');
   plot(time0(end)+0*Y,Y,'r');
   hold off;
-  GEN_proc_fig('tm, s',ylab1)
+  GEN_proc_fig('t [s]',ylab1)
   %%
   subplot(1,3,2);
   plot(time0,disp0,'k');
   ylim(Y);
   xlim([time0(1) time0(end)]);
-  GEN_proc_fig('<time>, s',ylab1)
-  ttl   = title(tstr);
-  GEN_font(ttl);
+  GEN_proc_fig('t [s]',ylab1)
+  %ttl   = title(tstr);
+  %GEN_font(ttl);
   %%
   subplot(1,3,3);
-  [Smax,jmax] = max(Sn_mat(:,m));
-  periods  = 1./ff;
-  Tp = periods(jmax);
-  fp = ff(jmax);
-  %periods(jmax-1:jmax+1)'
+  if findstr('Svid',DO_PLOT)
+   [Smax,jmax] = max(Sn_mat(:,m));
+   periods  = 1./ff;
+   Tp = periods(jmax);
+   fp = ff(jmax);
+   %periods(jmax-1:jmax+1)'
   
-  Sn_max   = max(max(Sn_mat));
-  SS       = Sn_max*1.10*[0 1];
+   Sn_max   = max(max(Sn_mat));
+   SS       = Sn_max*1.10*[0 1];
   
-  hold off;
-  plot(Tp+0*SS,SS,'g')
-  hold on;
-  plot(periods,Sn_mat(:,m),'k');
-  xlim([0 4*Tp]);
-  ylim(SS);
-  GEN_proc_fig('period, s',ylab2)
+   hold off;
+   plot(Tp+0*SS,SS,'g')
+   hold on;
+   plot(periods,Sn_mat(:,m),'k');
+   xlim([0 4*Tp]);
+   ylim(SS);
+   GEN_proc_fig('period, s','S, m^2s')
+  elseif findstr('Avid',DO_PLOT)
+   [Amax,jmax] = max(an_mat(:,m));
+   periods  = 1./ff;
+   Tp = periods(jmax);
+   fp = ff(jmax);
+   an_max   = max(max(an_mat));
+   AA       = an_max*1.10*[0 1];
+  
+   hold off;
+   plot(Tp+0*AA,AA,'g')
+   hold on;
+   plot(periods,an_mat(:,m),'k');
+   xlim([0 4*Tp]);
+   ylim(AA);
+   GEN_proc_fig('period [s]','amplitude [m]')
+  end
+  
   drawnow;
   hold off;
-  pause(0.05);
+  %fn_fullscreen(fig)
+  %pause(0.05);
+  
+  if DO_MOV; Mov(m)=getframe(fig); end
  end
  
- %%% ENERGY SPECTRUM %%%
-elseif findstr('Sspec',DO_PLOT)
+ if DO_MOV; save('Movie-MovingFFT','Mov'); end
+ 
+ fig=fig+1;
+
+end 
+ 
+%%% ENERGY SPECTRUM %%%
+if findstr('Sspec',DO_PLOT)
  
  figure(fig); fig=fig+1;
  h1=subplot(2,1,1);
@@ -318,9 +346,11 @@ elseif findstr('Sspec',DO_PLOT)
  end % end exist(Tind)
  
  drawnow;
+
+end 
  
- %%% AMPLITUDE SPECTRUM %%%
-elseif findstr('Aspec',DO_PLOT)
+%%% AMPLITUDE SPECTRUM %%%
+if findstr('Aspec',DO_PLOT)
  
  figure(fig); fig=fig+1;
  h1=subplot(2,1,1);

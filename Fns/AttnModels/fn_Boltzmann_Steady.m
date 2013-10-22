@@ -21,7 +21,7 @@ function [I,th_vec] = fn_Boltzmann_Steady(fortyp, lam0, conc, ...
 
 if ~exist('PLOT','var'); PLOT=1; end
 
-if PLOT; x = 0:.5:5; end
+if PLOT; x = 0:50:500; end
 
 if ~exist('COMM','var'); COMM=1; end
 
@@ -51,10 +51,10 @@ th_vec = pi*th_vec;
 
 %% Define test
 
-if ~exist('RIGID','var'); RIGID=5; end
+if ~exist('RIGID','var'); RIGID=10; end
 if ~exist('SURGE','var'); SURGE=0; end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=10; end
+if ~exist('Vert_Modes','var'); Vert_Modes=1; end
 
 if ~exist('conc','var'); conc=0.79; end % [0.39,0.79]
 
@@ -65,12 +65,12 @@ if ~exist('fortyp','var'); fortyp='freq'; end
 if ~exist('lam0','var'); lam0=1/.65; end
 
 %if ~exist('fn_inc','var'); fn_inc = 'kron_delta(0,th_vec)'; end
-
 if ~exist('fn_inc','var'); fn_inc = 'cos(th_vec).^100'; end
+%if ~exist('fn_inc','var'); fn_inc = 'series_delta(th_vec,25)'; end
 
 if ~exist('absorb','var'); absorb=0; end
 
-out = fn_ElasticDisk(fortyp, lam0, Param, th_vec, ...
+out = fn_ElasticDisk(fortyp, lam0, Param, 'Energy', th_vec, ...
  RIGID, SURGE, 0);
 
 for loop_out=1:length(out)
@@ -116,7 +116,7 @@ if ~DTYP
  R_mat1 = dx*R_mat1;
  
  if 0
-  R_mat0 = -beta + absorb + 0*L_mat;
+  R_mat0 = -beta + absorb + 0*S;
  else
   R_mat0 = -sum(R_mat1,1) + absorb;
  end
@@ -227,12 +227,13 @@ if PLOT
    end
    I = [I(end);I];
    plot(h1,[-pi,th_vec]/pi,real(I))
-   set(h1, 'ylim',[0,1]); set(h1,'xlim',[-1,1])
+   set(h1, 'ylim',[0,max(I0)]); set(h1,'xlim',[-1,1])
    title(['x=' num2str(x(loop_x))])
-   pause
-  end
+   xlabel('\theta','fontsize',16); ylabel('I','fontsize',16); 
+   pause(0.5)
+   end
   close(gcf)
-  disp(['const=' num2str(I(1))])
+  if COMM; disp(['const=' num2str(I(1))]); end
  else
   cprintf('red',['Not coded yet' '\n'])
  end    
@@ -303,6 +304,19 @@ for loop=1:length(v)
  if u==v(loop)
   out(loop)=1;
  end
+ 
+end
+
+% sum_{n=-N}^{N} exp{i*n*theta}
+% ->delta(theta-0) as N->infty
+
+function out=series_delta(theta,N)
+
+out=ones(1,length(theta));
+
+for lp=1:N
+    
+ out = out + 2*cos(lp*theta);
  
 end
 
