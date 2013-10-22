@@ -1,5 +1,8 @@
 function citeph_collisions_all
 
+%% in citeph_coll0 below;
+%% adjust DO_CALC & DO_ANALYSIS to speed up or redo calculations;
+%% adjust SENSOR_LOOP to change which direction(s) of acceleration you want
 
 tt = {'c39','c79'};
 for j=2
@@ -7,6 +10,7 @@ for j=2
    citeph_coll0(test_type)
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function citeph_coll0(test_type)
 
 tres  = .004;%%time resolution [s]
@@ -21,27 +25,30 @@ elseif strcmp(test_type,'calib')
    Ntests   = 17;
 end
 
-
-opts  = {'Ax','Ay','Az'};
-PR    = 1;%%Plot Results
-if PR
+DO_CALC     = 1;%%if need to do or redo calculation set to 1; else if it's done set to 0;
+DO_ANALYSIS = 1;%%if it's done (& the files saved) can speed things up by setting this to 0;
+if DO_CALC==0
    figure(14);
    rms_a    = zeros(Ntests_reg,1);
    T_coll   = zeros(Ntests_reg,1);
    Hi_Frac  = zeros(Ntests_reg,1);
 end
 
+%%***********************
+%%******SENSOR LOOP******
+%%***********************
+opts     = {'Ax','Ay','Az'};
 %for n=1:3
-for n=2
+for n=1
    opt      = opts{n};
    outfile  = ['out/coll_stats_' opt '.mat'];
    figfile  = ['out/collision_strength_' opt '.eps'];
    %%
-   if 1
+   if DO_ANALYSIS | DO_CALC
       for test_num=1:Ntests_reg
       %for test_num=1:Ntests
       %for test_num=6
-         if ~PR%%do calculation
+         if DO_CALC%%do calculation
             citeph_coll_1test(test_type,test_num,opt)
          else%%open results & plot;
             [Tcol,Acol,Asig,Tp,Hs,sensor_names,Col_dt] =...
@@ -69,6 +76,9 @@ for n=2
                Hi_Frac(test_num,r)  = (asig2/asig1)^2*100;%%6x1 vector
                %pause
             end
+            if ~exist('out')
+               eval(['!mkdir out']);
+            end
             save(outfile,'rms_a','T_target','H_target','sensor_names','T_coll','Hi_Frac','dt_all','col_dt');
             %plot(T_target,rms/H_target,'x');
             %hold on
@@ -81,7 +91,7 @@ for n=2
    end
 end%n - opt (Ax,Ay,Az)
 
-if PR
+if DO_CALC==0
    Nsens = size(rms_a,2);
    if strcmp('Az',opt)
       colin = {'xb','xr','or','xk'};
