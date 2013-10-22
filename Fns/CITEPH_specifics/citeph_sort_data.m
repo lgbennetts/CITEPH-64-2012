@@ -1,4 +1,12 @@
-function citeph_sort_data(test_type)
+function citeph_sort_data
+
+tt = {'calib','c39','c79'};
+for j=1:3
+   test_type   = tt{j};
+   citeph_sort_data0(test_type)
+end
+
+function citeph_sort_data0(test_type)
 
 if nargin==0
    %test_type   = 'c39';
@@ -20,11 +28,6 @@ for test_num=1:Ntests
 end
 
 function sort_data(test_type,test_num)
-%% citeph_get_data.m
-%% Author: Timothy Williams
-%% Date:   20130723, 12:21:29 CEST
-%% CALL: [time,data] = citeph_get_data(test_type,test_num)
-%% these are full scale not basin scale
 
 if nargin==0
    %test_type   = 'calib';
@@ -42,7 +45,7 @@ end
 basedir  = citeph_user_specifics;
 
 if strcmp(test_type,'calib');%%real or calibration
-   fdir  = [basedir '/calibration_waves/'];
+   fdir  = [basedir '/calibration/data_Wave_Calibration/calibration_waves/'];
    str1  = 'calib_houle_'; 
    %%
    [expt_dir,T_target,H_target,type,expt_name] = citeph_get_calib_prams(test_num);
@@ -99,7 +102,7 @@ Nfiles   = length(DD);
 nn       = Nfiles+1;
 for j=length(str_vec):-1:1
    ftype = str_vec{j}
-   dir2  = [fx_dir,'/',ftype]
+   dir2  = [fx_dir,'/',ftype];
    if ~exist(dir2)
       eval(['!mkdir ',dir2]);
    end
