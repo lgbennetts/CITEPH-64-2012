@@ -106,9 +106,9 @@ elseif conc==79
   end
  end
  
- if strcmp(TYP,'Regular')
+ if strfind(TYP,'Regular')
   dum=dum_reg;
- elseif strcmp(TYP,'Irregular')
+ elseif strfind(TYP,'Irregular')
   dum=dum_irr;
  end
  
@@ -151,20 +151,21 @@ elseif conc==39
  count_r=1; count_i=1;
  
  for loop=1:N
-  if strcmp(c39_prams(loop).type,'Regular')
+  if strfind(c39_prams(loop).type,'Regular')
    dum_reg(count_r,1) = 10*c39_prams(loop).wave_height;
    dum_reg(count_r,2) = 10\c39_prams(loop).period;
    count_r=count_r+1;
-  elseif strcmp(c39_prams(loop).type,'Irregular')
+  elseif strfind(c39_prams(loop).type,'Irregular')
    dum_irr(count_r,1) = 10*c39_prams(loop).wave_height;
    dum_irr(count_r,2) = 10\c39_prams(loop).period;
    count_i=count_i+1;
   end
  end
  
- if strcmp(TYP,'Regular')
+ if strfind(TYP,'Regular')
   dum=dum_reg;
- elseif strcmp(TYP,'Irregular')
+  if strfind(TYP,'calib'); dum([3:4,8:9],:)=[]; end
+ elseif strfind(TYP,'Irregular')
   dum=dum_irr;
  end
  

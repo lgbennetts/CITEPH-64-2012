@@ -22,11 +22,12 @@ path(path,'../Fns/MovingFourier')
 %path(path,'../Fns/Misc/Weight_Ones')
 path(path,'../Fns/Misc/Weight_Standard')
 
-if strcmp(getenv('LOGNAME'),'a1612881')
+if or(strcmp(getenv('LOGNAME'),'a1612881'),...
+  strcmp(getenv('LOGNAME'),'lbennetts'))
  path(path,'../../EXTRA_MATLAB_Fns'); % For colour
  path(path,'../../EXTRA_MATLAB_Fns/GEN_progs');
  path(path,'Temp_data/');
- path(path,'../../Fabien_Thesis/MovingFourier/');
+ %path(path,'../../Fabien_Thesis/MovingFourier/');
 end
 
 return

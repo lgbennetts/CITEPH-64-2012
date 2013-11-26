@@ -53,10 +53,12 @@ if ~exist('DO_MOV','var');  DO_MOV     = 1;           end
 if ~exist('file_nm','var'); file_nm='s00001'; end
 
 eval(['load ', file_nm, '-in data description tm Tp data_type '...
- 'data_out X T_pers'])
+ 'data_out X Tpers'])
 
 if ~exist('data_type','var'); data_type=1; end
-if ~exist('T_pers','var'); T_pers = 20; end
+if ~exist('Tpers','var'); Tpers = 'Tpers = 20;'; end
+
+eval(Tpers);
 
 % Restrict to one probe
 if size(data,2)~=1
@@ -72,7 +74,7 @@ fmax  = fs/2;
 
 %%
 
-T_window = T_pers*Tp;
+T_window = Tpers*Tp;
 df       = 1/T_window;
 Nw       = 2^ceil(log2(T_window/dt));
 T_window = dt*Nw;
@@ -154,8 +156,8 @@ end
 % %  save(file_nm,'an_mat','Sn_mat','t_int','dt','df',...
 % %   'Hs_vec','Tp_vec','Tm02_vec','T_pers','-append');
 % end
-
-clear T_pers
+%
+%clear T_pers
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Plots & video
@@ -329,6 +331,8 @@ if findstr('Sspec',DO_PLOT)
  
  if findstr('single floe',description)
   Tind = fn_TestTimes(1/Tp,X,'single');
+ elseif findstr('calibration',description)
+  Tind = fn_TestTimes(1/Tp,X,'calibration');
  elseif findstr('% conc',description)
   Tind = fn_TestTimes(1/Tp,X,'attn');
  end % end if findstr
@@ -336,11 +340,15 @@ if findstr('Sspec',DO_PLOT)
  if exist('Tind','var')
   hold on
   
+  ct_lp=1;
   for loop=1:length(Tind)
    if strfind(Tind(loop).description,'x')
-    plot(h2,Tind(loop).time + 0*Y, Y, Tind(loop).colour);
+    pp(ct_lp)=plot(h2,Tind(loop).time + 0*Y, Y, Tind(loop).colour);
+    ds{ct_lp}=Tind(loop).description; ct_lp=ct_lp+1;
    end
   end
+  
+  legend(pp,ds,'Location','NorthEast'); clear pp ds ct_lp
   
   hold off
  end % end exist(Tind)
@@ -393,6 +401,8 @@ if findstr('Aspec',DO_PLOT)
  
  if findstr('single floe',description)
   Tind = fn_TestTimes(1/Tp,X,'single');
+ elseif findstr('calibration',description)
+  Tind = fn_TestTimes(1/Tp,X,'calibration');
  elseif findstr('% conc',description)
   Tind = fn_TestTimes(1/Tp,X,'attn');
  end % end if findstr
@@ -400,11 +410,16 @@ if findstr('Aspec',DO_PLOT)
  if exist('Tind','var')
   hold on
   
+  ct_lp=1;
   for loop=1:length(Tind)
    if strfind(Tind(loop).description,'x')
-    plot(h2,Tind(loop).time + 0*Y, Y, Tind(loop).colour, 'linewidth',2);
+    pp(ct_lp)=plot(h2,Tind(loop).time + 0*Y, Y, Tind(loop).colour);
+    ds{ct_lp}=Tind(loop).description; ct_lp=ct_lp+1;
    end
   end
+  
+  %legend(pp,ds,'Location','NorthEast'); 
+  clear pp ds ct_lp
 
  end % end exist(Tind)
  
@@ -440,6 +455,8 @@ if findstr('signal',DO_PLOT)
  
  if findstr('single floe',description)
   Tind = fn_TestTimes(1/Tp,X,'single');
+ elseif findstr('calibration',description)
+  Tind = fn_TestTimes(1/Tp,X,'calibration'); 
  elseif findstr('% conc',description)
   Tind = fn_TestTimes(1/Tp,X,'attn');
  end % end if findstr
@@ -447,12 +464,15 @@ if findstr('signal',DO_PLOT)
  if exist('Tind','var')
   
   hold on
-  
+  ct_lp=1;
   for loop=1:length(Tind)
    if strfind(Tind(loop).description,'x')
-    plot(h1,Tind(loop).time + 0*Y, Y, Tind(loop).colour, 'linewidth',2);
+    pp(ct_lp)=plot(h1,Tind(loop).time + 0*Y, Y, Tind(loop).colour, 'linewidth',2);
+    ds{ct_lp}=Tind(loop).description; ct_lp=ct_lp+1;
    end
   end
+  
+  legend(pp,ds,'Location','NorthEast'); clear pp ds ct_lp
   
  end
  
@@ -465,38 +485,40 @@ end
 
 if exist('data_out','var')
  out_val = []; out_per = []; out_frq = []; out_std = [];
- for loop_out=1:length(data_out)
-  if findstr('harmo-steady',data_out(loop_out).name)
-   if findstr('amp',data_out(loop_out).name)
+ for loop_out=1:length(data_out.name)
+  if findstr('harmo-steady',data_out.name{loop_out})
+   if findstr('amp',data_out.name{loop_out})
     dum_out=an_mat;
-   elseif findstr('egy',data_out(loop_out).name)
+   elseif findstr('egy',data_out.name{loop_out})
     dum_out=Sn_mat;
    end % end amp or ht
-   if findstr('1st',data_out(loop_out).name)
+   if findstr('1st',data_out.name{loop_out})
     harmo=1;
-   elseif findstr('2nd',data_out(loop_out).name)
+   elseif findstr('2nd',data_out.name{loop_out})
     harmo=2;
    end % end which harmonic
    if findstr('single floe',description)
     Tind = fn_TestTimes(1/Tp,X,'single');
+   elseif findstr('calibration',description)
+    Tind = fn_TestTimes(1/Tp,X,'calibration'); 
    elseif findstr('% conc',description)
     Tind = fn_TestTimes(1/Tp,X,'attn');
    end % end get test times
    if ~exist('periods','var'); periods  = 1./ff; end
    [~,jj]=min(abs(periods-Tp/harmo)); pp = periods(jj);
-   t_vec=[]; count=1;
+   tvec=[]; count=1;
    for loop=1:length(Tind)
     if strfind(Tind(loop).description,'x')
-     t_vec(count)=Tind(loop).time; count=count+1;
+     tvec(count)=Tind(loop).time; count=count+1;
     end
    end % end loop Tind
    clear count Tind
-   [t0,it0]=min(t_vec); t_vec(it0)=[]; clear it0
-   if strcmp(data_out(loop_out).tint,'default')
-    t1=min(t_vec); clear t_vec
+   [t0,it0]=min(tvec); tvec(it0)=[]; clear it0
+   if strcmp(data_out.tint,'default')
+    t1=min(tvec); clear tvec
    else
-    eval(data_out(loop_out).tint)
-    clear t_vec
+    eval(data_out.tint)
+    clear tvec
    end % end if tint='default'
    tt=find(and(tm_vec>=t0,tm_vec<=t1));
    %%% OUTPUT %%%
@@ -506,10 +528,10 @@ if exist('data_out','var')
    out_frq = [out_frq ' ' num2str(1/pp)];
    %%% PLOT %%%
    if strfind(DO_PLOT,'Aspec')
-    plot(h2Aspec,[t0,t1],mean(dum_out(jj,tt))+[0,0],'k--','linewidth',5);
+    plot(h2Aspec,[t0,t1],mean(dum_out(jj,tt))+[0,0],'k','linewidth',5);
    end 
    if strfind(DO_PLOT,'signal')
-    plot(h1sig,[t0,t1],mean(dum_out(jj,tt))+[0,0],'r:','linewidth',5);
+    plot(h1sig,[t0,t1],mean(dum_out(jj,tt))+[0,0],'r','linewidth',5);
    end
   end % end output type
   clear dum_out
@@ -531,7 +553,7 @@ if exist('data_out','var')
  end
  if DO_DISP
   for loop=1:length(out)
-   cprintf('blue',['>>> ' data_out(loop_out).name ...
+   cprintf('blue',['>>> ' data_out.name{loop_out} ...
     ': ' num2str(out(loop_out).value) ...
     ' (at freq/per ' num2str(out(loop_out).freq) ...
     '/' num2str(out(loop_out).period) ...

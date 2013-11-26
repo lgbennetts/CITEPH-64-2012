@@ -8,7 +8,7 @@
 % INPUTS:
 %
 % TEST = sting identifying the test to be performed
-%        options: `Oc79', 'Quick'
+%        options: `Oc79', `Oc39', 'Quick'
 % Np = number of floes
 % Ndtm = no. vert modes used in calc DTMs
 % fortyp = 'freq' or 'wlength' or 'waveno'
@@ -21,10 +21,10 @@
 % COMM = flag for comments on (1) or off (0)
 % POOL = flag for matlabpool on (number of cpus) or off (0)
 
-function Main_MultiFloe(TEST,Ndtm,fortyp,lam_vec,ens,epsilon,file_marker,COMM,POOL)
+function Main_MultiFloe(TEST,Ndtm,fortyp,lam_vec,ens,file_marker,add_per,COMM,POOL)
 
 if ~exist('POOL','var'); POOL=0; end
-if ~exist('TEST','var'); TEST='Quick'; end
+if ~exist('TEST','var'); TEST='Oc39'; end
 if ~exist('COMM','var'); COMM=1; end
 
 if ~exist('extra_pts','var'); extra_pts=[]; end
@@ -33,9 +33,11 @@ if ~exist('fortyp','var'); fortyp='freq'; end
 if ~exist('lam_vec','var'); lam_vec=1/2; end 
 if ~exist('Ndtm','var'); Ndtm=5; end
 
+if ~exist('add_per','var'); add_per=0; end
+
 if length(lam_vec)>1
  disp('DONT SOLVE MORE THAN 1 PROBLEM AT A TIME !!!!')
- exit
+ return
 end
 
 if POOL
@@ -46,12 +48,33 @@ if ~exist('file_marker','var'); file_marker='test'; end
 
 if strcmp(TEST,'Oc79')
  
- if ~exist('RIGID','var'); RIGID=1; end
+ if ~exist('RIGID','var'); rigid=10; end
  if ~exist('scatyp','var'); scatyp='ela_plt'; end
  if ~exist('Np','var'); Np=5*16; end
  if ~exist('ens','var'); ens=1; end
- if ~exist('epsilon','var'); epsilon=0.005; end
+ if ~exist('scat_ident','var'); scat_ident=1; end
+ if strcmp(fortyp,'freq')
+  if ~exist('epsilon','var'); epsilon=fn_surge(1/lam_vec); end
+ end
  str_GeomDisks = 'fn_GeomDisks_Oc79';
+ Param = ParamDef_Oceanide(rigid,Np);
+ Param = ModParam_def(Param,1,Ndtm,extra_pts,terms_grn);
+ TankDim = [40 16 Param.bed];
+ 
+elseif strcmp(TEST,'Oc39')
+ 
+ if ~exist('RIGID','var'); rigid=10; end
+ if ~exist('scatyp','var'); scatyp='ela_plt'; end
+ if ~exist('Np','var'); Np=5*8; end
+ if ~exist('ens','var'); ens=1; end
+ if ~exist('scat_ident','var'); scat_ident=1; end
+ if strcmp(fortyp,'freq')
+  if ~exist('epsilon','var'); epsilon=fn_surge(1/lam_vec); end
+ end
+ str_GeomDisks = 'fn_GeomDisks_Oc39';
+ Param = ParamDef_Oceanide(rigid,Np);
+ Param = ModParam_def(Param,1,Ndtm,extra_pts,terms_grn);
+ TankDim = [40 16 Param.bed]; 
  
 elseif strcmp(TEST,'Quick')
  
@@ -60,8 +83,10 @@ elseif strcmp(TEST,'Quick')
  if ~exist('Np','var'); Np=2; end
  if ~exist('ens','var'); ens=1; end
  if ~exist('epsilon','var'); epsilon=0.5; end
+ if ~exist('scat_ident','var'); scat_ident=1; end
  str_GeomDisks = 'fn_GeomDisks_Quicky';
-
+ TankDim = [40 16 3]; 
+ 
 else
     
  disp('code something else!!!')
@@ -76,10 +101,13 @@ if strcmp(fortyp,'freq')
     disp(['freq = ' num2str(lam_vec) ' Hz'])
 end
 disp([int2str(ens) ' in ensemble'])
-clockout=clock;
-display(['Started: ' int2str(clockout(3)),'/', int2str(clockout(2)),'/',int2str(clockout(1)),' ' ,...
-  int2str(clockout(4)),':', int2str(clockout(5)),':',int2str(round(clockout(6)))] );
-clear clockout
+%clockout=clock;
+% display(['Started: ' int2str(clockout(3)),'/', int2str(clockout(2)),'/',int2str(clockout(1)),' ' ,...
+%   int2str(clockout(4)),':', int2str(clockout(5)),':',int2str(round(clockout(6)))] );
+%clear clockout
+
+disp('Started:') ; 
+fn_dispclock;
 
 tic
 
@@ -94,8 +122,7 @@ tic
 % left corner of the wave tank and coincides with the free-surface at rest.
 
 %%% Geometry of the wave tank: [length width height] %%%
-w=16;
-TankDim = [40 16 3]; %[15 10 0.5]; % [40 16 2];
+
 
 %%% Unperturbed problem
 
@@ -118,31 +145,38 @@ TankDim = [40 16 3]; %[15 10 0.5]; % [40 16 2];
 
 for loop_ens=1:ens
 
-if loop_ens~=1
- eps0=epsilon;
-else 
- eps0=0;
-end
-    
+ if add_per
+  if loop_ens~=1
+   eps0=epsilon;
+  else
+   eps0=0;
+  end
+ else
+  eps0=epsilon;
+ end
+
 if strcmp(TEST,'Oc79')
  GeomDisks=fn_GeomDisks_Oc79(TankDim,eps0,COMM,100);
+elseif strcmp(TEST,'Oc39')
+ GeomDisks=fn_GeomDisks_Oc39(TankDim,eps0,COMM,100);
 elseif strcmp(TEST,'Quick')
  GeomDisks=fn_GeomDisks_Quicky(TankDim,eps0,COMM,100);
+ Param = ParamDef3d(GeomDisks,RIGID);
+ Param = ModParam_def(Param,1,Ndtm,extra_pts,terms_grn);
 end
 
 %%% Physical properties
-Param = ParamDef3d(GeomDisks,RIGID);
 
 %%% Generation of horizontal mesh points for the free-surface region
-Mesh = Mesh_FS_def(GeomDisks, TankDim);
+%Mesh = Mesh_FS_def(GeomDisks, TankDim);
 
 %%% Modal parameters and accuracy
-Param = ModParam_def(Param,1,Ndtm,extra_pts,terms_grn);
+
 
 [Rm_sv{loop_ens},Tm_sv{loop_ens},Rp_sv{loop_ens},Tp_sv{loop_ens},...
       v_sv{loop_ens},k0_sv{loop_ens},x_lim_sv{loop_ens},reson_sv{loop_ens}]...
     = fn_MultiMode_MultiFloe_loop(lam_vec, Param, TankDim, ...
-    GeomDisks, Mesh, scatyp, fortyp, COMM);
+    GeomDisks, scatyp, fortyp, scat_ident, COMM);
 
 GeomDisks_sv{loop_ens} = GeomDisks;
 
@@ -165,10 +199,18 @@ if file_marker~=0
     
  %%% CHANGE TO LOCAL DIRECTORY' %%%   
  %file_pre = '../../../../../Documents/MatLab/Data/Wavetank/Full/';
- file_pre = '../../Data/Wavetank/Full/';
+ file_pre = '../../../Data/CITEPH-64-2012/MultiFloes/';
+ if strcmp(TEST,'Oc79')
+  file_pre=[file_pre 'Conc79/'];
+ elseif strcmp(TEST,'Oc39')
+  file_pre=[file_pre 'Conc39/'];
+ elseif strcmp(TEST,'Quick')  
+  file_pre=[file_pre 'Quick/'];
+ end
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
- v_info = {'Version 1.0:'; 
+ v_info = {'Version 1.1:'; 
+     ['31.10.2013: variation all in x direction'];
      ['17.07.2013: modified from Main_Rows']};
      
  file_name = ['Main_MultiFloe_',scatyp,'_',file_marker,'.mat'];
@@ -219,6 +261,8 @@ if file_marker~=0
  
 %  [fortyp ' :' num2str(lam_vec(1)) ' -> ' num2str(lam_vec(end)) ' (' ...
 %       int2str(length(lam_vec)) ')'] ...
+
+ w = TankDim(2);
  
  save([file_pre,file_name], 'v_info', 'lam_vec', 'fortyp', ...
     'Rm_sv', 'Tm_sv', 'Rp_sv', 'Tp_sv', 'v_sv', 'w', ...
@@ -245,7 +289,7 @@ return
 
 function [Rm,Tm,Rp,Tp,v_vec,k0,x_lim,reson_mkr]...
     = fn_MultiMode_MultiFloe_loop(lam_vec, Param, TankDim, ...
-    GeomDisks, Mesh, scatyp, fortyp, COMM)
+    GeomDisks, scatyp, fortyp, scat_ident, COMM)
 
 for loop_lam=1:length(lam_vec)
          
@@ -261,13 +305,15 @@ for loop_lam=1:length(lam_vec)
     Param.g], Param.Nint, Param.Ndtm, Param.Mev, TankDim, Forcing.kappa, ...
     Param.beta.', GeomDisks(:,4).', Param.draft.', GeomDisks(:,3).', ...
     [GeomDisks(:,1).'; GeomDisks(:,2).'], ...
-    Mesh.r_vec, Mesh.th_vec, Mesh.x_vec, Mesh.y_vec, Mesh.FS_mesh, ...
     [Param.res_green, Param.terms_green, Param.cutoff_green, Param.tolres], ...
-    Param.extra_pts, scatyp, COMM);
-
+    Param.extra_pts, scatyp, scat_ident, COMM);
+   %Mesh.r_vec, Mesh.th_vec, Mesh.x_vec, Mesh.y_vec, Mesh.FS_mesh, ...
+    
  end % end loop_lam
  
 return
+
+%
  
 function GeomDisks=fn_GeomDisks_Oc79(TankDim,epsilon,COMM,mxc)
 
@@ -281,6 +327,43 @@ while and(flg~=0,count<=mxc)
    epsx = 2*(rand-0.5)*epsilon; epsy = 2*(rand-0.5)*epsilon;
    GeomDisks(Np*(loop_rows-1)+loop,:) = ...
       [17.5+(loop_rows-1)+epsx epsy+(TankDim(2)/2/Np)+(TankDim(2)/Np)*(loop-1) 0.495 33e-3];
+  end
+ end
+
+ %%% Check disk/disk and disk/wall overlaps
+ flg=overlap(GeomDisks, TankDim, COMM);
+end
+
+if count>mxc
+ disp('Cannot get plates configured without overlap!!!')
+ disp('Exiting')
+ exit
+end
+
+return
+
+%
+
+function GeomDisks=fn_GeomDisks_Oc39(TankDim,epsilon,COMM,mxc)
+
+count=1; flg=1;
+Np = 8;
+
+while and(flg~=0,count<=mxc)
+ %%% Location and geometry of disks: [x_c y_c Rad thick]
+ for loop_rows=1:2:5
+  for loop=1:Np
+   epsx = 2*(rand-0.5)*epsilon; epsy = 0; %2*(rand-0.5)*epsilon;
+   GeomDisks(Np*(loop_rows-1)+loop,:) = ...
+      [17.5+(loop_rows-1)+epsx epsy+(TankDim(2)/2/2/Np)+(TankDim(2)/2/Np)*(2*loop-1) 0.495 33e-3];
+  end
+ end
+ 
+ for loop_rows=2:2:4
+  for loop=1:Np
+   epsx = 2*(rand-0.5)*epsilon; epsy = 0; %2*(rand-0.5)*epsilon;
+   GeomDisks(Np*(loop_rows-1)+loop,:) = ...
+      [17.5+(loop_rows-1)+epsx epsy+(TankDim(2)/2/2/Np)+(TankDim(2)/2/Np)*(2*loop-2) 0.495 33e-3];
   end
  end
 
@@ -322,4 +405,23 @@ if count>mxc
 end
 
 return
-        
+
+% 
+
+function sg=fn_surge(tau)
+
+pers = [0.65,0.95,1.25,1.55,1.85];
+
+%expt_sg = [0.12,0.50,0.86,0.98,1.03];
+
+expt_sg = [0.08,1.17,3.06,3.81,3.98]./100;
+
+if tau<0.65
+ sg=0;
+elseif tau>1.85
+ sg=3.98/100;
+else
+ sg=interp1(pers,expt_sg,tau);
+end
+
+return

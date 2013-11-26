@@ -44,6 +44,10 @@ end
 
 basedir  = citeph_user_specifics;
 
+if basedir(end)=='/'
+ basedir(end)=[];
+end
+
 if strcmp(test_type,'calib');%%real or calibration
    fdir  = [basedir '/calibration/data_Wave_Calibration/calibration_waves/'];
    str1  = 'calib_houle_'; 
