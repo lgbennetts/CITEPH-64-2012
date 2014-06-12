@@ -3,10 +3,11 @@
 % Setup of modal parameters and accuracy parameters for the solution
 % method.
 
-function Param = ModParam_def(Param,Ni,Nd,extra_pts,terms)
+function Param = ModParam_def(Param,Ni,Nd,extra_pts,terms,th_res)
 
 if ~exist('Ni','var'); Ni=1; end
 if ~exist('Nd','var'); Nd=10; end
+if ~exist('th_res','var'); th_res=100; end
 
 %%% Number of vertical modes (travel + evan) for free-surf interactions
 Param.Nint = Ni;
@@ -48,5 +49,8 @@ Param.cutoff_green = 1e-1;
 %%% Tolerance on resonances
 
 Param.tolres=1e-5; %7.5e-4; %0; %
+
+%%% Resolution of angular spectrum (Boltzmann)
+Param.th_res = th_res;
 
 return

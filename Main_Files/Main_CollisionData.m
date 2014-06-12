@@ -1,38 +1,65 @@
 % function Main_CollisionData
 %
-% T Williams Oct 2013 / Bergen
+% DESCRIPTION:
 %
-% REVISION HISTORY:
-%                  modified by L Bennetts Oct 2013 / Adelaide
+% INPUTS:
 %
-% DO_CALC       = if need to do or redo calculation set to 1;
-%                 else if it's done set to 0;
-% DO_ANALYSIS   = if it's done (& the files saved) can speed things up by
+% DO_CALC       = if need to do (or redo) calculation set to 1;
+%                 else (if it's done) set to 0;
+% DO_ANALYSIS   = if it's done (& the file's saved) can speed things up by
 %                 setting this to 0;
+% DO_PLOT       = plot data (1) or not (0);
+% DO_DISP       = display info (1) or not (0);
+% DO_SAVE       = save data (1) or not (0);
+% conc          = concentration (set to 79 to get collisions)
 % opts          = which accelerometers, e.g. opts = {'Ax','Ay','Az'};
+% xtra_opts     = e.g. 'front', 'middle', 'back' (rows)
+% data_out      = specify analysis window 
+% fig           = figure handle
+% col           = string for color, linestyle, markerstyle
 %
 % accelerometers: front row  (A3,A6)
 %                 middle row (A4,A5)
 %                 back row   (A1,A2)
+%
+% T Williams Oct 2013 / Bergen
+%
+% REVISION HISTORY:
+%                  modified by L Bennetts Oct 2013 / Adelaide
 
 function Main_CollisionData
+
+%% PRELIMINARIES:
+
+if or(strcmp(getenv('LOGNAME'),'a1612881'),...
+  strcmp(getenv('LOGNAME'),'lbennetts'))
+ OTHER_USR=1;
+end
+
+if exist('OTHER_USR','var')
+ DO_CALC = 0;
+ DO_ANALYSIS = 1;
+ DO_SAVE = 0;
+ conc=79;
+end
 
 if ~exist('fig','var');  fig=fn_getfig; end
 if ~exist('col','var');  col=' ''b.'' , ''markersize'' , 12'; end
 if ~exist('conc','var'); conc=79; end
-if ~exist('HT','var'); HT=fn_WhatTestData(conc,'Regular',0); HT=HT(1:2,:); end
-%  HT = [ 20, 40;
-%   .65, 1.55 ]; end
-if ~exist('DO_CALC','var');     DO_CALC     = 0; end
+if ~exist('HT','var');   HT=fn_WhatTestData(conc,'Regular',0); 
+                         HT=HT(1:2,:); end
+if ~exist('DO_CALC','var');     DO_CALC     = 1; end
 if ~exist('DO_ANALYSIS','var'); DO_ANALYSIS = 1; end
 if ~exist('DO_PLOT','var');     DO_PLOT     = 1; end
 if ~exist('DO_DISP','var');     DO_DISP     = 1; end
 if ~exist('DO_SAVE','var');     DO_SAVE     = 1; end
-if ~exist('opts','var');        opts        = {'Az'}; end
-if ~exist('xtra_opts','var');   xtra_opts   = 'back'; end
+if ~exist('opts','var');        opts        = {'Ax'}; end
+if ~exist('xtra_opts','var');   xtra_opts   = 'middle'; end
 if ~exist('data_out','var');
- data_out.tint='ts=ts+4*T_target; tf=ts+10*T_target; ';
+ % data_out.tint='ts=ts+4*T_target; tf=ts+10*T_target; ';
  % data_out.tint='tf=min(t_vec); ';
+ data_out.tint=['Tpers=fn_Tpers(T_target); ' ...
+  '[ts,tf] = fn_tint(t_vec,ts,T_target,Tpers);'];
 end
 
 if conc==39
@@ -49,13 +76,19 @@ citeph_coll0(test_type,HT,opts,xtra_opts,data_out, ...
 return
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% SUBFUNCTIONS %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function citeph_coll0(test_type,HT,opts,xtra_opts,data_out,...
  DO_CALC,DO_ANALYSIS,DO_PLOT,DO_DISP,DO_SAVE,fig,col)
 
 tres  = .004;     %%time resolution [s]
+
+%% Find tests:
 
 %% c79
 if strcmp(test_type,'c79')
@@ -65,7 +98,7 @@ if strcmp(test_type,'c79')
   %   Ntests      = 12;
   %   Ntests_reg  = 8;
   %   test_list   = 1:Ntests_reg;
-  HT=fn_WhatTestData(79,'Regular',0); HT=HT(1:2,:);
+  HT=fn_WhatTestData(79,'Regular',0); HT=HT(1:2,end);
   test_list=1:size(HT,2);
  else
   eval(['c_prams = conc79_testspecs();'])
@@ -82,12 +115,18 @@ if strcmp(test_type,'c79')
    if length(dum_test)>1
     cprintf('magenta',['>>> test repeated ' int2str(length(dum_test)) ...
      ' times\n'])
-    dum_test=dum_test(1);
-    cprintf('magenta',['... using 1st test only\n'])
+    if 0
+     pers(dum_test(2:end))=[];
+     hts(dum_test(2:end)) =[];
+     dum_test=dum_test(1);
+     cprintf('magenta',['... using 1st test only\n'])
+    else
+     cprintf('magenta',['... using all ' int2str(length(dum_test)) ...
+      ' tests\n'])
+    end
    end
    test_list=[test_list, dum_test]; clear dum_test
   end
-  clear pers hts
  end
  %% c39
 elseif strcmp(test_type,'c39')
@@ -123,17 +162,8 @@ elseif strcmp(test_type,'calib')
  Ntests   = 17;
 end
 
-% if DO_CALC==0
-%  rms_a    = zeros(Ntests_reg,1);
-%  T_coll   = zeros(Ntests_reg,1);
-%  Hi_Frac  = zeros(Ntests_reg,1);
-% end
+%% SENSOR LOOP
 
-%%***********************
-%%******SENSOR LOOP******
-%%***********************
-% opts     = {'Ax','Ay','Az'};
-%for n=1:3
 for n=1:length(opts)
  opt      = opts{n};
  if strcmp(test_type,'c79')
@@ -146,13 +176,14 @@ for n=1:length(opts)
   figfileb  = ['Collision_data/Conc39/collision_hist_' opt '-' xtra_opts '.fig'];
  end
  
- %%
+ %% CALCULATIONS: Get accelerometer data: 
+ 
  if DO_CALC
   if DO_DISP; cprintf(0.4*[1,1,1],'Beginning calculations...\n'); end
   ct_test=1;
   for test_num=test_list
-   cprintf(0.4*[1,1,1],['>>> experiment: H=' num2str(HT(1,ct_test)) ...
-    '; T=' num2str(HT(2,ct_test)) '\n']); ct_test=ct_test+1;
+   cprintf(0.4*[1,1,1],['>>> experiment: H=' num2str(hts(test_num)) ...
+    '; T=' num2str(pers(test_num)) '\n']); ct_test=ct_test+1;
    citeph_coll_1test(test_type,test_num,opt,xtra_opts,data_out,...
     DO_PLOT,DO_DISP,or(DO_ANALYSIS,DO_SAVE))
   end
@@ -161,15 +192,18 @@ for n=1:length(opts)
   
  end
  
+ %% ANALYSIS: Extract quantities of interest:
+ 
  if DO_ANALYSIS==1
   if DO_DISP; cprintf(0.4*[1,1,1],'Beginning analysis...\n'); end
   ct_test = 1;
   T_coll=zeros(length(test_list),1); col_dt = T_coll;
-  rms_a = T_coll; isat = rms_a; Hi_Frac = rms_a;
+  rms_a = T_coll; isat = rms_a; Hi_Frac = rms_a; c_freq = rms_a;
   for test_num=test_list
    %%open results & plot;
-   [Tcol,Acol,Asig,Tp,Hs,sensor_names,Col_dt,isat0] =...
-    citeph_coll_1test_OpenResultsFile(test_type,test_num,opt,xtra_opts);
+   [Tcol,Acol,Asig,Tp,Hs,sensor_names,Col_dt,isat0,Cfq] =...
+    citeph_coll_1test_OpenResultsFile(test_type,test_num,opt,xtra_opts,...
+    DO_CALC);
    T_target(ct_test,1) = Tp;
    H_target(ct_test,1) = Hs;
    if DO_DISP; 
@@ -185,10 +219,12 @@ for n=1:length(opts)
      dt                  = tcol2(2:end)-tcol2(1:end-1);
      T_coll(ct_test)   = T_coll(ct_test)+mean(dt);%%6x1 vector
      dt_all{ct_test}   = dt;
+     %%collision freq per period
+     c_freq(ct_test)   = c_freq(ct_test) + Cfq{r};
      %%
      col_dt(ct_test)   = col_dt(ct_test) + mean(Col_dt{r});
      %%
-     rms_a(ct_test)    = rms_a(ct_test) + sqrt(mean(acol2.^2));%%6x1 vector
+     rms_a(ct_test)    = rms_a(ct_test) + mean(abs(acol2)); %sqrt(mean(acol2.^2));%%6x1 vector
      isat(ct_test)     = isat(ct_test)+max(isat0{r});
      %%fraction of variance that is high frequency (percentage)
      asig1             = Asig(r,1);
@@ -198,6 +234,7 @@ for n=1:length(opts)
    end
    T_coll(ct_test)  = T_coll(ct_test)/r_ct; 
    col_dt(ct_test)  = col_dt(ct_test)/r_ct;
+   c_freq(ct_test)  = c_freq(ct_test)/r_ct;
    rms_a(ct_test)   = rms_a(ct_test)/r_ct; 
    Hi_Frac(ct_test) = Hi_Frac(ct_test)/r_ct;
    isat(ct_test)    = isat(ct_test)~=0; clear r_ct
@@ -208,9 +245,21 @@ for n=1:length(opts)
    %hold on
    ct_test = ct_test + 1;
   end
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %% SAVE
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  
+  if DO_CALC
+   if DO_SAVE
+    eval(['!cp -r Collision_data/temp/ Collision_data;']);
+    eval(['!rm -r Collision_data/temp/;']);
+   else
+    eval(['!rm -r Collision_data/temp/;']);
+   end
+  end
   if DO_SAVE
    save(outfile,'rms_a','T_target','H_target','sensor_names',...
-     'T_coll','Hi_Frac','dt_all','col_dt','isat','xtra_opts');
+     'T_coll','Hi_Frac','col_dt','isat','xtra_opts'); %,'dt_all'
   end 
   if DO_DISP; cprintf(0.4*[1,1,1],'... ending analysis\n'); end
  elseif DO_ANALYSIS==-1%%do/don't do calc
@@ -226,27 +275,29 @@ if and(DO_PLOT,abs(DO_ANALYSIS))
  figure(fig);
  Nsens = size(rms_a,2);
  %%  COLLISION STRENGTHS:
- subplot(2,1,1); hold on;
+ subplot(2,1,1); hold on; set(gca,'box','on','fontsize',16)
+ title('Root mean squared acceleration vs period')
  for n=1:Nsens
-  eval(['P(n)  = plot(T_target,rms_a(:,n)./H_target,' col ');']) 
+  eval(['P(n)  = plot(T_target,rms_a(:,n),' col ');']) %./H_target
   if ~isempty(find(isat(:,n)))
-   Q(n)  = plot(T_target(find(isat(:,n))),rms_a(find(isat(:,n)),n)...
-   ./H_target(find(isat(:,n))),'rs');
+   Q(n)  = plot(T_target(find(isat(:,n))),rms_a(find(isat(:,n)),n),'rs'); %...
+   %./H_target(find(isat(:,n))),'rs');
   end
   [~,IA] = unique(T_target); IA = [0;IA];
   jj_nl=[]; dum_vec=find(diff(IA)>1);
+  cnt_ct=1;
   for ct=1:length(dum_vec)
    loop=dum_vec(ct);
    dum_inds=IA(loop)+1:IA(loop+1);
    if length(unique(H_target(dum_inds)))>1
-    [~,jj_nl(ct)]=max(H_target(dum_inds));
-    jj_nl(ct)=dum_inds(jj_nl(ct)); 
+    [~,jj_nl(cnt_ct)]=max(H_target(dum_inds));
+    jj_nl(cnt_ct)=dum_inds(jj_nl(cnt_ct)); cnt_ct=cnt_ct+1;
    end
   end
-  clear ct IA dum_inds loop
+  clear ct IA dum_inds loop cnt_ct
   if ~isempty(jj_nl)
-   R(n)  = plot(T_target(jj_nl),rms_a(jj_nl,n)...
-   ./H_target(jj_nl),'r.','markersize',12);
+   R(n)  = plot(T_target(jj_nl),rms_a(jj_nl,n),'r.','markersize',12); %...
+   %./H_target(jj_nl),'r.','markersize',12);
   end
  end
  if and(exist('Q','var'),exist('R','var'))
@@ -261,13 +312,14 @@ if and(DO_PLOT,abs(DO_ANALYSIS))
  hold off;
  %GEN_proc_fig('T_p, s','rms(a_{col})/H_s, s^{-2}');
  xlabel('T_p, s','fontsize',12)
- ylabel('rms(a_{col})/H_s, s^{-2}','fontsize',12)
+ ylabel('<a_{col}>, ms^{-2}','fontsize',12) %/H_s
  %% COLLISION FREQUENCY:
- subplot(2,1,2); hold on;
+ subplot(2,1,2); hold on; set(gca,'box','on','fontsize',16)
+ title('Collision frequency per period vs period','fontsize',16)
  for n=1:Nsens
-  eval(['P(n)  = plot(T_target,T_coll(:,n)./T_target,' col ');'])
+  eval(['P(n)  = plot(T_target,c_freq(:,n),' col ');'])
   if ~isempty(jj_nl)
-   R(n)  = plot(T_target(jj_nl),T_coll(jj_nl,n)./T_target(jj_nl)...
+   R(n)  = plot(T_target(jj_nl),c_freq(jj_nl,n)...
     ,'r.','markersize',12);
   end
  end
@@ -276,7 +328,21 @@ if and(DO_PLOT,abs(DO_ANALYSIS))
  hold off;
  %GEN_proc_fig('T_p, s','T_{col}/T_p');
  xlabel('T_p, s','fontsize',12)
- ylabel('T_{col}/T_p','fontsize',12)
+ ylabel('c_{fq}/T_p','fontsize',12)
+%  subplot(2,1,2); hold on;
+%  for n=1:Nsens
+%   eval(['P(n)  = plot(T_target,T_coll(:,n)./T_target,' col ');'])
+%   if ~isempty(jj_nl)
+%    R(n)  = plot(T_target(jj_nl),T_coll(jj_nl,n)./T_target(jj_nl)...
+%     ,'r.','markersize',12);
+%   end
+%  end
+%  %legend(P,sensor_names,'location','eastoutside');
+%  %ylim([0 3.5]);
+%  hold off;
+%  %GEN_proc_fig('T_p, s','T_{col}/T_p');
+%  xlabel('T_p, s','fontsize',12)
+%  ylabel('T_{col}/T_p','fontsize',12)
  %%
 %  subplot(3,1,3); hold on;
 %  for n=1:Nsens
@@ -348,6 +414,8 @@ return
 function citeph_coll_1test(test_type,test_num,opt,xtra_opts,data_out,...
  DO_PLOT,DO_DISP,DO_SAVE)
 
+if ~exist('cls_fig','var'); cls_fig=1; end
+
 if nargin==0
  test_type   = 'c79';
  test_num    = 19;
@@ -357,116 +425,6 @@ end
 % nsens = length(file_list);
 
 inds = fn_inds(test_type,opt,xtra_opts);
-
-% if strcmp(opt,'Az')
-%  cprintf('green','need to modify below for Az\n')
-% end
-
-% %% c79
-% if strcmp(test_type,'c79')
-%  if strfind(xtra_opts,'all')
-%   if strfind(xtra_opts,'left')
-%    if strfind(opt,'z')
-%     inds=2;   %% A4
-%    else
-%     inds=[3,4,2];
-%    end
-%   elseif strfind(xtra_opts,'right')
-%    if strfind(opt,'z')
-%     inds=[4,3,1];   %% A6,A5,A1
-%    else
-%     inds=[6,5,1];
-%    end
-%   else
-%    if strfind(opt,'z')
-%     inds=[1:4];     %% A1,A4,A5,A6
-%    else
-%     inds=1:6;
-%    end
-%   end
-%  end
-%  if strfind(xtra_opts,'front')
-%   if strfind(xtra_opts,'front-left')
-%    if strfind(opt,'z')
-%     cprintf('magenta',['A3z does not exist\n'])
-%    else
-%     inds=[inds,3];
-%    end
-%   elseif strfind(xtra_opts,'front-right')
-%    inds=[inds,6];
-%   else
-%    inds=[inds,3,6];
-%   end
-%  end
-%  if strfind(xtra_opts,'back')
-%   if strfind(xtra_opts,'back-left')
-%    if strfind(opt,'z')
-%     cprintf('magenta',['A2z does not exist\n'])
-%    else
-%     inds=[inds,2];
-%    end
-%   elseif strfind(xtra_opts,'back-right')
-%    inds=[inds,1];
-%   else
-%    inds=[inds,1,2];
-%   end
-%  end
-%  if strfind(xtra_opts,'middle')
-%   if strfind(xtra_opts,'middle-left')
-%    inds=[inds,4];
-%   elseif strfind(xtra_opts,'middle-right')
-%    inds=[inds,5];
-%   else
-%    inds=[inds,4,5];
-%   end
-%  end
-%  %% c39
-% elseif strcmp(test_type,'c39')
-%  if strfind(xtra_opts,'all')
-%   if strfind(xtra_opts,'left')
-%    if strfind(opt,'z')
-%     inds=4;
-%    else
-%     inds=[4,2];
-%    end
-%   elseif strfind(xtra_opts,'right')
-%    inds=[6,5,1];
-%   else
-%    if strfind(opt,'z')
-%     inds=[1,4:6];
-%    else
-%     inds=[1,2,4:6];
-%    end
-%   end
-%  end
-%  if strfind(xtra_opts,'front')
-%   if strfind(xtra_opts,'front-left')
-%    inds=inds;
-%   elseif strfind(xtra_opts,'front-right')
-%    inds=[inds,5];
-%   else
-%    inds=[inds,5];
-%   end
-%  end
-%  if strfind(xtra_opts,'back')
-%   if strfind(xtra_opts,'back-left')
-%    inds=[inds,2];
-%   elseif strfind(xtra_opts,'back-right')
-%    inds=[inds,1];
-%   else
-%    inds=[inds,1,2];
-%   end
-%  end
-%  if strfind(xtra_opts,'middle')
-%   if strfind(xtra_opts,'middle-left')
-%    inds=[inds,3];
-%   elseif strfind(xtra_opts,'middle-right')
-%    inds=[inds,4];
-%   else
-%    inds=[inds,3,4];
-%   end
-%  end
-% end
 
 time=time(:,inds); data=data(:,inds);
 file_list=file_list(inds); sensor_names=sensor_names(inds);
@@ -496,6 +454,10 @@ Nsens = size(data,2);
 % basedir2 = [basedir,'/../PROCESSED_data/'];
 if DO_SAVE
  basedir2 = 'Collision_data/';
+ if ~exist(basedir2)
+  eval(['mkdir ' basedir2]);
+ end
+ basedir2 = [basedir2 'temp/'];
  if ~exist(basedir2)
   eval(['mkdir ' basedir2]);
  end
@@ -537,6 +499,8 @@ for n=1:Nsens
  figs=[figs, dumfig]; clear dumfig
 end
 
+if cls_fig; close(figs); end
+
 % if DO_PLOT
 %  pause
 %  for lp=1:length(figs); close(figure(figs(lp))); end
@@ -546,8 +510,8 @@ return
 
 % citeph_coll_1test_OpenResultsFile
 
-function [Tcol,Acol,Asig,T_target,H_target,sensor_names,Col_dur,isat] =...
- citeph_coll_1test_OpenResultsFile(test_type,test_num,opt,xtra_opts)
+function [Tcol,Acol,Asig,T_target,H_target,sensor_names,Col_dur,isat,cfq] =...
+ citeph_coll_1test_OpenResultsFile(test_type,test_num,opt,xtra_opts,DO_CALC)
 
 if nargin==0
  test_type   = 'c79';
@@ -586,7 +550,9 @@ Nsens = size(data,2);
 % jj       = find(basedir=='/');
 % basedir2 = [basedir,'/../PROCESSED_data/'];
 basedir2='Collision_data/';
-basedir3 = [basedir2,tt2,expt_dir,'/',opt,'/mat_files/'];
+if DO_CALC; basedir2=[basedir2 'temp/']; end
+expt_name   = ['T' sprintf('%3.2f',T_target) '_H' sprintf('%3.2f',H_target)];
+basedir3 = [basedir2,tt2,expt_name,'_',expt_dir,'/',opt,'/mat_files/'];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for n=1:Nsens
@@ -601,6 +567,7 @@ for n=1:Nsens
   Asig(n,:)   = [asig1,asig2];
   Col_dur{n}  = col_dt;
   isat{n}     = isat2;
+  cfq{n}      = c_freq;
  else
   cprintf('magenta',['>>> ' fname ' does not exist\n']) 
   Tcol{n}     = [];
@@ -624,6 +591,8 @@ return
 
 function [time,data,file_list,sensor_names] = citeph_get_data(test_type,test_num,opt,scale)
 
+if ~exist('what_tests','var'); what_tests = 'prelim'; end
+
 if nargin==0
  %test_type   = 'calib';
  %test_num    = 13;
@@ -639,14 +608,18 @@ end
 if ~exist('scale')
  scale = 'false';%%full scale is default
 end
-basedir  = citeph_user_specifics;
+basedir  = citeph_user_specifics(what_tests);
 
 if basedir(end)=='/'
  basedir(end)=[];
 end
 
 if strcmp(test_type,'calib');%%real or calibration
- fdir  = [basedir '/calibration/data_Wave_Calibration/calibration_waves/'];
+ if strcmp(what_tests,'prelim')
+  fdir  = [basedir '/calibration/data_Wave_Calibration/calibration_waves/'];
+ elseif strcmp(what_tests,'final')
+  fdir  = [basedir '/1-Calibration/calibration_accelerometers/'];
+ end
  str1  = 'calib_houle_';
  %%
  [expt_dir,T_target,H_target,type,expt_name] = citeph_get_calib_prams(test_num);
@@ -657,7 +630,11 @@ if strcmp(test_type,'calib');%%real or calibration
   str2  = 'irreg_';
  end
 elseif strcmp(test_type,'c79')
- fdir  = [basedir '/attenuation_tests/Conc79/'];
+ if strcmp(what_tests,'prelim')
+  fdir  = [basedir '/attenuation_tests/Conc79/'];
+ elseif strcmp(what_tests,'final')
+  fdir  = [basedir '/2-Wave_attenuation/Conc79/'];
+ end
  str1  = 'houle_';
  %%
  [expt_dir,T_target,H_target,type,expt_name] = citeph_get_c79_prams(test_num);
@@ -668,7 +645,11 @@ elseif strcmp(test_type,'c79')
   str2  = 'irr_';
  end
 else%% 'c39'
- fdir  = [basedir '/attenuation_tests/Conc39/'];
+ if strcmp(what_tests,'prelim')
+  fdir  = [basedir '/attenuation_tests/Conc39/'];
+ elseif strcmp(what_tests,'final')
+  fdir  = [basedir '/2-Wave_attenuation/Conc39/'];
+ end
  str1  = 'houle_';
  %%
  [expt_dir,T_target,H_target,type,expt_name] = citeph_get_c39_prams(test_num);
@@ -921,6 +902,182 @@ end
 
 return
 
+function inds = fn_inds(test_type,opt,xtra_opts)
+
+inds = [];
+
+ %%%%%%%%%%%%%%%
+ %% c79 %%%%%%%%
+ %%%%%%%%%%%%%%%
+if strcmp(test_type,'c79')
+ %%% ALL %%%
+ if strfind(xtra_opts,'all')
+  if strfind(xtra_opts,'left')
+   if strfind(opt,'z')
+    inds=2;   %% A4
+   else
+    inds=[3,4,2];
+   end
+  elseif strfind(xtra_opts,'right')
+   if strfind(opt,'z')
+    inds=[4,3,1];   %% A6,A5,A1
+   else
+    inds=[6,5,1];
+   end
+  else
+   if strfind(opt,'z')
+    inds=[4,3,2,1];     %% A1,A4,A5,A6
+   else
+    inds=[6,3,5,4,1,2];
+   end
+  end
+ end
+ %%% FRONT %%%
+ if strfind(xtra_opts,'front')
+  if strfind(xtra_opts,'front-left')
+   if strfind(opt,'z')
+    cprintf('magenta',['A3z does not exist\n'])
+   else
+    inds=[inds,3];
+   end
+  elseif strfind(xtra_opts,'front-right')
+   if strfind(opt,'z')
+    inds=[inds,4];    %% A6
+   else
+    inds=[inds,6];
+   end
+  else
+   if strfind(opt,'z')
+    inds=[inds,4];
+   else
+    inds=[inds,3,6];
+   end
+  end
+ end
+ %%% BACK %%%
+ if strfind(xtra_opts,'back')
+  if strfind(xtra_opts,'back-left')
+   if strfind(opt,'z')
+    cprintf('magenta',['A2z does not exist\n'])
+   else
+    inds=[inds,2];
+   end
+  elseif strfind(xtra_opts,'back-right')
+   inds=[inds,1];
+  else
+   inds=[inds,1,2];
+  end
+ end
+ %%% MIDDLE %%%
+ if strfind(xtra_opts,'middle')
+  if strfind(xtra_opts,'middle-left')
+   if strfind(opt,'z')
+    inds=[inds,4];
+   else
+    inds=[inds,4];
+   end
+  elseif strfind(xtra_opts,'middle-right')
+   if strfind(opt,'z')
+    inds=[inds,4];
+   else
+    inds=[inds,5];
+   end
+  else
+   if strfind(opt,'z')
+    inds=[inds,2,3];
+   else
+    inds=[inds,4,5];
+   end
+  end
+ end
+ %%%%%%%%%%%%%%%
+ %% c39 %%%%%%%%
+ %%%%%%%%%%%%%%%
+elseif strcmp(test_type,'c39')
+ %%% ALL %%%
+ if strfind(xtra_opts,'all')
+  if strfind(xtra_opts,'left')
+   if strfind(opt,'z')
+    inds=2;
+   else
+    inds=[2,3];
+   end
+  elseif strfind(xtra_opts,'right')
+   if strfind(opt,'z')
+    inds=[4,3,1];
+   else
+    inds=[5,4,1];
+   end
+  else
+   if strfind(opt,'z')
+    inds=[4,3,2,1];
+   else
+    inds=[5,4,3,2,1];
+   end
+  end
+ end
+ %%% FRONT %%%
+ if strfind(xtra_opts,'front')
+  if strfind(xtra_opts,'front-left')
+    cprintf('magenta',['A5 does not exist\n'])
+  elseif strfind(xtra_opts,'front-right')
+   if strfind(opt,'z')
+    inds=4;
+   else
+    inds=5;
+   end
+  else
+   if strfind(opt,'z')
+    inds=[inds,4];
+   else
+    inds=[inds,5];
+   end
+  end
+ end
+ %%% BACK %%%
+ if strfind(xtra_opts,'back')
+  if strfind(xtra_opts,'back-left')
+   if strfind(opt,'z')
+    cprintf('magenta',['A2z does not exist\n'])
+   else
+    inds=2;
+   end
+  elseif strfind(xtra_opts,'back-right')
+   inds=1;
+  else
+   if strfind(opt,'z')
+    inds=[inds,1];
+   else
+    inds=[inds,1,2];
+   end
+  end
+ end
+ %%% MIDDLE %%%
+ if strfind(xtra_opts,'middle')
+  if strfind(xtra_opts,'middle-left')
+   if strfind(opt,'z')
+    inds=[inds,2];
+   else
+    inds=[inds,3];
+   end
+  elseif strfind(xtra_opts,'middle-right')
+   if strfind(opt,'z')
+    inds=[inds,3];
+   else
+    inds=[inds,4];
+   end
+  else
+   if strfind(opt,'z')
+    inds=[inds,2,3];
+   else
+    inds=[inds,3,4];
+   end
+  end
+ end
+end
+
+return
+
 %% citeph_1sensor_movingFFT.m
 %% Author: Timothy Williams
 %% Date:   20130722, 09:20:07 CEST
@@ -988,7 +1145,8 @@ if and(DO_SAVE,exist('outloc'))
   eval(['!mkdir ' dir1]);
  end
  %%
- expt_name   = outloc{2};%%date,time,year;
+ expt_name   = ['T' sprintf('%3.2f',T_target) '_H' sprintf('%3.2f',H_target)];
+ expt_name   = [expt_name '_' outloc{2}];%%date,time,year;
  %outdir0     = dir1;
  outdir0     = [dir1 '/' expt_name];
  if ~exist(outdir0)
@@ -1022,7 +1180,6 @@ if and(DO_SAVE,exist('outloc'))
   data_type   = 2;
  end
 end
-
 
 N     = length(time);
 %%
@@ -1093,12 +1250,15 @@ f_filt   = 1/T_filt;%%Hz
 [Bh,Ah]  = butter(3,f_filt/fmax,'high');
 [Bl,Al]  = butter(3,f_filt/fmax,'low');
 
-%% Filter
+%% Filter, FFT & Detect Collisions
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Filter
 
 ah = filter(Bh,Ah,a_rel);
 al = filter(Bl,Al,a_rel);
 
-%% FFT
+%%% FFT
 
 [Sn_a ,ff,an,t_mean,xtra]    = citeph_get_ft(t_rel,a_rel); %T_target,xtra
 asig1 = xtra{1}/2;
@@ -1110,9 +1270,9 @@ Tp2   = xtra{2}; clear xtra
 asig3 = xtra{1}/2;
 Tp3   = xtra{2}; clear xtra
 
-%% Detect collisions
+%%% Detect collisions
 
-a_thresh = 2*asig2;                    %% 4 std deviations in amp of acc
+a_thresh = 2*asig3;                    %% 4 std deviations in amp of acc  %0.0287; %
 jcol     = find(abs(ah)>a_thresh);     %% collision indices
 tcol     = t_rel(jcol);                %% collision times
 acol     = ah(jcol);                   %% collision amplitudes
@@ -1145,7 +1305,7 @@ if 1
    else
     isat2=[isat2;0];
    end
-   acol2 = [acol2;sqrt( mean(acol(jc).^2) )];
+   acol2 = [acol2; mean(abs(acol(jc)))]; %sqrt( mean(acol(jc).^2) )];
    %%
    tcol_current   = [];
   end
@@ -1161,15 +1321,88 @@ else
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% frequency of collisions per period
+
+c_freq = length(acol2)*T_target/(t_rel(end)-t_rel(1));
+
 %% Save
 if DO_SAVE==1
  save(outfile,'tcol2','acol2','col_dt','asig1','asig2','asig3',...
-  'T_target','H_target','isat2','sat');
+  'T_target','H_target','isat2','sat','c_freq');
 end
+
+clear c_freq
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% PLOTS:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Raw time series + high/low pass filters
+
+if and(DO_PLOT,1)
+ %yl = [-10 21];
+ xl=[t_rel(1),t_rel(end)];
+ fig_ct=fig_ct+1;
+ fig(fig_ct)=fn_getfig();
+ figure(fig(fig_ct));
+ subplot(3,1,1), plot(t_rel,a_rel);
+ j0       = strfind(inloc,'Conc');
+ inloc0   = inloc(j0:end);
+ inloc0   = strrep(inloc0,'_','\_');
+ 
+ ttl   = {['Raw time series (',sensor_name, '): a_s = ',num2str(asig1,'%0.2e'),' ms^{-2}; ',...
+  'T_p = ',num2str(T_target), ' s; H_s = ',num2str(H_target), ' m'],inloc0};
+ %GEN_font(ttl);
+ title(ttl,'fontsize',12)
+ xlim(xl); %ylim(yl);
+ %GEN_proc_fig('Time, s',ylab)
+ xlabel('Time, s','fontsize',12)
+ ylabel(ylab,'fontsize',12)
+ %%
+ subplot(3,1,3), plot(t_rel,al);
+ ttl   = ['Low-pass-filtered time series: ' ...
+  ,num2str(100*(asig3/asig1)^2,'%0.1f'),' % of variance'];
+ %GEN_font(ttl);
+ %GEN_proc_fig('Time, s',ylab)
+ title(ttl,'fontsize',12)
+ xlabel('Time, s','fontsize',12)
+ ylabel(ylab,'fontsize',12)
+ xlim(xl);
+ %%
+ subplot(3,1,2);
+ plot(t_rel,ah);%%plot once 1st to get y-range
+ %%
+ yl = get(gca,'ylim'); %a_thresh*[-1,1];
+ for n=1:length(tcol2)
+  if n==1
+   hold on;
+  end
+  plot(tcol2(n)+0*xl,yl,'g:');
+  if isat2(n); plot(tcol2(n),log10(sat),'ro','markersize',12); end
+ end
+ hold on;
+ plot(xl,0*xl+a_thresh,'m');
+ plot(xl,0*xl-a_thresh,'m');
+ %%plot(t_rel,ah);%%plot again so it's on top of other lines
+ hold off;
+ ttl   = ['High-pass-filtered time series: ' ...
+  ,num2str(100*(asig2/asig1)^2,'%0.1f'),' % of variance' ...
+  '; threshold ' sprintf('%3.2f',a_thresh)];
+ xlim(xl); %ylim(yl);
+ %GEN_font(ttl);
+ title(ttl,'fontsize',12)
+ %GEN_proc_fig('Time, s',ylab)
+ xlabel('Time, s','fontsize',12)
+ ylabel(ylab,'fontsize',12)
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+ if DO_SAVE
+  saveas(gcf,figfile1,'epsc');
+ end
+ 
+ fn_fullscreen;
+ 
+end
 
 %% plot histogram:
 
@@ -1217,69 +1450,6 @@ if and(DO_PLOT,0)
  if DO_SAVE; saveas(gcf,figfile2,'epsc'); end
  
  fn_fullscreen;
-end
-
-%% Raw time series + high/low pass filters
-
-if and(DO_PLOT,1)
- yl = [-10 21];
- xl=[t_rel(1),t_rel(end)];
- fig_ct=fig_ct+1;
- fig(fig_ct)=fn_getfig();
- figure(fig(fig_ct));
- subplot(3,1,1), plot(t_rel,a_rel);
- j0       = strfind(inloc,'Conc');
- inloc0   = inloc(j0:end);
- inloc0   = strrep(inloc0,'_','\_');
- 
- ttl   = {['Raw time series (',sensor_name, '): a_s = ',num2str(asig1,'%0.2e'),' ms^{-2}; ',...
-  'T_p = ',num2str(T_target), ' s; H_s = ',num2str(H_target), ' m'],inloc0};
- %GEN_font(ttl);
- title(ttl,'fontsize',12)
- xlim(xl); ylim(yl);
- %GEN_proc_fig('Time, s',ylab)
- xlabel('Time, s','fontsize',12)
- ylabel(ylab,'fontsize',12)
- %%
- subplot(3,1,3), plot(t_rel,al);
- ttl   = ['Low-pass-filtered time series: ',num2str(100*(asig3/asig1)^2,'%0.1f'),' % of variance'];
- %GEN_font(ttl);
- %GEN_proc_fig('Time, s',ylab)
- title(ttl,'fontsize',12)
- xlabel('Time, s','fontsize',12)
- ylabel(ylab,'fontsize',12)
- xlim(xl);
- %%
- subplot(3,1,2);
- plot(t_rel,ah);%%plot once 1st to get y-range
- %%
- for n=1:length(tcol2)
-  plot(tcol2(n)+0*xl,yl,'g');
-  if isat2(n); plot(tcol2(n),sat,'ro','markersize',12); end
-  if n==1
-   hold on;
-  end
- end
- hold on;
- plot(xl,0*xl+a_thresh,'m');
- plot(xl,0*xl-a_thresh,'m');
- plot(t_rel,ah);%%plot again so it's on top of other lines
- hold off;
- ttl   = ['High-pass-filtered time series: ',num2str(100*(asig2/asig1)^2,'%0.1f'),' % of variance'];
- xlim(xl); ylim(yl);
- %GEN_font(ttl);
- title(ttl,'fontsize',12)
- %GEN_proc_fig('Time, s',ylab)
- xlabel('Time, s','fontsize',12)
- ylabel(ylab,'fontsize',12)
- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- 
- if DO_SAVE
-  saveas(gcf,figfile1,'epsc');
- end
- 
- fn_fullscreen;
- 
 end
 
 %% Plot Sn spectra:
@@ -1488,126 +1658,6 @@ xtra  = {Hs,Tp,T_m02};
 if 0
  tst_var  = [var(displ,1), sum(abs(an.^2)), sum(Sn)*df]
  pause
-end
-
-return
-
-function inds = fn_inds(test_type,opt,xtra_opts)
-
-inds = [];
-
-%% c79
-if strcmp(test_type,'c79')
- if strfind(xtra_opts,'all')
-  if strfind(xtra_opts,'left')
-   if strfind(opt,'z')
-    inds=2;   %% A4
-   else
-    inds=[3,4,2];
-   end
-  elseif strfind(xtra_opts,'right')
-   if strfind(opt,'z')
-    inds=[4,3,1];   %% A6,A5,A1
-   else
-    inds=[6,5,1];
-   end
-  else
-   if strfind(opt,'z')
-    inds=[1:4];     %% A1,A4,A5,A6
-   else
-    inds=1:6;
-   end
-  end
- end
- if strfind(xtra_opts,'front')
-  if strfind(xtra_opts,'front-left')
-   if strfind(opt,'z')
-    cprintf('magenta',['A3z does not exist\n'])
-   else
-    inds=[inds,3];
-   end
-  elseif strfind(xtra_opts,'front-right')
-   if strfind(opt,'z')
-    inds=[inds,4];    %% A6
-   else
-    inds=[inds,6];
-   end
-  else
-   if strfind(opt,'z')
-    inds=[inds,4];
-   else
-    inds=[inds,3,6];
-   end
-  end
- end
- if strfind(xtra_opts,'back')
-  if strfind(xtra_opts,'back-left')
-   if strfind(opt,'z')
-    cprintf('magenta',['A2z does not exist\n'])
-   else
-    inds=[inds,2];
-   end
-  elseif strfind(xtra_opts,'back-right')
-   inds=[inds,1];
-  else
-   inds=[inds,1,2];
-  end
- end
- if strfind(xtra_opts,'middle')
-  if strfind(xtra_opts,'middle-left')
-   inds=[inds,4];
-  elseif strfind(xtra_opts,'middle-right')
-   inds=[inds,5];
-  else
-   inds=[inds,2,3];
-  end
- end
- %% c39
-elseif strcmp(test_type,'c39')
- if strfind(xtra_opts,'all')
-  if strfind(xtra_opts,'left')
-   if strfind(opt,'z')
-    inds=4;
-   else
-    inds=[4,2];
-   end
-  elseif strfind(xtra_opts,'right')
-   inds=[6,5,1];
-  else
-   if strfind(opt,'z')
-    inds=[1,4:6];
-   else
-    inds=[1,2,4:6];
-   end
-  end
- end
- if strfind(xtra_opts,'front')
-  if strfind(xtra_opts,'front-left')
-   inds=inds;
-  elseif strfind(xtra_opts,'front-right')
-   inds=[inds,5];
-  else
-   inds=[inds,5];
-  end
- end
- if strfind(xtra_opts,'back')
-  if strfind(xtra_opts,'back-left')
-   inds=[inds,2];
-  elseif strfind(xtra_opts,'back-right')
-   inds=[inds,1];
-  else
-   inds=[inds,1,2];
-  end
- end
- if strfind(xtra_opts,'middle')
-  if strfind(xtra_opts,'middle-left')
-   inds=[inds,3];
-  elseif strfind(xtra_opts,'middle-right')
-   inds=[inds,4];
-  else
-   inds=[inds,3,4];
-  end
- end
 end
 
 return

@@ -4,7 +4,9 @@
 % 
 % L Bennetts Aug 2013 / Adelaide
 
-function prams = singlefloe_testspecs();
+function prams = singlefloe_testspecs(what_tests)
+
+if ~exist('what_tests','var'); what_tests='final'; end
 
 names = {'37'; 
 	 '38'; 
@@ -38,13 +40,23 @@ wave_heights   = {4;
 		  8;
 		  6};
 
-dirnames    = {'02081148.a13';
+if strcmp(what_tests,'prelim')
+ dirnames    = {'02081148.a13';
 	       '02081217.a13';
 	       '02081407.a13';
 	       '02081428.a13';
 	       '02081503.a13';
 	       '02081523.a13';
 	       '02081543.a13' };
+elseif strcmp(what_tests,'final')
+ dirnames    = {'02081148.a13';
+	       '02081217.a13';
+	       '02081407.a13';
+	       '02081448.a13';
+	       '02081503.a13';
+	       '02081523.a13';
+	       '02081543.a13' };
+end
 
 prams   = struct('dirname',dirnames,...
 		     'wave_height',wave_heights,...

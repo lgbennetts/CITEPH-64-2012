@@ -68,11 +68,19 @@ if Vert_Dim0<Vert_Dim
  Vert_Dim0=Vert_Dim;
 end
 
+Np = length(thick_vec);
+
 if COMM
-disp('%-----------------------------------------------%')
-disp(['Problem = ' scatyp])
-disp(['Vertical modes = ' int2str(Vert_Dim), ' (free-surf); '...
-    int2str(Vert_Dim0), ' (scatterer)'])
+ cprintf([0.3,0.3,0.3],'%-----------------------------------------------%\n')
+ cprintf([0.3,0.3,0.3],['>> Problem = ' scatyp '\n'])
+ cprintf([0.3,0.3,0.3],['>> Plates = ' int2str(Np) '\n']);
+ if Np==1
+  cprintf([0.3,0.3,0.3],['>>  floe diameter = ' num2str(R_vec(1)) '\n'])
+  cprintf([0.3,0.3,0.3],['>> ' num2str(thick_vec(1)) ' thick\n'])
+  cprintf([0.3,0.3,0.3],['>> rigidity = ' sprintf('%0.5g',PVec(4)) '\n'])
+ end
+ cprintf([0.3,0.3,0.3],['>>> Vertical modes = ' int2str(Vert_Dim), ...
+  ' (free-surf); ' int2str(Vert_Dim0), ' (scatterer) \n'])
 end
 
 % - Geom_Vec = [scaling No.plates depth thickness l w]
@@ -84,16 +92,6 @@ Tol_vec(3) = 1e-1; % - Az_Dim tol - %
 TOLEN = 1e-7; % Energy error tolerance (display warning when greater than)
 
 scat = 1; % - scat=0 (scat only) scat=1 (scat+inc)
-
-%k0 = 2*pi/lam0;
-
-%%% resolution of angular dimension
-
-%res = GrnTol(1);
-
-%%% Number of floes %%%
-
-Np = length(thick_vec); if COMM; disp(['Plates = ' int2str(Np)]); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -115,7 +113,10 @@ for loop_Dim=1:Vert_Dim
  wt_0(loop_Dim) = weight_0_PWC(parameter_vector(1,7), k0(loop_Dim));   
 end
 
-if COMM; disp(['wavelength = ' num2str(2*pi/k0(1))]); end
+if COMM 
+ cprintf([0.3,0.3,0.3],['>> lam0/k0 = ' ...
+  num2str(2*pi/k0(1)) '/' num2str(k0(1)) '\n']); 
+end
 
 %%% Roots in the plates %%%
 
@@ -153,8 +154,8 @@ clear Az_Dim_vec count
 Az_Dim=Az_Dim-2;
 
 if COMM
- disp(['Azimuthal modes = ' int2str(Az_Dim) ' (x2 + 1)'])
- disp(['Extra points = ' int2str(extra_pts)])
+ cprintf(0.3*[1,1,1],['>>> Azimuthal modes = ' int2str(Az_Dim) ' (x2 + 1)\n'])
+ cprintf(0.3*[1,1,1],['>>> Extra points = ' int2str(extra_pts) '\n'])
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -291,7 +292,7 @@ end
 Y_Dim=length(u_vec(1,:)); Y0_Dim=Y_Dim-evs; 
 %%%%%%%%%%%%%%%%%
 
-if COMM; disp(['Tank modes = ',num2str(Y0_Dim)]); end
+if COMM; cprintf(0.3*[1,1,1],['>>> Tank modes = ',num2str(Y0_Dim) '\n']); end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -452,7 +453,7 @@ epsm = ones(1,length(real_inds)); epsm(1) = 2; epsm = epsm/2;
 
 for loop_Y=1:Vert_Dim:Y0_Dim*Vert_Dim
 
- if 0
+ if 1
   EngErr = sum(epsm.*v_vec(1,real_inds).*...
      (abs(Am(1,real_inds,loop_Y)).^2 + abs(Bp(1,real_inds,loop_Y)).^2 ...
     - abs(Am(1,real_inds,loop_Y)+Ap(1,real_inds,loop_Y)).^2 ...
@@ -530,7 +531,7 @@ for loop_Y=1:length(real_inds)
  En(2,0*Y0_Dim+loop_Y) = sum(epsm.*v_vec(1,real_inds).*(squeeze(Bm(1,:,Y_Dim+loop_Y)).^2));
 end
 
-if COMM; display(['Transmitted energy    : ' num2str(abs(En(1,:)))]); end
+if COMM; display(['>> Transmitted energy    : ' num2str(abs(En(1,:)))]); end
 
 return
 

@@ -59,6 +59,7 @@ if strcmp(TYP,'attn')
   tx1 = t0+((MIZ(1)-x)+(MIZ(1)-WMK))/cg; dx1='MIZ ref waves reach x'; cx1='b:';
   tx2 = t0+((BCH-x)+(BCH-WMK))/cg;       dx2='beach ref waves reach x'; cx2='m:';
   tx3 = t5+(x-WMK)/cg;                   dx3='final waves reach x'; cx3='r:';
+  tx4 = t0+(2*(MIZ(1)-WMK)+(x-WMK))/cg;  dx4='wavemaker ref waves reach x'; cx4='c:';
   
  elseif x>MIZ(2) % point on RHS
   
@@ -76,9 +77,15 @@ if strcmp(TYP,'attn')
  
  end
  
- t = {t0,t1,t2,t3,t4,t5,tx0,tx1,tx2,tx3};
- des = {d0,d1,d2,d3,d4,d5,dx0,dx1,dx2,dx3};
- col = {c0,c1,c2,c3,c4,c5,cx0,cx1,cx2,cx3};
+ if exist('tx4','var')
+  t = {t0,t1,t2,t3,t4,t5,tx0,tx1,tx2,tx3,tx4};
+  des = {d0,d1,d2,d3,d4,d5,dx0,dx1,dx2,dx3,dx4};
+  col = {c0,c1,c2,c3,c4,c5,cx0,cx1,cx2,cx3,cx4};
+ else
+  t = {t0,t1,t2,t3,t4,t5,tx0,tx1,tx2,tx3};
+  des = {d0,d1,d2,d3,d4,d5,dx0,dx1,dx2,dx3};
+  col = {c0,c1,c2,c3,c4,c5,cx0,cx1,cx2,cx3};
+ end
  
  %% SINGLE FLOE TESTS
  

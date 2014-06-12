@@ -169,22 +169,21 @@ for loop_Dim = 2:Vert_Modes
  wt_0(loop_Dim) = weight_0_PWC(bed, k0(loop_Dim));
 end
 
-% for loop_Dim=1:Vert_Modes
-%  k0(loop_Dim) = GetRootsMMA_FS_PWC(parameter_vector(1,:), loop_Dim, Tol_vec);
-%  wt_0(loop_Dim) = weight_0_PWC(bed, k0(loop_Dim));
-% end
+if isfield(Param,'azi')
+ s_Modes=Param.azi;
+else
+ Az_Dim_vec = 2*Tol_vec(4)*ones(3,1);
+ Az_Dim = 0;
+ count = 0;
+ while max(Az_Dim_vec)>Tol_vec(4)
+  Az_Dim_vec(count+1) = abs(besselj(Az_Dim,k0(1)*radius));
+  Az_Dim=Az_Dim+1; count = count+1; count = mod(count,length(Az_Dim_vec));
+ end
 
-Az_Dim_vec = 2*Tol_vec(4)*ones(3,1);
-Az_Dim = 0;
-count = 0;
-while max(Az_Dim_vec)>Tol_vec(4)
- Az_Dim_vec(count+1) = abs(besselj(Az_Dim,k0(1)*radius));
- Az_Dim=Az_Dim+1; count = count+1; count = mod(count,length(Az_Dim_vec));
+ clear Az_Dim_vec count
+
+ Az_Dim=Az_Dim-2; s_Modes = Az_Dim; clear Az_Dim
 end
-
-clear Az_Dim_vec count
-
-Az_Dim=Az_Dim-2; s_Modes = Az_Dim; clear Az_Dim
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -889,6 +888,11 @@ if strfind(outputs,'DTM')
  out_str = [out_str '; ''DTM'' '];
  out_val = [out_val '; DTM '];
  
+end
+
+if strfind(outputs,'wavenumber')
+ out_str = [out_str '; ''wavenumber'' '];
+ out_val = [out_val '; k0(1) '];
 end
 
 %% Energy

@@ -1,7 +1,7 @@
 % Main_AttnData
 %
-% DESCRIPTION: either generate some simple data to test FFT/WDM analysis 
-% methods or collect data from CITEPH experiments for analysis
+% DESCRIPTION: collect data from CITEPH attenuation experiments for analysis
+%              or generate some simple data to test FFT/WDM methods 
 %
 % INPUTS:
 %
@@ -41,9 +41,10 @@
 % written by L Bennetts Jan 2013 / Adelaide
 
 function Main_AttnData(Tp,Hm,conc,Tpers,data_out,run_num,probe,...
- CREATEIT,DO_PLOT,DO_SAVE,DO_DISP,file_pre,reps)
+ CREATEIT,DO_PLOT,DO_SAVE,DO_DISP,file_pre,reps,RUNIT)
 
 if ~exist('conc','var'); conc=79; end
+if ~exist('wbin','var'); wbin=3; end
 
 if or(~exist('Tp','var'),~exist('Tp','var')); 
  HT=fn_WhatTestData(conc,'Regular',0); HT=HT(:,3); end
@@ -62,7 +63,7 @@ if ~exist('DEL','var');      DEL=1; end
 if ~exist('DO_PLOT','var');  DO_PLOT = 'Aspec-signal'; end
 if ~exist('DO_SAVE','var');  DO_SAVE = 0; end
 if ~exist('DO_DISP','var');  DO_DISP = 1; end
-if ~exist('reps','var');     reps = 'calib'; end %'all'; end
+if ~exist('reps','var');     reps = 'all'; end %'calib'; end %
 
 if ~exist('probe','var'); 
  if strcmp(CREATEIT(2:3),'HS'); probe=1;
@@ -75,36 +76,38 @@ if ~exist('data_out','var')
  data_out.tint='[t0,t1] = fn_tint(Tp,Tpers,t0,tvec);'; 
 end 
 
-if ~exist('file_pre','var');   file_pre = 'Temp_data/a00'; end
-if ~exist('what_tests','var'); what_tests = 'final'; end
+if ~exist('file_pre','var');   file_pre = 'Temp_data/eg00'; end
+if ~exist('what_tests','var'); what_tests = 'prelim'; end
 
 dum_letters={'', 'a', 'b', 'c', 'd', 'e'};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% SET UP DATA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
 if CREATEIT~=0
  
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- if or(strcmp(CREATEIT,'plane1'),strcmp(CREATEIT,'plane2'))  % idealised
+ if or(~isempty(strfind(CREATEIT,'plane1')),...
+   ~isempty(strfind(CREATEIT,'plane2')))  % idealised
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
- % create an array of probes
-
- if 1
-  A = [0 33:72:359]; dr=pi/180;  A = dr*A; 
-  R = [0 0.25 0.25 0.25 0.25 0.25]; 
- else
-  A = [0 120 240]; dr=pi/180;  A = dr*A; 
-  R = [0.25 0.25 0.25];
- end
  
- X = R.*cos(A); Y = R.*sin(A);
+ [xy_lhs,xy_rhs] = citeph_sensor_spots();
   
- ns=4; 
- n=4096; 
+ ns=2^6; 
+ n =100*Tp*ns; %4096; 
  
- if ~exist('f','var'); f = 1; end
- if ~exist('k0','var'); k0 = (2*pi*f)^2/9.81; end
+ %Tp = 1;
  
- Tp = 1/f; Hm = 1;
+ Param = ParamDef_Oceanide;
+
+ fortyp='freq';
+
+ Forcing = Force_def(Param.g, Param.bed, fortyp, 1/Tp);
+
+ k0 = 2*pi/Forcing.lam0;
+ 
+ Hm = Hm/100;
  
  data_type = 1;
  
@@ -124,7 +127,7 @@ if CREATEIT~=0
   eval(['ex=exist(dum_path);'])
   
   if ex~=7
-   cprintf('red','path does not exist\n')
+   cprintf('red','>>> path does not exist\n')
    return
   end
   clear ex
@@ -145,17 +148,17 @@ if CREATEIT~=0
   test = find(and(pers==Tp,hts==Hm)); clear pers hts
   
   if isempty(test)
-   cprintf('magenta',['Cant find Hm=' num2str(Hm) '; Tp=' num2str(Tp) '\n'])
+   cprintf('magenta',['>>> Cant find Hm=' num2str(Hm) '; Tp=' num2str(Tp) '\n'])
    return
   end
   
   if length(test)>1
-   cprintf('magenta',['Test repeated ' int2str(length(test)) ' times\n'])
+   cprintf('magenta',['>>> Test repeated ' int2str(length(test)) ' times\n'])
    %t0=input('Which test(s)?');
    if strfind(reps,'calib')
-    t0=1; cprintf('magenta',['... 1st test only chosen\n'])
+    t0=1; cprintf('magenta',['   ... 1st test only chosen\n'])
    else
-    t0=1:length(test); cprintf('magenta',['... all tests chosen\n'])
+    t0=1:length(test); cprintf('magenta',['   ... all tests chosen\n'])
    end
    test = test(t0); clear t0 reps
    run_num=run_num+zeros(1,length(test));
@@ -167,7 +170,6 @@ if CREATEIT~=0
  
  elseif strfind(CREATEIT,'calib')
   
-  conc     = [];
   basedir  = citeph_user_specifics(what_tests);
   if isempty(basedir); return; end
   if strcmp(what_tests,'prelim')
@@ -200,9 +202,14 @@ if CREATEIT~=0
   test = find(and(pers==Tp,hts==Hm)); clear pers hts
   
   if isempty(test)
-   cprintf('magenta',['Cant find Hm=' num2str(Hm) '; Tp=' num2str(Tp) '\n'])
+   cprintf('magenta',['>>> Cant find Hm=' num2str(Hm) '; Tp=' num2str(Tp) ' for calibration tests...\n'])
+   cprintf('magenta',['   ... switching to LHS... \n'])
+   Main_AttnData(Tp,Hm,conc,Tpers,data_out,run_num,probe,...
+    'LHS',DO_PLOT,DO_SAVE,DO_DISP,file_pre,reps)
    return
   end
+  
+  conc     = [];
  
   [xy_lhs,xy_rhs] = citeph_sensor_spots();
   
@@ -211,8 +218,10 @@ if CREATEIT~=0
 
  end
  
- %%
- 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CREATE DATA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
  run_ct=1;
  
  for run=run_num
@@ -220,14 +229,20 @@ if CREATEIT~=0
   %run=[int2str(run) dum_letters{run_ct}]; 
  
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- if strcmp(CREATEIT,'plane1')      % simple harmonic wave
+ if strfind(CREATEIT,'plane1')     % simple harmonic wave
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- 
+  
+  if strfind(CREATEIT,'LHS')
+   X=xy_lhs(probe,1); Y(1)=xy_lhs(probe,2);
+  elseif strfind(CREATEIT,'RHS')
+   X=xy_rhs(probe,1); Y(1)=xy_rhs(probe,2);
+  end
+  
   th = 0*pi/6; 
   
   t=0;
-  for loop_t = 1:3*n
-   data(loop_t,:) = cos(k0*(cos(th)*X+sin(th)*Y)-2*pi*f*t);
+  for loop_t = 1:n
+   data(loop_t,:) = cos(k0*(cos(th)*X+sin(th)*Y)-2*pi*t/Tp);
    t=t+(1/ns);
    tm(loop_t) = t;
   end
@@ -235,23 +250,30 @@ if CREATEIT~=0
   data = (Hm/2)*data;
  
   description = ['simple harmonic wave: ang=' num2str(180*th/pi) ...
-     '; f=' num2str(f) ' Hz; k=' num2str(k0) ' 1/m'];
+     '; f=' num2str(1/Tp) ' Hz; k=' num2str(k0) ' 1/m'];
   
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- elseif strcmp(CREATEIT,'plane2')  % 2 simple harmonic waves
+ elseif strfind(CREATEIT,'plane2')  % 2 simple harmonic waves
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  
-  th = [-0,2]*pi/6; 
- 
-  phi = exp(1i*k0*(cos(th(1))*X+sin(th(1))*Y));
-  for loop_a=2:length(th)
-   phi = phi + exp(1i*k0*(cos(th(loop_a))*X+sin(th(loop_a))*Y));
+  if strfind(CREATEIT,'LHS')
+   X=xy_lhs(probe,1); Y(1)=xy_lhs(probe,2);
+  elseif strfind(CREATEIT,'RHS')
+   X=xy_rhs(probe,1); Y(1)=xy_rhs(probe,2);
   end
-  phi = (Hm/2)*phi;
+  
+  th = [0,1]*pi; 
+  
+  ab = (Hm/2)*[1,0.5];
  
+  phi = ab(1)*exp(1i*k0*(cos(th(1))*X+sin(th(1))*Y));
+  for loop_a=2:length(th)
+   phi = phi + ab(loop_a)*exp(1i*k0*(cos(th(loop_a))*X+sin(th(loop_a))*Y));
+  end
+  
   t=0;
-  for loop_t = 1:3*n
-   data(loop_t,:) = real(phi*exp(-2i*pi*f*t));
+  for loop_t = 1:n
+   data(loop_t,:) = real(phi*exp(-2i*pi*t/Tp));
    t=t+(1/ns);
    tm(loop_t) = t;
   end
@@ -260,7 +282,7 @@ if CREATEIT~=0
   for loop_a=2:length(th); angs = [angs ', ' num2str(180*th(loop_a)/pi)]; end
          
   description = [int2str(length(th)) ' simple harmonic waves: angs=' ...
-     angs '; f=' num2str(f) ' Hz; k=' num2str(k0) ' 1/m'];
+     angs '; f=' num2str(1/Tp) ' Hz; k=' num2str(k0) ' 1/m'];
  
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
  elseif strfind(CREATEIT,'LHS') % data from expts LHS
@@ -295,6 +317,8 @@ if CREATEIT~=0
    CREATEIT ' probe(s)=' int2str(probe)] ;
   end
   
+  X=xy_lhs(probe,1); Y(1)=xy_lhs(probe,2);
+ 
   if isempty(conc) % calibration tests
    count = length(dum_nms)-40+0+20*zoom; % 40 files(20 probes, 20 zoom)
    if probe == 10; probe=19; end         % files in non-intuitive order
@@ -320,8 +344,6 @@ if CREATEIT~=0
 %   X = X(probe); Y = Y(probe); data = data(:,probe);
 %   
 %   data_type = 1;
-
-  X=xy_lhs(probe,1); Y(1)=xy_lhs(probe,2);
 
   for loop_xy=1:np
    dum=load([dum_path c_prams(test(run_ct)).dirname '/' ...
@@ -452,7 +474,7 @@ if CREATEIT~=0
   file_nm=[file_pre sprintf('%03g',run) dum_letters{run_ct}];
   
   eval(['save ', file_nm, '-in X Y n ns data description'...
-  ' tm Tp TYP data_type data_out Tpers'])
+  ' tm Tp TYP data_type data_out Tpers wbin probe'])
  
  run_ct=run_ct+1;
  
@@ -471,9 +493,9 @@ if RUNIT
  for run=run_num
   %run=[int2str(run) dum_letters{run_ct}];
   file_nm=[file_pre sprintf('%03g',run) dum_letters{run_ct}];
-  if     strcmp(RUNIT,'WDM')
-   cprintf('green','>> WDM NEEDS WORK\n'); return
-   WDM(run)
+  if     strcmp(RUNIT,'WT')
+   cprintf('green','>> WDM NEEDS WORK\n'); 
+   WaveletTrans(file_nm,DO_PLOT,DO_SAVE,DO_DISP)
   elseif strcmp(RUNIT,'FFT')
    MovingFFT(file_nm,DO_PLOT,DO_SAVE,DO_DISP)
   end % end if RUNIT

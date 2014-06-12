@@ -1,4 +1,4 @@
-function [t0,t1] = fn_tint(Tp,T_pers,t0,tvec)
+function [t0,t1] = fn_tint(tvec,t0,Tp,T_pers)
 
 % if Tp==.65
 %  t0=t0+T_pers*Tp;

@@ -7,12 +7,14 @@ function fn_CollectData(file_marker,fig,col)
 if ~exist('file_marker','var'); file_marker='0'; end
 if ~exist('col','var'); col={'b','k','r'}; end
 
-path_root = '../../../../../Documents/MatLab/Data/3d_Wavetank/Tests/';
+path_root = '../../../../../Documents/MatLab/Data/3d_Wavetank/';
 
 % pwd
 % ls(path_root)
 
-file_name = ['Main_Channel_freq_',file_marker,'.mat'];
+%file_name = ['Main_Channel_freq_',file_marker,'.mat'];
+
+file_name = file_marker;
 
 load([path_root,file_name],'lam_vec','R_vec','T_vec','v_vecs','w','reson_mkr')
 

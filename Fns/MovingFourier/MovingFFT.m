@@ -36,12 +36,12 @@
 % DO_DISP   = display output (on by default)
 % DO_SAVE   = save data (off by default)
 % DO_MOV    = create movie 'Mov' if 'vid' is specified in DO_PLOT
+% DO_TUNE   = tune the frequency (on by default)
 % data_type = 1 (default) wave elevation, 2 acceleration
 % data_out
 %
 % Authors: Timothy Williams & Luke Bennetts
 % Begun:   20130722, 09:20:07 CEST
-
 
 function MovingFFT(file_nm,DO_PLOT,DO_SAVE,DO_DISP)
 
@@ -49,11 +49,12 @@ if ~exist('DO_PLOT','var'); DO_PLOT = 'Aspec-signal'; end
 if ~exist('DO_DISP','var'); DO_DISP    = 1;           end
 if ~exist('DO_SAVE','var'); DO_SAVE    = 0;           end
 if ~exist('DO_MOV','var');  DO_MOV     = 1;           end
+if ~exist('DO_TUNE','var'); DO_TUNE    = 1;           end
 
-if ~exist('file_nm','var'); file_nm='s00001'; end
+if ~exist('file_nm','var'); file_nm='eg00001'; end
 
 eval(['load ', file_nm, '-in data description tm Tp data_type '...
- 'data_out X Tpers'])
+ 'data_out X Y Tpers wbin'])
 
 if ~exist('data_type','var'); data_type=1; end
 if ~exist('Tpers','var'); Tpers = 'Tpers = 20;'; end
@@ -81,7 +82,7 @@ T_window = dt*Nw;
 t_window = (0:dt:(Nw-1))'*dt;
 
 description = [description ';' ' ' num2str(T_window) 's window'];
-  
+
 if DO_SAVE
  if and(exist('data_out','var'),~exist([file_nm '.mat']))
   descriptions{1} = description;
@@ -109,9 +110,11 @@ end
 %%
 Nf_S  = fmax*T_window;
 %%
-t_req    = 0.5;%s
+t_fac    = 0.95; % fraction of overlap between windows [1]
+t_req    = T_window*(1-t_fac); % time step between windows [seconds]
 n_shift  = floor(t_req/dt);
 t_req    = n_shift*dt;
+t_fac    = 1-t_req/T_window;
 %%
 Nwindows = floor((T-T_window)/t_req);
 Sn_mat   = zeros(Nf_S,Nwindows);
@@ -125,8 +128,8 @@ else
 end
 t_int    = zeros(Nwindows,2);
 tm_vec   = zeros(Nwindows);
-Tp_vec   = zeros(Nwindows);
-Hs_vec   = zeros(Nwindows);
+% Tp_vec   = zeros(Nwindows);
+% Hs_vec   = zeros(Nwindows);
 
 for m=m0:Nwindows
  jj          = (1+(m-1)*n_shift)+(0:Nw-1)';
@@ -134,30 +137,13 @@ for m=m0:Nwindows
  disp0       = data(jj);
  t_start     = time0(1);
  t_int(m,:)  = time0([1 end]);
- %{time0,disp0}
- [S0,ff,an0,tm_vec(m),xtra] = get_ft(time0,disp0,data_type);
- Hs_vec(m)   = xtra{1};
- Tp_vec(m)   = xtra{2};
- Tm02_vec(m) = xtra{3};
- %{an_mat,an0}
- %{Sn_mat,S0}
- an_mat(:,m) = an0;
- Sn_mat(:,m) = S0;
- %%
- %[m,Nwindows]
- %pause;
+ if m==m0 
+  [Sn0,tm_vec(m),ff] = get_ft(time0,disp0,data_type);
+ else
+  [Sn0,tm_vec(m)]    = get_ft(time0,disp0,data_type);
+ end
+ Sn_mat(:,m) = Sn0; clear Sn0
 end
-
-%% SAVE 1
-
-% if and(XTRA_SV,exist('data_out','var'))
-% %  df = ff(2)-ff(1);
-% %  dt = tm(2)-tm(1);
-% %  save(file_nm,'an_mat','Sn_mat','t_int','dt','df',...
-% %   'Hs_vec','Tp_vec','Tm02_vec','T_pers','-append');
-% end
-%
-%clear T_pers
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Plots & video
@@ -169,6 +155,8 @@ fig=fn_getfig;
 
 %%% PEAK PERIOD & SIG WAVE HT %%%
 if strfind(DO_PLOT,'TpHm')
+ cprintf('green','Tp & Hm not available\n')
+ return
  if 0
   %%plot time series:
   figure(fig);fig=fig+1;
@@ -201,8 +189,8 @@ end
 
 if findstr('vid',DO_PLOT)
  
-%  cprintf('red','Paused: hit key to continue...')
-%  pause
+ %  cprintf('red','Paused: hit key to continue...')
+ %  pause
  
  if data_type==3
   ylab1 = '\theta, degs';
@@ -220,19 +208,19 @@ if findstr('vid',DO_PLOT)
   disp0       = data(jj);
   disp0       = disp0-mean(disp0);
   %%
-  figure(fig); 
+  figure(fig);
   subplot(1,3,1),plot(tm,data,'k');
-  Y  = 1.05*max(data)*[-1 1];
-  ylim(Y);
+  Y0  = 1.05*max(data)*[-1 1];
+  ylim(Y0);
   hold on;
-  plot(time0(1)+0*Y,Y,'r');
-  plot(time0(end)+0*Y,Y,'r');
+  plot(time0(1)+0*Y0,Y0,'r');
+  plot(time0(end)+0*Y0,Y0,'r');
   hold off;
   GEN_proc_fig('t [s]',ylab1)
   %%
   subplot(1,3,2);
   plot(time0,disp0,'k');
-  ylim(Y);
+  ylim(Y0);
   xlim([time0(1) time0(end)]);
   GEN_proc_fig('t [s]',ylab1)
   %ttl   = title(tstr);
@@ -245,10 +233,10 @@ if findstr('vid',DO_PLOT)
    Tp = periods(jmax);
    fp = ff(jmax);
    %periods(jmax-1:jmax+1)'
-  
+   
    Sn_max   = max(max(Sn_mat));
    SS       = Sn_max*1.10*[0 1];
-  
+   
    hold off;
    plot(Tp+0*SS,SS,'g')
    hold on;
@@ -263,7 +251,7 @@ if findstr('vid',DO_PLOT)
    fp = ff(jmax);
    an_max   = max(max(an_mat));
    AA       = an_max*1.10*[0 1];
-  
+   
    hold off;
    plot(Tp+0*AA,AA,'g')
    hold on;
@@ -284,12 +272,11 @@ if findstr('vid',DO_PLOT)
  if DO_MOV; save('Movie-MovingFFT','Mov'); end
  
  fig=fig+1;
-
-end 
  
+end
+
 %%% ENERGY SPECTRUM %%%
 if findstr('Sspec',DO_PLOT)
- 
  figure(fig); fig=fig+1;
  h1=subplot(2,1,1);
  [Smax,jmax] = max(Sn_mat(:,m));
@@ -302,11 +289,11 @@ if findstr('Sspec',DO_PLOT)
  xlim(h1,[tm_vec(1,1), tm_vec(end,1)])
  ylim(h1,[0 4*Tp]);
  GEN_proc_fig('<time>, s','period, s')
- tstr  = description;
+ tstr  = [description '; bin ' int2str(wbin)];
  ttl   = title(tstr);
  %title('log_{10}(S)');
  GEN_font(ttl)
- colorbar
+ cb=colorbar; set(get(cb,'ylabel'),'String','log_{10}(S)'); clear cb
  
  %%% response at harmonics
  
@@ -317,7 +304,7 @@ if findstr('Sspec',DO_PLOT)
  str = [];
  for loop=1:2
   [~,jj]=min(abs(periods-Tp/loop));
-  plot(h2,tm_vec(:,1),Sn_mat(jj,:),cols{loop})
+  plot(h2,tm_vec(:,1),sum(Sn_mat(jj+[-wbin:wbin],:),1),cols{loop})
   str=[str ' ''\tau_{' int2str(loop) '}=' num2str(periods(jj)) ' '' '  ',' ];
  end
  str = str(1:end-1);
@@ -327,15 +314,9 @@ if findstr('Sspec',DO_PLOT)
  
  GEN_proc_fig('<time>, s','log_{10}S(\tau_{i})')
  
- Y = get(h2,'ylim');
+ Y0 = get(h2,'ylim');
  
- if findstr('single floe',description)
-  Tind = fn_TestTimes(1/Tp,X,'single');
- elseif findstr('calibration',description)
-  Tind = fn_TestTimes(1/Tp,X,'calibration');
- elseif findstr('% conc',description)
-  Tind = fn_TestTimes(1/Tp,X,'attn');
- end % end if findstr
+ Tind = fn_Tind(description,Tp,X,tm);
  
  if exist('Tind','var')
   hold on
@@ -343,7 +324,7 @@ if findstr('Sspec',DO_PLOT)
   ct_lp=1;
   for loop=1:length(Tind)
    if strfind(Tind(loop).description,'x')
-    pp(ct_lp)=plot(h2,Tind(loop).time + 0*Y, Y, Tind(loop).colour);
+    pp(ct_lp)=plot(h2,Tind(loop).time + 0*Y0, Y0, Tind(loop).colour);
     ds{ct_lp}=Tind(loop).description; ct_lp=ct_lp+1;
    end
   end
@@ -354,11 +335,12 @@ if findstr('Sspec',DO_PLOT)
  end % end exist(Tind)
  
  drawnow;
-
-end 
  
+end
+
 %%% AMPLITUDE SPECTRUM %%%
 if findstr('Aspec',DO_PLOT)
+ %an_mat = sqrt(2*Sn_mat);
  
  figure(fig); fig=fig+1;
  h1=subplot(2,1,1);
@@ -366,17 +348,18 @@ if findstr('Aspec',DO_PLOT)
  periods  = 1./ff;
  
  hold off;
- surf(h1,tm_vec(:,1),periods,log10(an_mat))
+ surf(h1,tm_vec(:,1),periods,log10(sqrt(2*Sn_mat)))
  shading interp
  view(h1,[0,90])
  xlim(h1,[tm_vec(1,1), tm_vec(end,1)])
  ylim(h1,[0 4*Tp]);
  GEN_proc_fig('<time>, s','period, s')
- tstr  = description;
+ tstr  = [description '; bin ' int2str(wbin)];
  ttl   = title(tstr);
  %title('log_{10}(S)');
  GEN_font(ttl)
- colorbar
+ cb=colorbar; set(get(cb,'ylabel'),'String','log_{10}(A)'); 
+ cb=get(cb,'ylabel'); set(cb,'fontsize',16); clear cb
  
  %%% response at harmonics
  
@@ -387,7 +370,7 @@ if findstr('Aspec',DO_PLOT)
  str = [];
  for loop=1:2
   [~,jj]=min(abs(periods-Tp/loop));
-  plot(h2,tm_vec(:,1),an_mat(jj,:),cols{loop})
+  plot(h2,tm_vec(:,1),sqrt(2*sum(Sn_mat(jj+[-wbin:wbin],:),1)),cols{loop})
   str=[str ' ''\tau_{' int2str(loop) '}=' num2str(periods(jj)) ' '' '  ',' ];
  end
  str = str(1:end-1);
@@ -397,15 +380,9 @@ if findstr('Aspec',DO_PLOT)
  
  GEN_proc_fig('<time>, s','log_{10}A(\tau_{i})')
  
- Y = get(h2,'ylim');
+ Y0 = get(h2,'ylim');
  
- if findstr('single floe',description)
-  Tind = fn_TestTimes(1/Tp,X,'single');
- elseif findstr('calibration',description)
-  Tind = fn_TestTimes(1/Tp,X,'calibration');
- elseif findstr('% conc',description)
-  Tind = fn_TestTimes(1/Tp,X,'attn');
- end % end if findstr
+ Tind = fn_Tind(description,Tp,X,tm);
  
  if exist('Tind','var')
   hold on
@@ -413,19 +390,20 @@ if findstr('Aspec',DO_PLOT)
   ct_lp=1;
   for loop=1:length(Tind)
    if strfind(Tind(loop).description,'x')
-    pp(ct_lp)=plot(h2,Tind(loop).time + 0*Y, Y, Tind(loop).colour);
+    pp(ct_lp)=plot(h2,Tind(loop).time + 0*Y0, Y0, Tind(loop).colour);
     ds{ct_lp}=Tind(loop).description; ct_lp=ct_lp+1;
    end
   end
   
-  %legend(pp,ds,'Location','NorthEast'); 
+  %legend(pp,ds,'Location','NorthEast');
   clear pp ds ct_lp
-
+  
  end % end exist(Tind)
  
  drawnow;
  set(gcf,'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
  
+ %clear an_mat
 end % end DO_VID/DO_PLOT
 
 %%% RAW SIGNAL %%%
@@ -445,21 +423,15 @@ if findstr('signal',DO_PLOT)
  figure(fig); fig=fig+1;
  h1 = subplot(1,1,1); h1sig = h1;
  plot(h1,tm,data,'k');
- Y  = 1.05*max(data)*[-1 1];
- ylim(Y);
+ Y0  = 1.05*max(data)*[-1 1];
+ ylim(Y0);
  GEN_proc_fig('tm, s',ylab1)
  
  tstr  = description;
  ttl   = title(tstr);
  GEN_font(ttl);
  
- if findstr('single floe',description)
-  Tind = fn_TestTimes(1/Tp,X,'single');
- elseif findstr('calibration',description)
-  Tind = fn_TestTimes(1/Tp,X,'calibration'); 
- elseif findstr('% conc',description)
-  Tind = fn_TestTimes(1/Tp,X,'attn');
- end % end if findstr
+ Tind = fn_Tind(description,Tp,X,tm);
  
  if exist('Tind','var')
   
@@ -467,7 +439,7 @@ if findstr('signal',DO_PLOT)
   ct_lp=1;
   for loop=1:length(Tind)
    if strfind(Tind(loop).description,'x')
-    pp(ct_lp)=plot(h1,Tind(loop).time + 0*Y, Y, Tind(loop).colour, 'linewidth',2);
+    pp(ct_lp)=plot(h1,Tind(loop).time + 0*Y0, Y0, Tind(loop).colour, 'linewidth',2);
     ds{ct_lp}=Tind(loop).description; ct_lp=ct_lp+1;
    end
   end
@@ -481,58 +453,112 @@ if findstr('signal',DO_PLOT)
  
 end
 
-%% OUTPUT & SAVE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% %%%%%%%%%%%%%%%           OUTPUT & SAVE             %%%%%%%%%%%%%%%%%%%%   
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if exist('data_out','var')
- out_val = []; out_per = []; out_frq = []; out_std = [];
+ 
+ %%% Initialise:
+ out_val = []; out_per = []; out_frq = []; out_std = []; out_tim = [];
+ out_loc = [];
+ 
+ %%%: Determine time window:
+ 
+ Tind = fn_Tind(description,Tp,X,tm);
+ tvec=[]; count=1;
+ for loop=1:length(Tind)
+  if strfind(Tind(loop).description,'x')
+   tvec(count)=Tind(loop).time;
+   tvecdes{count}=Tind(loop).description; count=count+1;
+  end
+ end % end loop Tind
+ clear count Tind
+ [t0,it0]=min(tvec); tvec(it0)=[]; tvecdes(it0)=[]; clear it0
+ if strcmp(data_out.tint,'default')
+  t1=min(tvec); clear tvec
+ else
+  eval(data_out.tint)
+  clear tvec
+ end % end if tint='default'
+ tt=find(and(tm_vec>=t0,tm_vec<=t1));
+ 
+ %% Loop outputs
  for loop_out=1:length(data_out.name)
+  
+  %%% Which harmonic:
+  if findstr('1st',data_out.name{loop_out})
+   harmo=1;
+  elseif findstr('2nd',data_out.name{loop_out})
+   harmo=2;
+  end % end which harmonic
+  if ~exist('periods','var'); periods  = 1./ff; end
+  [~,jj]=min(abs(periods-Tp/harmo)); pp = periods(jj);
+
+  %% Harmonic response
   if findstr('harmo-steady',data_out.name{loop_out})
+   
+   %%% Amplitude or energy spectra:
    if findstr('amp',data_out.name{loop_out})
-    dum_out=an_mat;
+    dum_out=sqrt(2*sum(Sn_mat(jj+[-wbin:wbin],tt),1));
+   elseif findstr('egy',data_out.name{loop_out})
+    dum_out=sum(Sn_mat(jj+[-wbin:wbin],tt));
+   end % end amp or ht
+  
+   %%% OUTPUT %%%
+   out_val = [out_val ' ' num2str(mean(dum_out))];
+   out_std = [out_std ' ' num2str(std(dum_out))];
+   out_per = [out_per ' ' num2str(pp)];
+   out_frq = [out_frq ' ' num2str(1/pp)];
+   out_tim = [out_tim ' ' '[' num2str(t0) ' ' num2str(t1) ']'];
+   out_loc = [out_loc ' ' '[' num2str(X) ' ' num2str(Y) ']'];
+   
+   %%% PLOT %%%
+   if strfind(DO_PLOT,'Aspec')
+    plot(h2Aspec,[t0,t1],mean(dum_out)+[0,0],'k','linewidth',5);
+   end
+   if strfind(DO_PLOT,'signal')
+    plot(h1sig,[t0,t1],mean(dum_out)+[0,0],'r','linewidth',5);
+   end
+   
+  %% Time series
+  elseif strfind(data_out.name{loop_out},'harmo-time')
+   cprintf('green','time series not available\n'); return  
+   %%% Amplitude or energy spectra:
+   if findstr('amp',data_out.name{loop_out})
+    dum_out=0.5*an_mat.*exp(1i*ag_mat);
    elseif findstr('egy',data_out.name{loop_out})
     dum_out=Sn_mat;
    end % end amp or ht
-   if findstr('1st',data_out.name{loop_out})
-    harmo=1;
-   elseif findstr('2nd',data_out.name{loop_out})
-    harmo=2;
-   end % end which harmonic
-   if findstr('single floe',description)
-    Tind = fn_TestTimes(1/Tp,X,'single');
-   elseif findstr('calibration',description)
-    Tind = fn_TestTimes(1/Tp,X,'calibration'); 
-   elseif findstr('% conc',description)
-    Tind = fn_TestTimes(1/Tp,X,'attn');
-   end % end get test times
-   if ~exist('periods','var'); periods  = 1./ff; end
-   [~,jj]=min(abs(periods-Tp/harmo)); pp = periods(jj);
-   tvec=[]; count=1;
-   for loop=1:length(Tind)
-    if strfind(Tind(loop).description,'x')
-     tvec(count)=Tind(loop).time; count=count+1;
-    end
-   end % end loop Tind
-   clear count Tind
-   [t0,it0]=min(tvec); tvec(it0)=[]; clear it0
-   if strcmp(data_out.tint,'default')
-    t1=min(tvec); clear tvec
+   
+   dum_tt{loop_out}     = tm_vec(tt);
+   
+   %%% TUNE %%%
+   if DO_TUNE
+    mc   =[tm_vec(tt),1+0*tt]\unwrap(angle(dum_out(jj,tt).'));
+    pp   =2*pi*pp/(pp*mc(1) + 2*pi); 
+    
+    dummer_out{loop_out} = dum_out(jj,tt).*exp(-1i*mc(1)*tm_vec(tt).');
    else
-    eval(data_out.tint)
-    clear tvec
-   end % end if tint='default'
-   tt=find(and(tm_vec>=t0,tm_vec<=t1));
+    dummer_out{loop_out} = dum_out(jj,tt);
+   end
+   
    %%% OUTPUT %%%
-   out_val = [out_val ' ' num2str(mean(dum_out(jj,tt)))];
-   out_std = [out_std ' ' num2str(std(dum_out(jj,tt)))];
+   out_val = [out_val ' dummer_out{' int2str(loop_out) '}'];
+   out_std = [out_std ' nan'];
    out_per = [out_per ' ' num2str(pp)];
    out_frq = [out_frq ' ' num2str(1/pp)];
+   out_tim = [out_tim ' dum_tt{' int2str(loop_out) '}'];
+   out_loc = [out_loc ' ' '[' num2str(X) ' ' num2str(Y) ']'];
+   
    %%% PLOT %%%
    if strfind(DO_PLOT,'Aspec')
-    plot(h2Aspec,[t0,t1],mean(dum_out(jj,tt))+[0,0],'k','linewidth',5);
-   end 
-   if strfind(DO_PLOT,'signal')
-    plot(h1sig,[t0,t1],mean(dum_out(jj,tt))+[0,0],'r','linewidth',5);
+    plot(h2Aspec,tm_vec(tt),2*abs(dum_out(jj,tt)),'k','linewidth',5);
    end
+   if strfind(DO_PLOT,'signal')
+    plot(h1sig,tm_vec(tt),2*abs(dum_out(jj,tt)),'r','linewidth',5);
+   end
+   
   end % end output type
   clear dum_out
  end % end loop length(data_out)
@@ -540,7 +566,10 @@ if exist('data_out','var')
  eval(['out_per = {' out_per '};'])
  eval(['out_frq = {' out_frq '};'])
  eval(['out_std = {' out_std '};'])
- out = struct('value',out_val,'period',out_per,'freq',out_frq,'std',out_std);
+ eval(['out_tim = {' out_tim '};'])
+ eval(['out_loc = {' out_loc '};'])
+ out = struct('value',out_val,'period',out_per,'freq',out_frq,...
+  'std',out_std,'time',out_tim,'loc',out_loc);
  if DO_SAVE
   if sv_num==1
    outputs{1}=out;
@@ -564,83 +593,110 @@ end % if exist data_out
 
 return
 
-%% CALL: [Sn,ff,an,t_mean,xtra] = get_ft(time,displ)
-%% time,displ are input vectors
-%% data_type is 1 (elevation) or 2 (acceleration - need to integrate F. series wrt time)
-%% Sn is the spectrum corresponding to the positive frequencies ff
-%%  (ff(1)=0);
-%% an are the Fourier coefficients corresponding to [ff(1:end);-fmax;-flipud(ff(end:-1:2))]
-%%  (ie no fftshift applied)
-%% t_mean   = mean(time)
-%% xtra  = {Hs,Tp,T_m02}, T_m02=sqrt(m0/m2);
+%%%%%%%%%%%%%%%%%%
+%% SUBFUNCTIONS %%
+%%%%%%%%%%%%%%%%%%
 
-%% high pass filter by subtracting the mean;
+% function Tind = fn_Tind(description,Tp,X,tm)
 
-function [Sn,ff,an,t_mean,xtra] = get_ft(time,displ,data_type)
+function Tind = fn_Tind(description,Tp,X,tm)
+
+if findstr('single floe',description)
+  Tind = fn_TestTimes(1/Tp,X,'single');
+ elseif findstr('calibration',description)
+  Tind = fn_TestTimes(1/Tp,X,'calibration');
+ elseif findstr('% conc',description)
+  Tind = fn_TestTimes(1/Tp,X,'attn');
+ elseif strfind(description,'simple harmonic wave')
+  dum_t   = {tm(2) tm(end-1)};
+  dum_des = {'first waves reach x' 'final waves reach x'};
+  dum_col = {'b:' 'r:'};
+  Tind = struct('description',dum_des,'time',dum_t,'colour',dum_col);
+ end % end if findstr
+ 
+ return
+
+% function [Sn,ff,an,t_mean,xtra] = get_ft(time,displ)
+%
+% DESCRIPTION: fft in given time window
+%              high pass filter by subtracting the mean;
+%
+% INPUTS:
+%
+% time      = sampling points in time
+% displ     = time series of given quantity
+% data_type = 1 (elevation) or 2 (acceleration - need to integrate F. series wrt time)
+%             NO LONGER USED!!!!!!
+%
+% OUTPUTS:
+%
+% Sn     = spectrum corresponding to the positive frequencies ff (ff(1)=0);
+% an     = magnitude of Fourier coefficients corresponding to 
+%          [ff(1:end);-fmax;-flipud(ff(end:-1:2))] (ie no fftshift applied)
+% ag     = angle corresponding to an
+% t_mean = mean(time)
+% xtra   = {Hs,Tp,T_m02}, T_m02=sqrt(m0/m2);
+% 
+% DETAILS:
+%
+% If displ(n) = eta(tn) for 1 <= n <= N
+% &  an(k)    = a(fk)   for 1 <= k <= N,
+%
+% and we express
+%
+%            N
+% eta(tn) = sum a(fk)*exp(-2i*pi*tn*fk), 1 <= n <= N.
+%           k=1
+%
+%                N
+% => displ(n) = sum a(fk)*exp(-2i*pi*(n-1)*(k-1)/N), 1 <= n <= N.
+%               k=1
+%
+% where tn = time(1) + (n-1)*dt is discrete time  
+% and   fk =           (k-1)*df is discrete frequency (df=1/N/dt)
+%
+% then
+%
+%                N
+% a(fk) = (1/N) sum displ(tn)*exp(2i*pi*(n-1)*(k-1)/N), 1 <= k <= N.
+%               n=1
+%
+% L Bennetts & T Williams 2013 / La Seyne & Adelaide
+
+function [Sxx,t_mean,ff] = get_ft(time,displ,data_type)
 
 displ = displ-mean(displ);
 
 N        = length(time);
-dt       = time(2)-time(1);%%time resolution
-T        = time(N)+dt-time(1);%%record length
+
+dt       = time(2)-time(1);                           %%time resolution
+T        = time(N)+dt-time(1);                        %%record length
 t_mean   = mean(time);
 %%
-df    = 1/T;%%freq resolution
-fs    = 1/dt;%%sample rate
-fmax  = fs/2;%%Nyqvist freq (max possible freq)
+df    = 1/T;                                          %%freq resolution
+fs    = 1/dt;                                         %%sample rate
+fmax  = fs/2;                                         %%Nyqvist freq (max possible freq)
 %%
 ff0   = (-N/2:N/2-1)'*df;
+ff    = (0:N/2)'*df;
+jj    = 1:N/2;
 %%
-an       = ifft(displ,N);
+an    = ifft(displ,N);
+ 
+Sxx   = abs(an).^2;
 
-if 0%data_type==2
- %%was getting strange results from this
- om    = 2*pi*fftshift(ff0);
- an    = an./(-om.^2);
- an(1) = 0;
-end
+Sneg  = [0;flipud(Sxx(jj+N/2))];                      %%-1,...,-N/2
+Spos  = [Sxx(jj);0];                                  %%0,...N/2-1
 
-if 0
- Sn(1)    = abs(an(1)^2)/df;
- jj       = 2:N/2;
- Sn(jj)   = abs( an(jj).^2 )/df + abs( an(N+1-jj).^2 )/df;
-else
- jj = 1:N/2;
- %%%%%%%%% TW (July '13) %%%%%%%%%
- %  ff    = (0:N/2-1)'*df;
- %  Sn    = 0*ff;
- %  aneg  = flipud(an(jj+N/2));%%-1,...,-N/2
- %  apos  = an(jj);%%0,...N/2-1
- %  Sn    = (abs(apos.^2)+abs(aneg.^2))/df;
- %  ff    = ff+df/2;%%move output frequency to middle of bin instead of the left;
- %%%%%%%%% LB (Aug  '13) %%%%%%%%%
- ff    = (0:N/2)'*df;
- Sn    = 0*ff;
- aneg  = [0;flipud(an(jj+N/2))];                      %%-1,...,-N/2
- apos  = [an(jj);0];                                  %%0,...N/2-1
- Sn    = (abs(apos.^2)+abs(aneg.^2))/df;
- ff(1) = []; Sn(1) = [];
- apos(1) = []; aneg(1) = [];
- an    = 2*abs(apos);       % nb. aneg = conj(apos) for a real signal
- %%%%%%%%% END LB VS TW  %%%%%%%%%
-end
-%je       = N/2+1;
-%Sn(je)   = 2*abs( an(je).^2 )/df;
-%Sn = [abs(an(1))^2;abs(an(2:N2/2)).^2+abs(an(N2:-1:N2/2+2)).^2]/df;
+Sxx   = Spos+Sneg;
+ 
+ff(1) = []; Sxx(1) = [];
 
-%ff       = (0:df:fmax-df)';
+%an = sqrt(2*Sxx);
+
 periods  = 1./ff;
+
 %%
-[Smax,jmax] = max(Sn);
-Tp          = periods(jmax);
-
-m0    = sum(Sn)*df;
-m2    = sum(ff.^2.*Sn)*df;
-T_m02 = sqrt(m0/m2);%% NB don't need 2\pi factor since moments are wrt freqency.
-
-Hs    = 4*sqrt(m0);
-xtra  = {Hs,Tp,T_m02};
-%pause
 
 if 0
  tst_var  = [var(displ,1), sum(abs(an.^2)), sum(Sn)*df]

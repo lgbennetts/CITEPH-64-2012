@@ -35,7 +35,7 @@ Param.nu = 0.3*ones(Param.Np,1);
 if ~RIGID
  Param.E = 10e10*ones(Param.Np,1);
 else
- Param.E = (10^RIGID)*ones(Param.Np,1);
+ Param.E = RIGID*(10^9)*ones(Param.Np,1);
 end
     
 % Draughts (in m)

@@ -63,9 +63,9 @@ end
 RAO = zeros(length(outputs),length(lam0));
 
 for loop_lam=1:length(lam0)
-
+ 
  out = fn_ElasticDisk(fortyp, lam0(loop_lam), Param, ...
-  th_vec, RIGID, SURGE, COMM, 0);
+  'RAOs', th_vec, RIGID, SURGE, COMM, 0); 
 
  for loop_out=1:length(out)
   for loop_outs=1:length(outputs)

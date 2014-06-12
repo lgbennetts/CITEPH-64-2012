@@ -24,25 +24,30 @@ function out=Main_AttnModels(Tp,conc,PRBS,Nd,COMM,DO_PLOT)
 
 %% GENERAL:
 
-if ~exist('PRBS','var');    PRBS='3d simple'; end
+if ~exist('PRBS','var');    PRBS='Boltzmann steady'; end
 if ~exist('COMM','var');    COMM=1;         end
 if ~exist('DO_PLOT','var'); DO_PLOT=0;      end
 
-if ~exist('Tp','var'); Tp = 10; end
+if ~exist('Tp','var'); Tp = .65; end
 if ~exist('conc','var'); conc=79; end
 
-if ~exist('rigid','var'); rigid=10; end
+if ~exist('rigid','var'); rigid=4; end
  
-if ~exist('Nd','var'); Nd = 1e0; end
+if ~exist('Nd','var'); Nd = 1e2; end
+
+if ~exist('th_res','var'); th_res=200; end
 
 if ~exist('TEST','var'); TEST='Oceanide'; end
 
-if ~exist('SURGE','var'); SURGE=0; end
+if ~exist('SURGE','var'); SURGE=1; end
+
+if ~exist('extra_pts','var'); extra_pts=[]; end
+if ~exist('terms_grn','var'); terms_grn=100; end
 
 if strcmp(TEST,'Oceanide')
     
  if ~exist('Param','var'); Param = ParamDef_Oceanide(rigid); 
-    Param = ModParam_def(Param,1,Nd,0,0); end
+    Param = ModParam_def(Param,1,Nd,extra_pts,terms_grn,th_res); end
  
 else
     
@@ -128,6 +133,7 @@ if strfind(PRBS,'2d BIE')
  for loop_d=1:length(dum_dirs)
   disp([int2str(loop_d) '. ' dum_dirs{loop_d}])
  end
+ cprintf(0.4*[1,1,1],'xxxxxxxxxxx-Xint-Xmodes-Nfac\n')
  ind = str2num(input('Choose file number... ', 's'));
  basedir=[basedir dum_dirs{ind}];
  load(basedir,'out','for_vec','v_info')
@@ -236,21 +242,22 @@ end
 
 if strfind(PRBS,'Boltzmann steady')
  
- if ~exist('th_res','var'); th_res=50; end
+ if ~exist('th_res','var'); th_res=1*50; end
  
- I_Boltz = zeros(length(Tp),th_res);
+ %I_Boltz = zeros(length(Tp),th_res);
  
- for loop_p=1:length(Tp)
-  
-  [I_Boltz(loop_p,:),th_vec] = ...
-   fn_Boltzmann_Steady('freq',1/Tp(loop_p),conc,...
-    Param,th_res,COMM,0);
-  
+ for loop_p=1:length(Tp) 
+  out = ...
+   fn_Boltzmann_Steady('freq',1/Tp(loop_p),conc,Param,...
+   'int trans energy',COMM,0);
+  T_Blt(loop_p) = out(1).value; clear out
  end
  
- [~,ind] = min(abs(th_vec));
- 
- T_Blt = sqrt(I_Boltz(:,ind));
+%  [~,ind] = min(abs(th_vec));
+%  
+%  T_Blt = sqrt(I_Boltz(:,ind));
+
+ T_Blt = sqrt(T_Blt);
  
  out_str = [out_str '; ''Boltzmann steady'' '];
  out_val = [out_val '; T_Blt '];
@@ -337,6 +344,26 @@ if strfind(PRBS,'3d rnd WT')
  
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% %%%%%%%%%%%%%% Rows (random phases between rows)  %%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if strfind(PRBS,'Rows')
+ 
+ rws = 1;
+ 
+ for loop_p=1:length(Tp) 
+  out = fn_Rows(Param,'freq',1/Tp(loop_p),conc,rws,1,'transmitted energy',COMM);
+  attn_rows(loop_p) = out(1).value; clear out   
+ end
+ 
+ T_row = exp(conc*log(attn_rows)*Param.MIZ_length/Param.floe_diam/2);  
+ clear attn_2d
+  
+ out_str = [out_str '; ''Rows'' '];
+ out_val = [out_val '; T_row '];
+ 
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

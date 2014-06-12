@@ -101,3 +101,5 @@ elseif strcmp(type_amp,'WM')
     %%% Steady-wave amplitude (in m)
     Forcing.Amp0 = Forcing.AmpWM/WM_TF;
 end
+
+return

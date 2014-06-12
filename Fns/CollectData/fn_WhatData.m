@@ -6,7 +6,9 @@ function fn_WhatData(flpre)
 
 if ~exist('flpre','var'); flpre=[]; end
 
-path_root = '../../../../../Documents/MatLab/Data/Wavetank/Rows/';
+%path_root = '../../../../../Documents/MatLab/Data/Wavetank/';
+
+path_root = '/Volumes/SCRATCH/Data/3d_Wavetank/MultiFloes/Conc39/';
 
 cat = dir([path_root ...
     flpre '*']);
