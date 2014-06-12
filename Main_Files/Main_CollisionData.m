@@ -31,7 +31,7 @@ function Main_CollisionData
 
 %% PRELIMINARIES:
 
-if or(strcmp(getenv('LOGNAME'),'a1612881'),...
+if ~or(strcmp(getenv('LOGNAME'),'a1612881'),...
   strcmp(getenv('LOGNAME'),'lbennetts'))
  OTHER_USR=1;
 end

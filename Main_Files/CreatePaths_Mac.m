@@ -5,7 +5,6 @@ path(pathdef)
 path(path,'..')
 path(path,'../Fns')
 path(path,'../Fns/Parametrisation')
-path(path,'../Fns/CollectData')
 path(path,'../Fns/AttnModels')
 path(path,'../Fns/AttnModels/Roots')
 path(path,'../Fns/Misc')
@@ -29,6 +28,7 @@ if or(strcmp(getenv('LOGNAME'),'a1612881'),...
  path(path,'../Fns/Greens_fns')
  path(path,'../Fns/CITEPH_specifics')
  path(path,'../Fns/MovingFourier')
+ path(path,'../Fns/CollectData')
 end
 
 return
