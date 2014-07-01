@@ -37,7 +37,10 @@
 % DO_MODEL   = analyse model on/off
 % Vert_Modes = number of vertical modes used for EMM method (if used)
 % model_pers = abscissa (periods) used for model
-% WHAT_MODEL = what model to use (see Main_AttnModel)    
+% WHAT_MODEL = what model to use 
+%              2d     (boundary integral eqn method)
+%              2d-EMM (eigenfunction matching method)
+%              3d     (eigenfunction matching method)
 %
 % L Bennetts Aug 2013 / Adelaide
 
@@ -77,7 +80,7 @@ if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 
 %% DATA
 
-if ~exist('DO_DATA','var'); DO_DATA=1; end
+if ~exist('DO_DATA','var'); DO_DATA=0; end
 
 if ~exist('file_pre','var'); file_pre = 'Temp_data/b00'; end
 
@@ -111,7 +114,7 @@ if ~exist('errbars','var');  errbars=1; end
 
 %% MODEL 
 
-if ~exist('DO_MODEL','var');   DO_MODEL  =0; end
+if ~exist('DO_MODEL','var');   DO_MODEL  =1; end
 if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d'; end
 
 if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end

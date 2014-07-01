@@ -115,7 +115,7 @@ clear Param
      
 %%% ONE INTERFACE 
 
-[Rm0,Tm0,Rp0,Tp0,Roots] = ...
+[Rm0,Tm0,Rp0,Tp0,Roots,c_vec] = ...
             fn_WaterIce(parameter_vector, Vert_Dim, DimG,... 
             Roots0, mat_A0, thickness, depth, draught, al, be, 0);
            
@@ -184,13 +184,20 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
  %%% The floe profile
  
  eta=zeros(x_res,1);
- for loop_x=1:length(xx)
-  eta(loop_x) = ((Roots.*tanh(Roots*(depth-draught))).')*...
-   (diag(exp(1i*Roots*(xx(loop_x)+floe_length/2)))*dum_amps(v1) ...
-   + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
- end
  
- eta = eta/fq;
+%  for loop_x=1:length(xx)
+%   eta(loop_x) = ((Roots.*tanh(Roots*(depth-draught))).')*...
+%    (diag(exp(1i*Roots*(xx(loop_x)+floe_length/2)))*dum_amps(v1) ...
+%    + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
+%  end
+%  
+%  eta = eta/fq;
+ 
+ for loop_x=1:length(xx)
+  eta(loop_x) = c_vec*...
+   (diag(exp(1i*Roots*(xx(loop_x)+floe_length/2)))*dum_amps(v1) ...
+    + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
+ end
  
  %%% Plot
  
@@ -365,7 +372,7 @@ return
 %%%%%%          funct to solve for individual ice edge              %%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [Rm,Tm,Rp,Tp,Roots_mat] = ...
+function [Rm,Tm,Rp,Tp,Roots_mat,c_vecs] = ...
     fn_WaterIce(parameter_vector, Vert_Dim, DimG,...
     Roots0, mat_A0, capD_vec, depth, d_vec, al_vec, be_vec, visc_rp)
     
