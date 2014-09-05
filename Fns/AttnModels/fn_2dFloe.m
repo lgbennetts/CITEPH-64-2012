@@ -29,7 +29,7 @@
 % visc_rp          = viscosity parameter (default = 0)
 
 function out = ...
- fn_2dFloe(fortyp,lam0,Param,outputs,LONG,COMM,Ens_size)
+ fn_2dFloe(fortyp,lam0,Param,outputs,LONG,COMM,Ens_size,SURGE,DO_PLOT)
 
 %% Inputs & prelims
 
@@ -41,6 +41,8 @@ if ~exist('lam0','var');   lam0=1/2.5; end
 if ~exist('LONG','var'); LONG=0; end
 if ~exist('COMM','var'); COMM=1; end
 
+if ~exist('SURGE','var'); SURGE=1; end
+
 if ~exist('RIGID','var'); RIGID=10; end
 
 if ~exist('Param','var'); Param = ParamDef_Oceanide(5); 
@@ -48,13 +50,15 @@ if ~exist('Param','var'); Param = ParamDef_Oceanide(5);
 
 if ~LONG; if ~exist('Ens_size','var'); Ens_size = 1; end; end
 
-if ~exist('outputs','var'); outputs='transmitted energy heave pitch'; end
+if ~exist('outputs','var'); outputs='transmitted energy heave pitch surge'; end
 
 depth = Param.bed;
 
 Forcing = Force_def(Param.g(1), depth, fortyp, lam0);
 
 Vert_Dim = Param.Ndtm;
+
+Inc = eye(Vert_Dim,1);
 
 thickness = Param.thickness;
 
@@ -70,6 +74,28 @@ fq = (2*pi*Forcing.f)^2/Param.g;
 
 parameter_vector = [Param.rho_0, Param.rho, Param.nu, Param.E, ...
     Param.g, fq]; 
+   
+%-------------------------------------------------------------------------%
+% Surge
+%
+% Kinematic condition
+%
+% phi = kappa*u*cos(theta)
+%
+% Dynamic condition
+%
+% (S-kappa*M-i*A)*u =
+%     rho_0*int_{-d}^{0}{phi(L/2,z)-phi(-L/2,z)}dz
+
+modMass = floe_length*draught;
+damp = 0;
+spring = 0;
+% adjust these for 2d problem is neq 0
+modDamp = 0; %2*Forcing.f*damp/Param.g/Param.rho_0;
+modSpring = 0; %spring/Param.rho_0/pi;
+clear damp spring
+
+%-------------------------------------------------------------------------%
 
 %visc_rp = 0; %1e-1; %1e-1; % 
 
@@ -88,25 +114,32 @@ for loop_Dim = 2:Vert_Dim
   parameter_vector(6), 1e-16); 
 end
 
-mat_A0 = wtd_cosh_cosh(Vert_Dim, Roots0, depth);     
+mat_A0 = wtd_cosh_cosh(Vert_Dim, Roots0, depth);    
+if SURGE; mat_Q0 = fn_Qmat(depth,draught,Roots0); 
+else mat_Q0=0*mat_A0(:,1); end
 
 %% Begin calculations:
 
 if COMM
   cprintf([0.3,0.3,0.3],'------------------------------------------\n')
-  cprintf([0.3,0.3,0.3],'----------   START: 2d Attn    -----------\n')
+  cprintf([0.3,0.3,0.3],'----------   START: 2d Floe    -----------\n')
 end
 
 if COMM
- cprintf([0.3,0.3,0.3],['>> ' fortyp ' = ' num2str(lam0) '\n'])
+ cprintf([0.3,0.3,0.3],['>>> ' fortyp ' = ' num2str(lam0) '\n'])
  if ~LONG 
-  cprintf([0.3,0.3,0.3],['>> floe length = ' num2str(floe_length) '\n'])
-  cprintf([0.3,0.3,0.3],['>> ensemble = ' num2str(Ens_size) '\n'])
+  if SURGE
+   cprintf([0.3,0.3,0.3],['>>> with surge \n'])
+  else
+   cprintf([0.3,0.3,0.3],['>>> without surge \n'])
+  end
+  cprintf([0.3,0.3,0.3],['>>> floe length = ' num2str(floe_length) '\n'])
+  cprintf([0.3,0.3,0.3],['>>> ensemble = ' num2str(Ens_size) '\n'])
  else
-  cprintf([0.3,0.3,0.3],'>> long floe limit\n')
+  cprintf([0.3,0.3,0.3],'>>> long floe limit\n')
  end
- cprintf([0.3,0.3,0.3],['>> ' num2str(thickness) ' thick\n'])
- cprintf([0.3,0.3,0.3],['>> rigidity = ' sprintf('%0.5g',Param.E) '\n'])
+ cprintf([0.3,0.3,0.3],['>>> ' num2str(thickness) ' thick\n'])
+ cprintf([0.3,0.3,0.3],['>>> rigidity = ' sprintf('%0.5g',Param.E) '\n'])
  cprintf([0.3,0.3,0.3],['>>> ' int2str(Vert_Dim) ' vertical modes\n'])
  cprintf([0.3,0.3,0.3],['>>> lam0/k0 = ' num2str(2*pi/Roots0(1)) '/' num2str(Roots0(1)) '\n'])
 end
@@ -115,9 +148,9 @@ clear Param
      
 %%% ONE INTERFACE 
 
-[Rm0,Tm0,Rp0,Tp0,Roots,c_vec] = ...
-            fn_WaterIce(parameter_vector, Vert_Dim, DimG,... 
-            Roots0, mat_A0, thickness, depth, draught, al, be, 0);
+[Rm0,Tm0,Rp0,Tp0,Sm0_sg,Sp0_sg,Roots,c_vec] = ...
+            fn_WaterIce(parameter_vector, Vert_Dim, DimG, Roots0, ... 
+            mat_A0, mat_Q0, thickness, depth, draught, al, be, SURGE);
            
 if COMM; cprintf([0.3,0.3,0.3],['>>> lam/k   = ' ...
   num2str(2*pi/Roots(1)) '/' num2str(Roots(1)) '\n']); end           
@@ -141,9 +174,33 @@ else %%% NO LONG FLOE LIMIT %%%
    dum_fl = floe_length + 2*sd*(rand - 0.5);
   end
         
-  [Rm,Tm,Rp,Tp] = ...
-            fn_IndFloe(dum_fl, Rm0, Tm0, Rp0, Tp0, Roots);
-        
+  [Rm,Tm,Rp,Tp,Sm_sg,Sp_sg] = ...
+            fn_IndFloe(dum_fl, Rm0, Tm0, Rp0, Tp0, Sm0_sg, Sp0_sg, Roots);
+   
+  %%% Equation of motion (surge) %%%         
+  Phi0_sg = Sm_sg; Phi1_sg = Sp_sg; 
+  
+  Phi0 = eye(Vert_Dim) + Rm; Phi1 = Tm; 
+  
+  X_sg0= ...
+   ( mat_Q0.'*(Phi1-Phi0) ) / ...
+   ( -(modSpring-fq*modMass-1i*modDamp) - ...
+   (mat_Q0.'*(Phi1_sg-Phi0_sg)) );  clear Phi0 Phi1
+  
+  Phi0 = eye(Vert_Dim) + Rm; Phi1 = Tm; 
+    
+  X_sg1= ...
+   ( mat_Q0.'*(Phi1-Phi0) ) / ...
+   ( -(modSpring-fq*modMass-1i*modDamp) - ...
+   (mat_Q0.'*(Phi1_sg-Phi0_sg)) );  clear Phi0 Phi1 Phi0_sg Phi1_sg
+  
+  u_sg = X_sg0(1,1);
+  
+  Rm = Rm + Sm_sg*X_sg0;
+  Tm = Tm + Sp_sg*X_sg0;
+  Rp = Rp + Sm_sg*X_sg1;
+  Tp = Tp + Sp_sg*X_sg1; clear X_sg0 X_sg1
+      
   r_vec(loop) = abs(Rm(1,1))^2;
   t_vec(loop) = abs(Tm(1,1))^2;      
         
@@ -152,6 +209,10 @@ else %%% NO LONG FLOE LIMIT %%%
  Rm = mean(r_vec); Tm = mean(t_vec);
 
  TT = Tm; RR = Rm;
+ 
+ if abs(RR+TT-1)>1e-3
+  cprintf('magenta',['>>> warning R+T=' num2str(RR+TT) '\n'])
+ end
 
 end
 
@@ -168,7 +229,7 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
  
  v1 = 1:Vert_Dim+2; v2 = v1 + Vert_Dim+2;
  
- am = eye(Vert_Dim,1); bm = zeros(Vert_Dim,1);
+ am = Inc; bm = zeros(Vert_Dim,1);
  
  %%% Amplitudes in floe
  
@@ -181,9 +242,9 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
  
  dum_amps = dum_M\dum_v;
  
- %%% The floe profile
+ %%% The floe profile (and inc wave)
  
- eta=zeros(x_res,1);
+ eta=zeros(x_res,1); eta_inc=eta;
  
 %  for loop_x=1:length(xx)
 %   eta(loop_x) = ((Roots.*tanh(Roots*(depth-draught))).')*...
@@ -199,17 +260,25 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
     + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
  end
  
+ for loop_x=1:length(xx); 
+  eta_inc(loop_x,1)=exp(1i*Roots0(1)*(xx(loop_x)+floe_length/2)); 
+ end
+ 
  %%% Plot
  
  if DO_PLOT
   figure(fn_getfig)
   
-  h1 = subplot(2,1,1); hold on; h2 = subplot(2,1,2); hold on
+  h1 = subplot(2,1,1); hold on; set(h1,'box','on')
+  h2 = subplot(2,1,2); hold on; set(h2,'box','on')
   
   plot(h1,xx_ext,real(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
   plot(h1,xx,real(eta),'r')
+  ylabel(h1,'Re(\eta)','fontsize',14)
+  title(h1,'floe profile (red) and incident wave (black)','fontsize',14)
   plot(h2,xx_ext,imag(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
   plot(h2,xx,imag(eta),'r')
+  xlabel(h2,'x','fontsize',14); ylabel(h2,'Im(\eta)','fontsize',14)
  end
  
 end
@@ -239,14 +308,40 @@ if strfind(outputs,'pitch')
  out_val = [out_val '; abs((12*fac/floe_length^3)*wts*(eta.*xx))'];
 end
 
+if strfind(outputs,'surge')
+ out_str = [out_str '; ''surge'' '];
+ out_val = [out_val '; abs(u_sg)'];
+end
+
 eval(['out=struct( ''name'', {' out_str ...
  '}, ''value'', {' out_val '});']) 
 out(1)=[];
 
 if COMM
- disp(['>>>> reflected energy  : ' num2str(RR)])
- disp(['>>>> transmitted energy: ' num2str(TT)])  
- cprintf([0.3,0.3,0.3],'-----------    END: 2d Attn   ------------\n')
+ if strfind(outputs,'reflected energy')
+  cprintf('blue',['>>>> reflected energy  : ' num2str(RR) '\n'])
+ end
+ if strfind(outputs,'transmitted energy')
+  cprintf('blue',['>>>> transmitted energy: ' num2str(TT) '\n'])  
+ end
+ if strfind(outputs,'heave')
+  cprintf('blue',['>>>> heave: ' ...
+   num2str(abs((fac/floe_length)*wts*eta)) ...
+   ' (inc wave: ' num2str(abs((fac/floe_length)*wts*eta_inc)) ') \n'])
+ end
+ if strfind(outputs,'pitch')
+  cprintf('blue',['>>>> pitch/k: ' ...
+   num2str(abs((12*fac/floe_length^3)*wts*(eta.*xx))/Roots0(1)) ...
+   ' (inc wave: ' ...
+   num2str(abs((12*fac/floe_length^3)*wts*(eta_inc.*xx))/Roots0(1)) ...
+   ') \n'])
+ end 
+ if strfind(outputs,'surge')
+  cprintf('blue',['>>>> surge: ' ...
+   num2str(abs(u_sg)) ...
+   ' (eccentricity=' num2str(coth(Roots0(1)*depth)) ') \n'])
+ end 
+ cprintf([0.3,0.3,0.3],'-----------    END: 2d Floe   ------------\n')
  cprintf([0.3,0.3,0.3],'------------------------------------------\n')
 end
 
@@ -264,10 +359,10 @@ return
 %%%%%%           funct to solve for individual floes                %%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [Rm,Tm,Rp,Tp] = ...
-    fn_IndFloe(l_vec,Rm0,Tm0,Rp0,Tp0,kk)
+function [Rm,Tm,Rp,Tp,Sm_sg,Sp_sg] = ...
+    fn_IndFloe(l_vec,Rm0,Tm0,Rp0,Tp0,Sm0_sg,Sp0_sg,kk)
 
-No_IceInts = 1; % - aprox the roughness length
+No_IceInts = 1; 
  
 l_vec = [0;reshape(l_vec,No_IceInts,1);0];
 
@@ -278,12 +373,18 @@ list_Tm{1} = Tm0;
 list_Rp{1} = Rp0;
 list_Tp{1} = Tp0;
 
+list_Sm_sg{1} = Sm0_sg;
+list_Sp_sg{1} = Sp0_sg;
+
 % - USE SYMMETRY!!!!! - %
 
 list_Rp{No_IceInts+1} = list_Rm{1};
 list_Tp{No_IceInts+1} = list_Tm{1};
 list_Rm{No_IceInts+1} = list_Rp{1};
 list_Tm{No_IceInts+1} = list_Tp{1};
+
+list_Sp_sg{No_IceInts+1} = -list_Sm_sg{1};
+list_Sm_sg{No_IceInts+1} = -list_Sp_sg{1};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%   ENERGY METHOD  %%%%%%%%%%%%%%%%%%%%
@@ -292,8 +393,9 @@ list_Tm{No_IceInts+1} = list_Tp{1};
 Inter_Dim0 = length(list_Tm{1}(1,:));
 til_Inter_Dim = length(list_Tm{1}(:,1));
 
-dum_Mat = zeros(2*til_Inter_Dim); 
-dum_Vec = zeros(2*til_Inter_Dim,Inter_Dim0+til_Inter_Dim);
+dum_Mat    = zeros(2*til_Inter_Dim); 
+dum_Vec    = zeros(2*til_Inter_Dim,Inter_Dim0+til_Inter_Dim);
+dum_Vec_sg = zeros(2*til_Inter_Dim,1);
 
 v1=1:til_Inter_Dim; v2=v1+til_Inter_Dim;
 u1=1:Inter_Dim0; u2=Inter_Dim0+[1:til_Inter_Dim];
@@ -303,6 +405,8 @@ w3=w2(end)+[1:til_Inter_Dim]; w4=w3(end)+[1:til_Inter_Dim];
 
 R0m = list_Rm{1}; T0p = list_Tp{1};
 T0m = list_Tm{1}; R0p = list_Rp{1};
+
+S0m_sg = list_Sm_sg{1}; S0p_sg = list_Sp_sg{1};
      
 II = eye(til_Inter_Dim);
 
@@ -313,6 +417,8 @@ Ep = diag(exp(1i*kk*l_vec(No_IceInts+1)));
 Rm = list_Rm{No_IceInts+1}; Tp = list_Tp{No_IceInts+1};
 Tm = list_Tm{No_IceInts+1}; Rp = list_Rp{No_IceInts+1};
 
+Sm_sg = list_Sm_sg{No_IceInts+1}; Sp_sg = list_Sp_sg{No_IceInts+1};
+
 % - Version 2 - %
    
 dum_Mat(v1,v1) = II; dum_Mat(v1,v2) = -R0p*Ep;
@@ -321,14 +427,21 @@ dum_Mat(v2,v2) = II; dum_Mat(v2,v1) = -Rm*Ep;
 %display(abs(det(dum_Mat)))
 %plot(real(det(dum_Mat)),imag(det(dum_Mat)),'bo')
 
-dum_Vec(v1,u1) = T0m; dum_Vec(v2,u2) = Tp;
+dum_Vec(v1,u1)   = T0m;    dum_Vec(v2,u2)   = Tp;
 
-dum_Vec = dum_Mat\dum_Vec; %display([l_vec(No_IceInts+1),abs(det(dum_Mat))])
+dum_Vec_sg(v1,1) = S0p_sg; dum_Vec_sg(v2,1) = Sm_sg;
+
+dum_Vec    = dum_Mat\dum_Vec; %display([l_vec(No_IceInts+1),abs(det(dum_Mat))])
+ 
+dum_Vec_sg = dum_Mat\dum_Vec_sg;
 
 dum_R0m = R0m + T0p*Ep*dum_Vec(v2,u1);
 dum_T0p = T0p*Ep*dum_Vec(v2,u2);
 dum_R0p = Rp + Tm*Ep*dum_Vec(v1,u2);
 dum_T0m = Tm*Ep*dum_Vec(v1,u1);
+
+dum_S0m_sg = T0p*Ep*dum_Vec_sg(v2,1) + S0m_sg;
+dum_S0p_sg = Tm*Ep*dum_Vec_sg(v1,1)  + Sp_sg; 
 
 % - Version 3 - %
 
@@ -357,6 +470,8 @@ dum_T0m = Tm*Ep*dum_Vec(v1,u1);
 % -------------- %
 
 Rm = dum_R0m; Tp = dum_T0p; Tm = dum_T0m; Rp = dum_R0p;
+
+Sm_sg = dum_S0m_sg; Sp_sg = dum_S0p_sg;
  
 if 1
  S=[Rm(1,1),Tp(1,1);Tm(1,1),Rp(1,1)];
@@ -372,9 +487,11 @@ return
 %%%%%%          funct to solve for individual ice edge              %%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [Rm,Tm,Rp,Tp,Roots_mat,c_vecs] = ...
+function [Rm,Tm,Rp,Tp,Rm_sg,Rp_sg,Roots_mat,c_vecs] = ...
     fn_WaterIce(parameter_vector, Vert_Dim, DimG,...
-    Roots0, mat_A0, capD_vec, depth, d_vec, al_vec, be_vec, visc_rp)
+    Roots0, mat_A0, mat_Q0, capD_vec, depth, d_vec, al_vec, be_vec, SURGE)
+   
+if ~exist('visc_rp','var'); visc_rp=0; end 
     
 No_Sects = 1;
 
@@ -460,10 +577,11 @@ end
  
 Geom0 = [capD_vec(1) d_vec(1) depth al_vec(1) be_vec(1)];
 
-[Rm, Tm, Rp, Tp] = CalcWaterIceTransition_wtd(parameter_vector, Vert_Dim, ...
-    DimG, Inter_Dim0, Inter_Dim, ...
-    Roots0, Roots_mat(1:Vert_Dim,1), Roots_mat(end-1:end,1),...
-    C_mats(:,:,1), mat_A0, A_mats(:,:,1), Geom0, cmpx_mkr);
+[Rm, Tm, Rp, Tp, Rm_sg, Rp_sg] = ...
+ CalcWaterIceTransition_wtd(parameter_vector, Vert_Dim, ...
+    DimG, Inter_Dim0, Inter_Dim, Roots0, ...
+    Roots_mat(1:Vert_Dim,1), Roots_mat(end-1:end,1), C_mats(:,:,1), ...
+    mat_A0, mat_Q0, A_mats(:,:,1), Geom0, cmpx_mkr, SURGE);
 
 if and(1,visc_rp==0)
  S=[Rm(1,1),Tp(1,1);Tm(1,1),Rp(1,1)];
@@ -1499,9 +1617,9 @@ return
 
 % WATER ICE TRANSITION
 
-function [Rm, Tm, Rp, Tp]  = ...
+function [Rm, Tm, Rp, Tp, Rm_sg, Rp_sg]  = ...
     CalcWaterIceTransition_wtd(parameter_vector, Dim, DimG, DimI0, DimI,...
-    k0, kk, mu_vec, C_mat, mat_A0, mat_A, Geom, yn_cmpx)
+    k0, kk, mu_vec, C_mat, mat_A0, mat_Q0, mat_A, Geom, yn_cmpx, SURGE)
 
 % - 18.10.10 -> rewritten to include standard weights
 
@@ -1570,6 +1688,19 @@ mat_W0 = fn_jump_W(parameter_vector, Dim, DimG, k0, kk);
 
 mat_W0_T = conj(mat_W0'); mat_W_T = conj(mat_W');
 
+% if SURGE
+%  % for use in kinematic condition
+%  % int_{-d}^{0} xi_m(z) dz
+%  % where xi(z) = cosh{k*(z+h)}/cosh{kh}
+%  mat_Q0 = zeros(Dim,1);
+%  for loop_dim=1:Dim
+%   mat_Q0(loop_dim,1) = ...
+%   (sinh(k0(loop_dim)*parameter_vector(7))-...
+%    sinh(k0(loop_dim)*(parameter_vector(7)-parameter_vector(8))))...
+%   /k0(loop_dim)/cosh(k0(loop_dim)*parameter_vector(7));
+%  end
+% end
+
 % --------------------------------------------------------- %
 
 % - Calc the amps of the complex waves in terms of the prop waves
@@ -1611,12 +1742,20 @@ psiIn_dx = -1i*C_mat(1:Dim,1:Dim+2)*diag([til_kk;til_mu0;til_mu1]) +...
 psiOut_dx = 1i*C_mat(1:Dim,1:Dim)*diag(til_kk) +...
     1i.*C_mat(1:Dim,Dim+1:Dim+2)*diag([til_mu0, til_mu1])*MatBS_Out;
 
-%% - 03.07.09: non-square mats mat_W and mat_W0
+%% %%%% SOLVE %%%%
+
+%% CONTINUITY OF VELOCITY
 
 % - following are Dim x DimG:
 
 MatB_u0 = (phi0Out_dx\(mat_A0\mat_W0)); 
 MatB_u = (psiOut_dx\(mat_A\mat_W)); 
+
+% following is Dim x 1:
+  
+if SURGE
+ MatB_sg0 = parameter_vector(6)*(phi0Out_dx\(mat_A0\mat_Q0));
+end
 
 % - following are Dim x Dim+2:
 
@@ -1625,6 +1764,8 @@ MatB_I = -psiOut_dx\psiIn_dx;
 % - following are Dim x Dim:
 
 MatB_I0 = -phi0Out_dx\phi0In_dx;
+
+%% CONTINUITY OF PRESSURE
 
 % - following are DimG x Dim:
 
@@ -1639,9 +1780,20 @@ MatA_I = mat_W_T*(psiIn + psiOut*MatB_I);
 MatA_u0 = mat_W0_T*phi0Out*MatB_u0;
 MatA_u = mat_W_T*psiOut*MatB_u;
 
+% following are DimG x 1:
+
+if SURGE
+ MatA_sg0 = mat_W0_T*phi0Out*MatB_sg0;
+end
+
 % - find u in terms of the inc amps (DimG x Dim)
 
 MatU_I0 = (MatA_u - MatA_u0)\MatA_I0;
+
+% find u in terms of surge amplitude (DimG x 1)
+if SURGE
+ MatU_sg0 = (MatA_u - MatA_u0)\MatA_sg0;
+end
 
 % - find u in terms of the inc amps (DimG x Dim+2)
 
@@ -1653,6 +1805,8 @@ v1 = 1:Dim; v2=Dim+1:Dim+2;
 Rm = zeros(Dim,Dim); Rp = zeros(Dim+2,Dim+2); 
 Tm = zeros(Dim+2,Dim); Tp = zeros(Dim,Dim+2);
 
+Rm_sg = zeros(Dim,1);   Rp_sg = zeros(Dim+2,1); 
+
 Rm = MatB_I0 + MatB_u0*MatU_I0; 
 Tp =           MatB_u0*MatU_I; 
 Rp(v1,:) = MatB_I + MatB_u*MatU_I;
@@ -1660,6 +1814,13 @@ Tm(v1,:) =          MatB_u*MatU_I0;
 
 Rp(v2,:) = MatBS_In + MatBS_Out*Rp(v1,:);
 Tm(v2,:) =            MatBS_Out*Tm(v1,:);
+
+if SURGE
+ Rm_sg       = MatB_sg0 + MatB_u0*MatU_sg0; 
+ Rp_sg(v1,:) =            MatB_u *MatU_sg0;
+ 
+ Rp_sg(v2,:) =            MatBS_Out*Rp_sg(v1,:);
+end
 
 % - For Output -> swap dimension
 
@@ -1897,4 +2058,24 @@ w(1:M)=2*xl./((1-zzvec.^2).*ppvec.^2);  % Compute the weight
 w(N:-1:N-M+1)=w(1:M);                   % and its symmetric counterpart
 
 return
+
+% Q mats for surge
+
+ function mat_Q0 = fn_Qmat(hh,dr,k0)
+  
+  Dim = length(k0);
+  
+  % for use in kinematic condition
+  % int_{-d}^{0} xi_m(z) dz
+  % where xi(z) = cosh{k*(z+h)}/cosh{kh}
+  mat_Q0 = zeros(Dim,1);
+  for loop_dim=1:Dim
+   mat_Q0(loop_dim,1) = ...
+    (sinh(k0(loop_dim)*hh)-...
+    sinh(k0(loop_dim)*(hh-dr)))...
+    /k0(loop_dim)/cosh(k0(loop_dim)*hh);
+  end
+  
+  return
+
 

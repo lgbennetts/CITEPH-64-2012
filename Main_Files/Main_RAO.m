@@ -62,13 +62,13 @@ if ~exist('DO_STR','var');   DO_STR=0; end
 if ~exist('DO_DISP','var');  DO_DISP=0; end
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 
-if ~exist('PT_TYP','var');   PT_TYP =0; end
+if ~exist('PT_TYP','var');   PT_TYP =1; end
 
 if DO_PLOT
  if ~exist('col','var'); 
   col=' ''k.'' , ''markersize'' , 12';
   col_nl=' ''ko'' , ''markersize'' , 12';
-  col_model={' ''k.-'' ',' ''b'' '};
+  col_model={' ''k.-'' ',' ''r'' '};
  end
 end
 
@@ -103,11 +103,11 @@ if ~exist('DO_FPLT','var');  DO_FPLT=0; end
 %if ~exist('DO_FPLT','var');  DO_FPLT='Aspec-signal'; end
 %if ~exist('DO_FPLT','var');  DO_FPLT='Aspec'; end
 
-HT=fn_WhatTestData(1,'Regular',0); ht_inds=1:4; %length(HT); %length(HT); %
+HT=fn_WhatTestData(1,'Regular',0); ht_inds=1:length(HT); %length(HT); %
 
 probes=1:10; %[1,2,3,8,9]; %10; %
-rbms={'heave'}; %,'roll+pitch','surge+sway'}; %
-%rbms={'heave','pitch','surge'};
+%rbms={'heave'}; %,'roll+pitch','surge+sway'}; %
+rbms={'heave','pitch','surge'};
 %rbms={'pitch'};
 
 if ~exist('errbars','var');  errbars=1; end
@@ -115,7 +115,7 @@ if ~exist('errbars','var');  errbars=1; end
 %% MODEL 
 
 if ~exist('DO_MODEL','var');   DO_MODEL  =1; end
-if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d'; end
+if ~exist('WHAT_MODEL','var'); WHAT_MODEL='3d'; end
 
 if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
 if DO_DISP; model_pers=HT(2,ht_inds); end
@@ -148,7 +148,7 @@ if DO_MODEL
  
  if strfind(WHAT_MODEL,'2d-EMM')
   %cprintf('green','More checks of EMM required ?!?\n')
-  if ~exist('rigid','var'); rigid=10; end
+  if ~exist('rigid','var'); rigid=4; end
   if ~exist('Param','var'); Param = ParamDef_Oceanide(rigid);
    Param = ModParam_def(Param,1,Vert_Modes,0,0); end
   for loop_p=1:length(model_pers)
@@ -185,7 +185,7 @@ if DO_MODEL
   end
   
   if strcmp(getenv('LOGNAME'),'a1612881')
-   basedir='/Volumes/scratch/Data/CITEPH-64-2012/Model/SingleFloe/';
+   basedir='/Volumes/scratch/Xtra_Data/CITEPH-64-2012/Model/SingleFloe/';
   end
   disp('2d model:')
   dum_dirs = fn_FolderNames(basedir);

@@ -62,13 +62,13 @@ if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 if ~exist('DO_PLOT','var');  DO_PLOT=1; end
 if ~exist('DO_DISP','var');  DO_DISP=0; end
 if ~exist('COMM','var');     COMM   =1; end
-if ~exist('EGY','var');      EGY    =0; end
+if ~exist('EGY','var');      EGY    =1; end
 if ~exist('DO_STR','var');   DO_STR =0; end
 
 if ~exist('PLOT_TYP','var'); PLOT_TYP ='trans_coeff'; end
 
 if DO_PLOT
- if ~exist('fig','var'); fig=1; end
+ if ~exist('fig','var'); fig=4; end
  if ~exist('col','var');
   col=' ''k.'' , ''markersize'' , 12';
   col_nl=' ''ko'' , ''markersize'' , 12';
@@ -85,7 +85,7 @@ if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 
 %% DATA
 
-if ~exist('DO_DATA','var'); DO_DATA=1; end
+if ~exist('DO_DATA','var'); DO_DATA=0; end
 
 if ~exist('t_meth','var');  t_meth='inc'; end %'calib'; end % 
 
@@ -117,13 +117,13 @@ if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
 %% MODEL
 
-if ~exist('DO_MODEL','var'); DO_MODEL=0; end
+if ~exist('DO_MODEL','var'); DO_MODEL=1; end
 
 if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
 if ~exist('model_pers','var'); model_pers=0.6:0.05:2; end %unique(HT(2,ht_inds)); end % 
 
-what_mod = 'Boltzmann steady'; %'Rows'; %'2d BIE'; %'2d EMM'; %'2d no long';
+what_mod = '2d BIE'; %'Boltzmann steady'; %'Rows'; %'2d EMM'; %'2d no long';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

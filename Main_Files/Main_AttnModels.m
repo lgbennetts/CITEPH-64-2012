@@ -120,7 +120,7 @@ end % end if 2d no long
 if strfind(PRBS,'2d BIE')
  
  if strcmp(getenv('LOGNAME'),'a1612881')
-  basedir='/Volumes/scratch/Data/CITEPH-64-2012/Model/SingleFloe/';
+  basedir='/Volumes/scratch/Xtra_Data/CITEPH-64-2012/Model/SingleFloe/';
  end
  disp('2d model:')
  dum_dirs = fn_FolderNames(basedir);

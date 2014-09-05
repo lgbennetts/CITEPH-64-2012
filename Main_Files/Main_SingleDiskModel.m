@@ -33,7 +33,7 @@ if ~exist('outputs','var');outputs={'RAO-surge','RAO-heave','ANG-pitch'};end
 
 if ~exist('th_vec','var'); th_vec=linspace(-pi,pi,201); end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=10; end
+if ~exist('Vert_Modes','var'); Vert_Modes=1; end
 
 if ~exist('TEST','var'); TEST='Oceanide'; end
 if ~exist('PLT','var');  PLT=1; col='b'; end
@@ -43,7 +43,7 @@ if ~exist('COMM','var');  COMM=0; end
 
 if strcmp(TEST,'Oceanide')
     
- if ~exist('RIGID','var'); RIGID=10; end   
+ if ~exist('RIGID','var'); RIGID=4; end   
  
  if ~exist('SURGE','var'); SURGE=1; end  
 

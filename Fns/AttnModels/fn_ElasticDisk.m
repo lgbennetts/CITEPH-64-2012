@@ -13,20 +13,20 @@
 %
 % INPUTS:
 %
-% N        =  vertical modes
-% Param    = field: g (gravity), rho_0 (water density), rho (disk density)
-%                nu (Poisson's ratio), E (Young's mod), draft,
-%                D (flexural rigid), beta (scaled flex rigid),
-%                N (vertical modes trav + ev)
-% GeomDisk = [0,0,radius, thickness]
 % fortyp   = 'freq' (in Hz) or 'wlength' (2*pi/k0) or 'waveno' (k0)
 % forval   = associated value
-% bed      = depth of fluid
-% th_vec   = discrete angular spectrum
+% Param    = see ParamDef and ModParam_def(Param,1,N,0,0)
+%         field: g (gravity), rho_0 (water density), rho (disk density)
+%                nu (Poisson's ratio), E (Young's mod), 
+%                D (flexural rigid), beta (scaled flex rigid),
+%                floe_diam (floe diameter), draft, thickness,
+%                bed  (depth of fluid)
+%                N (vertical modes trav + ev)
 % outputs  = see below
 %
 % PARAMETERS
 %
+% th_vec   = discrete angular spectrum
 % ModMass  = mass of submerged portion of body / pi / Rad
 % spring   = springing coeficient
 % damp     = damping coefficient
@@ -53,6 +53,8 @@
 % PLT   = plot a contour of constant angle
 % COMM  = comments on/off (1/0)
 % BESNM = normalisation used for Bessel fns
+% RAO_TYP = normalise RAOs by intended value (0) or actual value (1)
+%           (difference due to series expansion in azimuthal direction)
 %
 % OUTPUTS:
 %
@@ -71,7 +73,7 @@
 
 %%
 function out = fn_ElasticDisk(fortyp, forval, Param, outputs, ...
- th_vec, RIGID, SURGE, COMM, PLT)
+ th_vec, RIGID, SURGE, COMM, PLT, col)
 
 Tol_vec(1) = 1e-16; % - Real root error - %
 Tol_vec(2) = 1e-16; % - Imag root error (init) - %
@@ -86,6 +88,8 @@ if ~exist('INC','var'); INC=1; end
 if ~exist('SURGE','var'); SURGE=0; end
 if ~exist('RIGID','var'); RIGID=5; end
 
+if ~exist('RAO_TYP','var'); RAO_TYP=0; end
+
 % if ~exist('FOU','var'); FOU=0; end
 % if ~exist('RAO','var'); RAO=1; end
 
@@ -95,7 +99,9 @@ if ~exist('PLT','var'); PLT=0; end
 
 if ~exist('N','var'); N=1; end
 
-if ~exist('outputs','var'); outputs='E E0'; end
+if ~exist('outputs','var'); outputs='Energy'; end
+
+if ~exist('col','var'); col='r'; end
 
 %% Set up problem
 
@@ -119,14 +125,16 @@ Forcing = Force_def(Param.g,bed,fortyp,forval);
 parameter_vector = [Param.rho_0, Param.rho, Param.nu, Param.E, Param.g];
 
 if COMM
- if RIGID; cprintf(0.4*[1,1,1],'-> Rigid disk problem\n'); 
- else cprintf(0.4*[1,1,1],'-> Elastic disk problem\n'); end
- cprintf(0.4*[1,1,1],['--> Radius = ' num2str(radius) '\n'])
- cprintf(0.4*[1,1,1],['--> Draught = ' num2str(draught) '\n'])
- if SURGE; cprintf(0.4*[1,1,1],'--> with surge\n'); 
- else cprintf(0.4*[1,1,1],'--> without surge\n'); end
- cprintf(0.4*[1,1,1],['---> wavelength = ',num2str(Forcing.lam0) '\n'])
- cprintf(0.4*[1,1,1],['----> ' int2str(Vert_Modes) ' vertical mode(s)\n'])
+ if isinf(RIGID); cprintf(0.4*[1,1,1],'>>> Rigid disk problem\n'); 
+ else cprintf(0.4*[1,1,1],'>>> Elastic disk problem\n'); end
+ cprintf(0.4*[1,1,1],['>>> Radius = ' num2str(radius) '\n'])
+ cprintf(0.4*[1,1,1],['>>> Draught = ' num2str(draught) '\n'])
+ if SURGE; cprintf(0.4*[1,1,1],'>>> with surge\n'); 
+ else cprintf(0.4*[1,1,1],'>>> without surge\n'); end
+ cprintf(0.4*[1,1,1],['>>> Period = ' num2str(1/Forcing.f) '\n'])
+ cprintf(0.4*[1,1,1],['>>> wavenumber/length = ',...
+  num2str(2*pi/Forcing.lam0) '/' num2str(Forcing.lam0) '\n'])
+ cprintf(0.4*[1,1,1],['>>> ' int2str(Vert_Modes) ' vertical mode(s)\n'])
 end
 
 % Normalise
@@ -142,7 +150,18 @@ be = Param.beta;
 parameter_vector = [parameter_vector, ...
  (freq^2/Param.g)/Norm_fac, bed, draught, thickness, bed-draught, al, be];
 
+%-------------------------------------------------------------------------%
 % Surge
+%
+% Kinematic condition
+%
+% phi = kappa*u*cos(theta)
+%
+% Dynamic condition
+%
+% (S-kappa*M-i*A)*u =
+%     rho_0*R*int_{-pi}^{pi}int_{-d}^{0}phi(R,theta,z)*cos(theta) dz dtheta
+%   = pi*R*rho_0*int_{-d}^{0}{phi_{-1}(R,z)+phi_{1}(R,z)}dz
 
 if SURGE
  modMass = radius*draught;
@@ -153,6 +172,7 @@ if SURGE
  clear damp spring
  kappa = parameter_vector(6);
 end
+%-------------------------------------------------------------------------%
 
 %% Define matricies
 
@@ -185,6 +205,10 @@ else
  Az_Dim=Az_Dim-2; s_Modes = Az_Dim; clear Az_Dim
 end
 
+if COMM
+ cprintf(0.4*[1,1,1],['>>> ' int2str(s_Modes) ' azimuthal mode(s)\n'])
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ELASTIC DISK
@@ -204,6 +228,11 @@ if ~isinf(RIGID)
   wt(loop_Dim) = weight_PWC(parameter_vector, kk(loop_Dim));
  end
  
+ if COMM
+ cprintf(0.4*[1,1,1],['>>> wavenumber/length (plate) = ',...
+  num2str(kk(1)) '/' num2str(2*pi/kk(1)) '\n'])
+end
+ 
 %  for loop_Dim=1:Vert_Modes
 %   %  if or(loop_Dim==1,~RIGID)
 %   %   kk(loop_Dim) = GetRootsMMA_PWC(parameter_vector, loop_Dim, Tol_vec);
@@ -222,6 +251,9 @@ if ~isinf(RIGID)
  mat_A0 = diag(mat_A0);
  
  if SURGE
+  % for use in kinematic condition
+  % int_{-d}^{0} xi_m(z) dz
+  % where xi(z) = wt_0*cosh{k*(z+h)}
   mat_Q0 = fn_JumpMatSg(parameter_vector, Vert_Modes, k0, wt_0);
  end
  
@@ -234,11 +266,14 @@ if ~isinf(RIGID)
  %% Solve via EMM
  %%%%%%%%%%%%%%%%
  
- Psi = zeros(Vert_Modes, 2*s_Modes+1); Phi = zeros(Vert_Modes, 2*s_Modes+1);
+ Psi = zeros(Vert_Modes, 2*s_Modes+1); Phi = Psi;
+ if SURGE; Psi_sg = Psi; Phi_sg = Psi; end
  
  % -- Version 1 -- %
  
- Avec = zeros(Vert_Modes, 2*s_Modes+1); Bvec = zeros(Vert_Modes, 2*s_Modes+1);
+ Avec = zeros(Vert_Modes, 2*s_Modes+1); Bvec = Avec;  
+ if SURGE; Avec_sg = Avec; Bvec_sg = Bvec; end
+ Ivec = zeros(Vert_Modes, 2*s_Modes+1);
  
  v_01 = C_mat(1:Vert_Modes, Vert_Modes+1:Vert_Modes+2);
  
@@ -251,6 +286,7 @@ if ~isinf(RIGID)
   if INC==1
    Inc = (1i^loop_Az)*exp(abs(imag(k0(1)*radius))).*eye(Vert_Modes,1)...
     /wt_0(1)/cosh(k0(1)*bed);
+   Ivec(:,loop_Az+s_Modes+1) = (1i^loop_Az)*eye(Vert_Modes,1);
   else
    cprintf('green','code another incident wave\n')
   end
@@ -399,7 +435,7 @@ if ~isinf(RIGID)
   % following is Dim x 1:
   
   if and(SURGE,abs(loop_Az)==1)
-   MatB_sg0 = 0.5*kappa*(Phiz_Out\(diag(mat_A0)\mat_Q0));
+   MatB_sg0 = 0.5*kappa*(Phiz_Out\(diag(mat_A0)\mat_Q0)); 
   end
   
   % following is Dim x Dim:
@@ -468,9 +504,9 @@ if ~isinf(RIGID)
  
  if and(SURGE,s_Modes>0)
   X_sg= ...
-   (mat_Q0.'*(Phi(:,s_Modes)+Phi(:,s_Modes+2))) / ...
-   ( (modSpring-kappa*modMass-1i*modDamp) - ...
-   (mat_Q0.'*(Phi_sg(:,s_Modes)+Phi_sg(:,s_Modes+2))));
+   ( mat_Q0.'*(Phi(:,s_Modes)+Phi(:,s_Modes+2)) ) / ...
+   ( -(modSpring-kappa*modMass-1i*modDamp) - ...
+   (mat_Q0.'*(Phi_sg(:,s_Modes)+Phi_sg(:,s_Modes+2))) );
   Avec(:, s_Modes)  =Avec(:, s_Modes)  +X_sg*Avec_sg(:, s_Modes);
   Avec(:, s_Modes+2)=Avec(:, s_Modes+2)+X_sg*Avec_sg(:, s_Modes+2);
   Bvec(:, s_Modes)  =Bvec(:, s_Modes)  +X_sg*Bvec_sg(:, s_Modes);
@@ -489,344 +525,346 @@ else
  
  cprintf('green','RIGID CODE NOT YET FINISHED!!!!\n')
  
- if ~exist('HEAVE','var'); HEAVE=1; end
- if ~exist('PITCH','var'); PITCH=1; end
+ return
  
- for loop_Dim=1:Vert_Modes
-  kk(loop_Dim) = (loop_Dim-1)*1i*pi/(bed-draught);
-  wt(loop_Dim) = weight_PWC(parameter_vector, kk(loop_Dim));
- end
- 
- [mat_A0, mat_A, mat_W0, mat_W] = fn_JumpMats(parameter_vector,...
-  Vert_Modes, DimG_vec(1), k0, kk, wt_0, wt,DimG_vec(2));
- 
- mat_A0 = diag(mat_A0);
- 
- if SURGE
-  mat_Q0 = fn_JumpMatSg(parameter_vector, Vert_Modes, k0, wt_0);
- end
- 
- mat_W0_T = conj(mat_W0'); mat_W_T = conj(mat_W');
- 
- %%%%%%%%%%%%%%%%
- %% Solve via EMM
- %%%%%%%%%%%%%%%%
- 
- Psi = zeros(Vert_Modes, 2*s_Modes+1); Phi = zeros(Vert_Modes, 2*s_Modes+1);
- 
- % -- Version 1 -- %
- 
- Avec = zeros(Vert_Modes, 2*s_Modes+1); Bvec = zeros(Vert_Modes, 2*s_Modes+1);
- 
- %% Heave & pitch
- 
- if HEAVE
-  
-  %%% Heave (loop_Az=0 only)
-  
-  % phi_hv = \sum_{m}a_{0,m}*J_0(mu(0,m)r/R)*xi_m(z)
-  %
-  % where xi_m(z) = cosh(mu(0,m)*(z+h))/cosh(mu(0,m)*(h-d))
-  %
-  % (d/dz)*phi_hv(z=-d) = sigma*X_hv
-  
-  mu_hv = zerobess('J',0,N_rbm);
-  
-  % Orthogonality: Int_{0}^{R} r*J_0(mu(0,m)r/R)*J_0(mu(0,n)r/R)dr =
-  %                      0.5*R^2*delta(m,n)*(J_1(mu(0,m))^2)
-  
-  dum_cm = 0.5*(radius^2)*(besselj(1,mu_hv).^2);
-  
-  % Int_{0}^{R} r*J_0(mu(n)r/R)dr
-  % = ((R/mu_n)^2)*Int_{0}^{mu(0,n)}rho*J_0(rho)drho
-  % = ((R/mu_n)^2)*[rho*J_1(rho)]_{0}^{mu(0,n)}
-  % = (R^2)*J_1(mu(0,n))/mu(0,n)
-  % from TABLES OF SOME INDEFINITE INTEGRALS OF BESSEL FUNCTIONS
-  % by Werner Rosenheinrich
-  
-  dum_int = (radius^2)*besselj(1,mu_hv)./mu_hv;
-  
-  a_hv = kappa*dum_int./dum_cm./mu_hv; clear dum_cm dum_int
-  
-  IPMat_hv=zeros(Vert_Modes,N_rbm);
-  
-  for loop1=1:Vert_Modes
-   for loop2=1:N_rbm
-    IPMat_hv(loop1,loop2)=cosh(mu_hv(loop2)*(bed-draught))\...
-     fn_cosh_cosh(kk(loop1),mu_hv(loop2), bed-draught);
-   end
-  end
-  
- end
- 
- if PITCH
-  
-  %%% Pitch (loop_Az=+/-1 only)
-  
-  % phi_pt = exp(1i*th)\sum_{m}a_{1,m}*J_1(mu(1,m)r/R)*eta_m(z) + ...
-  %          exp(-1i*th)\sum_{m}a_{-1,m}*J_-1(mu(1,m)r/R)*eta_m(z)
-  %        = 2*cos(th)*\sum_{m}a_{1,m}*J_1(mu(1,m)r/R)*eta_m(z)
-  % i.e. a_{1,m}=-a_{-1,m}
-  %
-  % where eta_m(z) = cosh(mu(m)*(z+h))/cosh(mu(m)*(h-d))
-  %
-  % (d/dz)*phi_pt(z=-d) = sigma*(x/R)*X_pt
-  
-  mu_pt = zerobess('J',1,N_rbm);
-  
-  % Orthogonality: Int_{0}^{R} r*BesJ_1(mu(1,m)r/R)BesJ_0(mu(1,n)r/R)dr =
-  %                      0.5*R^2*delta(m,n)*(BesJ_2(mu(1,m))^2)
-  
-  dum_cm = 0.5*(radius^2)*(besselj(2,mu_pt).^2);
-  
-  % (1/R)*Int_{0}^{R}(r^2)*J_1(mu(1,n)r/R)dr
-  % = (R^2/mu(1,n)^3)*Int_{0}^{mu(1,n)}(rho^2)*J_1(rho)drho
-  % = ((R/mu_n)^2)*[rho*(2*J_1(rho)-rho*J_0(rho)]_{0}^{mu(1,n)}
-  % = 2*(R^2)*J_1(mu(1,n))/mu(1,n)^2
-  % from TABLES OF SOME INDEFINITE INTEGRALS OF BESSEL FUNCTIONS
-  % by Werner Rosenheinrich
-  
-  dum_int = 2*(radius^2)*besselj(1,mu_pt)/mu_pt/mu_pt;
-  
-  a_pt = kappa*dum_int./dum_cm./mu_pt/radius/2; clear dum_cm dum_int
-  
-  IPMat_pt=zeros(Vert_Modes,N_rbm);
-  
-  for loop1=1:Vert_Modes
-   for loop2=1:N_rbm
-    IPMat_pt(loop1,loop2)=cosh(mu_pt(loop2)*(bed-draught))\...
-     fn_cosh_cosh(kk(loop1),mu_pt(loop2), bed-draught);
-   end
-  end
-  
- end
- 
- %%
- 
- for loop_Az=-s_Modes:s_Modes
-  
-  %% Incident wave
-  
-  if INC==1
-   Inc = (1i^loop_Az)*exp(abs(imag(k0(1)*radius))).*eye(Vert_Modes,1)...
-    /wt_0(1)/cosh(k0(1)*bed);
-  else
-   cprintf('green','code another incident wave\n')
-  end
-  
-  %% Components of full solution: Bessel & Hankel fns
-  
-  if BESNM==1
-   J_ice = besselj(loop_Az, kk.*radius, 1);
-   invars = struct('name',{'BesselFn'; 'N'; 'z'; 'scale'}, ...
-    'value',{@besselj; loop_Az; kk.*radius; 1 });
-   Jz_ice = fn_Bessel_dz(invars);
-  elseif BESNM==2
-   J_ice = ones(Vert_Modes,1);
-   invars = struct('name',{'BesselFn'; 'N'; 'z'}, ...
-    'value',{@besselj; loop_Az; kk.*radius});
-   Jz_ice = fn_Bessel_dz(invars)./besselj(loop_Az, kk.*radius);
-  end
-  
-  if 1
-   J_water = besselj(loop_Az, k0.*radius, 1);
-   invars = struct('name',{'BesselFn'; 'N'; 'z'; 'scale'}, ...
-    'value',{@besselj; loop_Az; k0.*radius; 1 });
-   Jz_water = fn_Bessel_dz(invars);
-  elseif BESNM==2
-   J_water = ones(Vert_Modes,1);
-   invars = struct('name',{'BesselFn'; 'N'; 'z'; 'scale'}, ...
-    'value',{@besselj; loop_Az; k0.*radius; 1 });
-   Jz_water = fn_Bessel_dz(invars)./besselj(loop_Az, k0.*radius, 1);
-  end
-  
-  if BESNM==1
-   H_water = besselh(loop_Az, 1, k0.*radius, 1);
-   Hz_water = Bessel_dz(@besselh, loop_Az, k0.*radius, 1, 1);
-  elseif BESNM==2
-   H_water(1) = exp(-1i*k0(1)*radius)*...
-    besselh(loop_Az, 1, k0(1).*radius);
-   invars = struct('name',{'BesselFn'; 'N'; 'z'; 'hank'}, ...
-    'value',{@besselh; loop_Az; k0(1).*radius; 1 });
-   Hz_water(1) = exp(-1i*k0(1)*radius)*...
-    fn_Bessel_dz(invars);
-   if Vert_Modes>1
-    invars = struct('name',{'BesselFn'; 'N'; 'z'; 'hank'}, ...
-     'value',{@besselh; loop_Az; k0(2:Vert_Modes).*radius; 1 });
-    H_water(2:Vert_Modes,1) = ones(Vert_Modes-1,1);
-    Hz_water(2:Vert_Modes,1) = ...
-     fn_Bessel_dz(invars)./...
-     besselh(loop_Az, 1, k0(2:Vert_Modes).*radius);
-   end
-  end
-  
-  %% Set up soln in water:
-  
-  Phi_In = diag(J_water);
-  Phiz_In = diag(k0.*Jz_water);
-  
-  Phi_Out = diag(H_water);
-  Phiz_Out = diag(k0.*Hz_water);
-  
-  %% Set up soln from ice:
-  
-  % - fn psi = %
-  
-  Psi_S = diag(J_ice);
-  Psiz_S = diag(kk.*Jz_ice);
-  
-  w1 = 1:Vert_Modes; w2 = Vert_Modes+1:Vert_Modes+2;
-  
-  %% Solve the system
-  
-  %%% Cty of radial velocity & submerged edge condition
-  
-  % following are Dim x DimG:
-  
-  MatB_u0 = (Phiz_Out\(diag(mat_A0)\mat_W0));
-  MatB_u = (Psiz_S\(mat_A\mat_W));
-  
-  % following are Dim x 1:
-  
-  if and(HEAVE,loop_Az==0)
-   MatB_hv = -(Psiz_S\(mat_A\(IPMat_hv*a_hv)));
-  end
-  
-  if and(PITCH,abs(loop_Az)==1)
-   MatB_pt = -sign(loop_Az)*(Psiz_S\(mat_A\(IPMat_pt*a_pt)));
-  end
-  
-  if and(SURGE,abs(loop_Az)==1)
-   MatB_sg0 = 0.5*kappa*(Phiz_Out\(diag(mat_A0)\mat_Q0));
-  end
-  
-  % following is Dim x Dim:
-  
-  MatB_I0 = -Phiz_Out\Phiz_In;
-  
-  %%% Cty of pressure
-  
-  % following are DimG x Dim:
-  
-  MatA_I0 = mat_W0_T*(Phi_In + Phi_Out*MatB_I0);
-  
-  % following are DimG x DimG:
-  
-  MatA_u0 = mat_W0_T*Phi_Out*MatB_u0;
-  MatA_u = mat_W_T*Psi_S*MatB_u;
-  
-  % following is DimG x 1:
-  
-  if and(HEAVE,abs(loop_Az)==0)
-   MatA_hv = mat_W_T*Psi_S*MatB_hv;
-  end
-  
-  if and(PITCH,abs(loop_Az)==1)
-   MatA_pt = mat_W_T*Psi_S*MatB_pt;
-  end
-  
-  if and(SURGE,abs(loop_Az)==1)
-   MatA_sg0 = mat_W0_T*Phi_Out*MatB_sg0;
-  end
-  
-  % find u in terms of the inc amps (DimG x Dim)
-  
-  MatU_I0 = (MatA_u - MatA_u0)\MatA_I0;
-  
-  % find u in terms of surge amplitude (DimG x 1)
-  
-  if and(HEAVE,abs(loop_Az)==0)
-   MatU_hv = -(MatA_u - MatA_u0)\MatA_hv;
-  end
-  
-  if and(PITCH,abs(loop_Az)==1)
-   MatU_pt = -(MatA_u - MatA_u0)\MatA_pt;
-  end
-  
-  if and(SURGE,abs(loop_Az)==1)
-   MatU_sg0 = (MatA_u - MatA_u0)\MatA_sg0;
-  end
-  
-  u_vec = MatU_I0*Inc;
-  
-  %%% Solve
-  
-  % convert into scattered amps
-  % 1. in the ice (floe)
-  Avec(:, s_Modes+loop_Az+1) = MatB_u*u_vec;
-  if and(HEAVE,abs(loop_Az)==0)
-   Avec_hv(:, s_Modes+loop_Az+1) = MatB_u*MatU_hv + MatB_hv;
-  end
-  if and(PITCH,abs(loop_Az)==1)
-   Avec_pt(:, s_Modes+loop_Az+1) = MatB_u*MatU_pt + MatB_pt;
-  end
-  if and(SURGE,abs(loop_Az)==1)
-   Avec_sg(:, s_Modes+loop_Az+1) = MatB_u*MatU_sg0;
-  end
-  % 2. in the (surrounding) water
-  Bvec(:, s_Modes+loop_Az+1) = MatB_u0*u_vec + MatB_I0*Inc;
-  if and(HEAVE,abs(loop_Az)==0)
-   Bvec_hv(:, s_Modes+loop_Az+1) = MatB_u0*MatU_hv;
-  end
-  if and(PITCH,abs(loop_Az)==1)
-   Bvec_pt(:, s_Modes+loop_Az+1) = MatB_u0*MatU_pt;
-  end
-  if and(SURGE,abs(loop_Az)==1)
-   Bvec_sg(:, s_Modes+loop_Az+1) = MatB_u0*MatU_sg0 + MatB_sg0;
-  end
-  
-  % Put into vel pots and disp
-  
-  Phi(:, s_Modes+loop_Az+1) = Phi_In*Inc + Phi_Out*Bvec(:, s_Modes+loop_Az+1);
-  Psi(:, s_Modes+loop_Az+1) = Psi_S*Avec(:, s_Modes+loop_Az+1);
-  
-  if and(HEAVE,abs(loop_Az)==0)
-   Phi_hv(:, s_Modes+loop_Az+1) = Phi_Out*Bvec_hv(:, s_Modes+loop_Az+1);
-   Psi_hv(:, s_Modes+loop_Az+1) = Psi_S*Avec_hv(:, s_Modes+loop_Az+1);
-  end
-  
-  if and(PITCH,abs(loop_Az)==1)
-   Phi_pt(:, s_Modes+loop_Az+1) = Phi_Out*Bvec_pt(:, s_Modes+loop_Az+1);
-   Psi_pt(:, s_Modes+loop_Az+1) = Psi_S*Avec_pt(:, s_Modes+loop_Az+1);
-  end
-  
-  if and(SURGE,abs(loop_Az)==1)
-   Phi_sg(:, s_Modes+loop_Az+1) = Phi_Out*Bvec_sg(:, s_Modes+loop_Az+1);
-   Psi_sg(:, s_Modes+loop_Az+1) = Psi_S*Avec_sg(:, s_Modes+loop_Az+1);
-  end
-  
- end % end loop_Az
- 
- if sum([HEAVE,PITCH,SURGE])==3
-  
- end
- 
- if sum([HEAVE,PITCH,SURGE])==2
-  if ~HEAVE
-   
-  elseif ~PITCH
-   
-  else
-   
-  end
- end
- 
- if sum([HEAVE,PITCH,SURGE])==1
-  if HEAVE
-   
-  elseif PITCH
-   
-  else
-   X_sg= ...
-    (mat_Q0.'*(Phi(:,s_Modes)+Phi(:,s_Modes+2))) / ...
-    ( (modSpring-kappa*modMass-1i*modDamp) - ...
-    (mat_Q0.'*(Phi_sg(:,s_Modes)+Phi_sg(:,s_Modes+2))));
-   Avec(:, s_Modes)  =Avec(:, s_Modes)  +X_sg*Avec_sg(:, s_Modes);
-   Avec(:, s_Modes+2)=Avec(:, s_Modes+2)+X_sg*Avec_sg(:, s_Modes+2);
-   Bvec(:, s_Modes)  =Bvec(:, s_Modes)  +X_sg*Bvec_sg(:, s_Modes);
-   Bvec(:, s_Modes+2)=Bvec(:, s_Modes+2)+X_sg*Bvec_sg(:, s_Modes+2);
-  end
- end
+%  if ~exist('HEAVE','var'); HEAVE=1; end
+%  if ~exist('PITCH','var'); PITCH=1; end
+%  
+%  for loop_Dim=1:Vert_Modes
+%   kk(loop_Dim) = (loop_Dim-1)*1i*pi/(bed-draught);
+%   wt(loop_Dim) = weight_PWC(parameter_vector, kk(loop_Dim));
+%  end
+%  
+%  [mat_A0, mat_A, mat_W0, mat_W] = fn_JumpMats(parameter_vector,...
+%   Vert_Modes, DimG_vec(1), k0, kk, wt_0, wt,DimG_vec(2));
+%  
+%  mat_A0 = diag(mat_A0);
+%  
+%  if SURGE
+%   mat_Q0 = fn_JumpMatSg(parameter_vector, Vert_Modes, k0, wt_0);
+%  end
+%  
+%  mat_W0_T = conj(mat_W0'); mat_W_T = conj(mat_W');
+%  
+%  %%%%%%%%%%%%%%%%
+%  %% Solve via EMM
+%  %%%%%%%%%%%%%%%%
+%  
+%  Psi = zeros(Vert_Modes, 2*s_Modes+1); Phi = zeros(Vert_Modes, 2*s_Modes+1);
+%  
+%  % -- Version 1 -- %
+%  
+%  Avec = zeros(Vert_Modes, 2*s_Modes+1); Bvec = zeros(Vert_Modes, 2*s_Modes+1);
+%  
+%  %% Heave & pitch
+%  
+%  if HEAVE
+%   
+%   %%% Heave (loop_Az=0 only)
+%   
+%   % phi_hv = \sum_{m}a_{0,m}*J_0(mu(0,m)r/R)*xi_m(z)
+%   %
+%   % where xi_m(z) = cosh(mu(0,m)*(z+h))/cosh(mu(0,m)*(h-d))
+%   %
+%   % (d/dz)*phi_hv(z=-d) = sigma*X_hv
+%   
+%   mu_hv = zerobess('J',0,N_rbm);
+%   
+%   % Orthogonality: Int_{0}^{R} r*J_0(mu(0,m)r/R)*J_0(mu(0,n)r/R)dr =
+%   %                      0.5*R^2*delta(m,n)*(J_1(mu(0,m))^2)
+%   
+%   dum_cm = 0.5*(radius^2)*(besselj(1,mu_hv).^2);
+%   
+%   % Int_{0}^{R} r*J_0(mu(n)r/R)dr
+%   % = ((R/mu_n)^2)*Int_{0}^{mu(0,n)}rho*J_0(rho)drho
+%   % = ((R/mu_n)^2)*[rho*J_1(rho)]_{0}^{mu(0,n)}
+%   % = (R^2)*J_1(mu(0,n))/mu(0,n)
+%   % from TABLES OF SOME INDEFINITE INTEGRALS OF BESSEL FUNCTIONS
+%   % by Werner Rosenheinrich
+%   
+%   dum_int = (radius^2)*besselj(1,mu_hv)./mu_hv;
+%   
+%   a_hv = kappa*dum_int./dum_cm./mu_hv; clear dum_cm dum_int
+%   
+%   IPMat_hv=zeros(Vert_Modes,N_rbm);
+%   
+%   for loop1=1:Vert_Modes
+%    for loop2=1:N_rbm
+%     IPMat_hv(loop1,loop2)=cosh(mu_hv(loop2)*(bed-draught))\...
+%      fn_cosh_cosh(kk(loop1),mu_hv(loop2), bed-draught);
+%    end
+%   end
+%   
+%  end
+%  
+%  if PITCH
+%   
+%   %%% Pitch (loop_Az=+/-1 only)
+%   
+%   % phi_pt = exp(1i*th)\sum_{m}a_{1,m}*J_1(mu(1,m)r/R)*eta_m(z) + ...
+%   %          exp(-1i*th)\sum_{m}a_{-1,m}*J_-1(mu(1,m)r/R)*eta_m(z)
+%   %        = 2*cos(th)*\sum_{m}a_{1,m}*J_1(mu(1,m)r/R)*eta_m(z)
+%   % i.e. a_{1,m}=-a_{-1,m}
+%   %
+%   % where eta_m(z) = cosh(mu(m)*(z+h))/cosh(mu(m)*(h-d))
+%   %
+%   % (d/dz)*phi_pt(z=-d) = sigma*(x/R)*X_pt
+%   
+%   mu_pt = zerobess('J',1,N_rbm);
+%   
+%   % Orthogonality: Int_{0}^{R} r*BesJ_1(mu(1,m)r/R)BesJ_0(mu(1,n)r/R)dr =
+%   %                      0.5*R^2*delta(m,n)*(BesJ_2(mu(1,m))^2)
+%   
+%   dum_cm = 0.5*(radius^2)*(besselj(2,mu_pt).^2);
+%   
+%   % (1/R)*Int_{0}^{R}(r^2)*J_1(mu(1,n)r/R)dr
+%   % = (R^2/mu(1,n)^3)*Int_{0}^{mu(1,n)}(rho^2)*J_1(rho)drho
+%   % = ((R/mu_n)^2)*[rho*(2*J_1(rho)-rho*J_0(rho)]_{0}^{mu(1,n)}
+%   % = 2*(R^2)*J_1(mu(1,n))/mu(1,n)^2
+%   % from TABLES OF SOME INDEFINITE INTEGRALS OF BESSEL FUNCTIONS
+%   % by Werner Rosenheinrich
+%   
+%   dum_int = 2*(radius^2)*besselj(1,mu_pt)/mu_pt/mu_pt;
+%   
+%   a_pt = kappa*dum_int./dum_cm./mu_pt/radius/2; clear dum_cm dum_int
+%   
+%   IPMat_pt=zeros(Vert_Modes,N_rbm);
+%   
+%   for loop1=1:Vert_Modes
+%    for loop2=1:N_rbm
+%     IPMat_pt(loop1,loop2)=cosh(mu_pt(loop2)*(bed-draught))\...
+%      fn_cosh_cosh(kk(loop1),mu_pt(loop2), bed-draught);
+%    end
+%   end
+%   
+%  end
+%  
+%  %%
+%  
+%  for loop_Az=-s_Modes:s_Modes
+%   
+%   %% Incident wave
+%   
+%   if INC==1
+%    Inc = (1i^loop_Az)*exp(abs(imag(k0(1)*radius))).*eye(Vert_Modes,1)...
+%     /wt_0(1)/cosh(k0(1)*bed);
+%   else
+%    cprintf('green','code another incident wave\n')
+%   end
+%   
+%   %% Components of full solution: Bessel & Hankel fns
+%   
+%   if BESNM==1
+%    J_ice = besselj(loop_Az, kk.*radius, 1);
+%    invars = struct('name',{'BesselFn'; 'N'; 'z'; 'scale'}, ...
+%     'value',{@besselj; loop_Az; kk.*radius; 1 });
+%    Jz_ice = fn_Bessel_dz(invars);
+%   elseif BESNM==2
+%    J_ice = ones(Vert_Modes,1);
+%    invars = struct('name',{'BesselFn'; 'N'; 'z'}, ...
+%     'value',{@besselj; loop_Az; kk.*radius});
+%    Jz_ice = fn_Bessel_dz(invars)./besselj(loop_Az, kk.*radius);
+%   end
+%   
+%   if 1
+%    J_water = besselj(loop_Az, k0.*radius, 1);
+%    invars = struct('name',{'BesselFn'; 'N'; 'z'; 'scale'}, ...
+%     'value',{@besselj; loop_Az; k0.*radius; 1 });
+%    Jz_water = fn_Bessel_dz(invars);
+%   elseif BESNM==2
+%    J_water = ones(Vert_Modes,1);
+%    invars = struct('name',{'BesselFn'; 'N'; 'z'; 'scale'}, ...
+%     'value',{@besselj; loop_Az; k0.*radius; 1 });
+%    Jz_water = fn_Bessel_dz(invars)./besselj(loop_Az, k0.*radius, 1);
+%   end
+%   
+%   if BESNM==1
+%    H_water = besselh(loop_Az, 1, k0.*radius, 1);
+%    Hz_water = Bessel_dz(@besselh, loop_Az, k0.*radius, 1, 1);
+%   elseif BESNM==2
+%    H_water(1) = exp(-1i*k0(1)*radius)*...
+%     besselh(loop_Az, 1, k0(1).*radius);
+%    invars = struct('name',{'BesselFn'; 'N'; 'z'; 'hank'}, ...
+%     'value',{@besselh; loop_Az; k0(1).*radius; 1 });
+%    Hz_water(1) = exp(-1i*k0(1)*radius)*...
+%     fn_Bessel_dz(invars);
+%    if Vert_Modes>1
+%     invars = struct('name',{'BesselFn'; 'N'; 'z'; 'hank'}, ...
+%      'value',{@besselh; loop_Az; k0(2:Vert_Modes).*radius; 1 });
+%     H_water(2:Vert_Modes,1) = ones(Vert_Modes-1,1);
+%     Hz_water(2:Vert_Modes,1) = ...
+%      fn_Bessel_dz(invars)./...
+%      besselh(loop_Az, 1, k0(2:Vert_Modes).*radius);
+%    end
+%   end
+%   
+%   %% Set up soln in water:
+%   
+%   Phi_In = diag(J_water);
+%   Phiz_In = diag(k0.*Jz_water);
+%   
+%   Phi_Out = diag(H_water);
+%   Phiz_Out = diag(k0.*Hz_water);
+%   
+%   %% Set up soln from ice:
+%   
+%   % - fn psi = %
+%   
+%   Psi_S = diag(J_ice);
+%   Psiz_S = diag(kk.*Jz_ice);
+%   
+%   w1 = 1:Vert_Modes; w2 = Vert_Modes+1:Vert_Modes+2;
+%   
+%   %% Solve the system
+%   
+%   %%% Cty of radial velocity & submerged edge condition
+%   
+%   % following are Dim x DimG:
+%   
+%   MatB_u0 = (Phiz_Out\(diag(mat_A0)\mat_W0));
+%   MatB_u = (Psiz_S\(mat_A\mat_W));
+%   
+%   % following are Dim x 1:
+%   
+%   if and(HEAVE,loop_Az==0)
+%    MatB_hv = -(Psiz_S\(mat_A\(IPMat_hv*a_hv)));
+%   end
+%   
+%   if and(PITCH,abs(loop_Az)==1)
+%    MatB_pt = -sign(loop_Az)*(Psiz_S\(mat_A\(IPMat_pt*a_pt)));
+%   end
+%   
+%   if and(SURGE,abs(loop_Az)==1)
+%    MatB_sg0 = 0.5*kappa*(Phiz_Out\(diag(mat_A0)\mat_Q0));
+%   end
+%   
+%   % following is Dim x Dim:
+%   
+%   MatB_I0 = -Phiz_Out\Phiz_In;
+%   
+%   %%% Cty of pressure
+%   
+%   % following are DimG x Dim:
+%   
+%   MatA_I0 = mat_W0_T*(Phi_In + Phi_Out*MatB_I0);
+%   
+%   % following are DimG x DimG:
+%   
+%   MatA_u0 = mat_W0_T*Phi_Out*MatB_u0;
+%   MatA_u = mat_W_T*Psi_S*MatB_u;
+%   
+%   % following is DimG x 1:
+%   
+%   if and(HEAVE,abs(loop_Az)==0)
+%    MatA_hv = mat_W_T*Psi_S*MatB_hv;
+%   end
+%   
+%   if and(PITCH,abs(loop_Az)==1)
+%    MatA_pt = mat_W_T*Psi_S*MatB_pt;
+%   end
+%   
+%   if and(SURGE,abs(loop_Az)==1)
+%    MatA_sg0 = mat_W0_T*Phi_Out*MatB_sg0;
+%   end
+%   
+%   % find u in terms of the inc amps (DimG x Dim)
+%   
+%   MatU_I0 = (MatA_u - MatA_u0)\MatA_I0;
+%   
+%   % find u in terms of surge amplitude (DimG x 1)
+%   
+%   if and(HEAVE,abs(loop_Az)==0)
+%    MatU_hv = -(MatA_u - MatA_u0)\MatA_hv;
+%   end
+%   
+%   if and(PITCH,abs(loop_Az)==1)
+%    MatU_pt = -(MatA_u - MatA_u0)\MatA_pt;
+%   end
+%   
+%   if and(SURGE,abs(loop_Az)==1)
+%    MatU_sg0 = (MatA_u - MatA_u0)\MatA_sg0;
+%   end
+%   
+%   u_vec = MatU_I0*Inc;
+%   
+%   %%% Solve
+%   
+%   % convert into scattered amps
+%   % 1. in the ice (floe)
+%   Avec(:, s_Modes+loop_Az+1) = MatB_u*u_vec;
+%   if and(HEAVE,abs(loop_Az)==0)
+%    Avec_hv(:, s_Modes+loop_Az+1) = MatB_u*MatU_hv + MatB_hv;
+%   end
+%   if and(PITCH,abs(loop_Az)==1)
+%    Avec_pt(:, s_Modes+loop_Az+1) = MatB_u*MatU_pt + MatB_pt;
+%   end
+%   if and(SURGE,abs(loop_Az)==1)
+%    Avec_sg(:, s_Modes+loop_Az+1) = MatB_u*MatU_sg0;
+%   end
+%   % 2. in the (surrounding) water
+%   Bvec(:, s_Modes+loop_Az+1) = MatB_u0*u_vec + MatB_I0*Inc;
+%   if and(HEAVE,abs(loop_Az)==0)
+%    Bvec_hv(:, s_Modes+loop_Az+1) = MatB_u0*MatU_hv;
+%   end
+%   if and(PITCH,abs(loop_Az)==1)
+%    Bvec_pt(:, s_Modes+loop_Az+1) = MatB_u0*MatU_pt;
+%   end
+%   if and(SURGE,abs(loop_Az)==1)
+%    Bvec_sg(:, s_Modes+loop_Az+1) = MatB_u0*MatU_sg0 + MatB_sg0;
+%   end
+%   
+%   % Put into vel pots and disp
+%   
+%   Phi(:, s_Modes+loop_Az+1) = Phi_In*Inc + Phi_Out*Bvec(:, s_Modes+loop_Az+1);
+%   Psi(:, s_Modes+loop_Az+1) = Psi_S*Avec(:, s_Modes+loop_Az+1);
+%   
+%   if and(HEAVE,abs(loop_Az)==0)
+%    Phi_hv(:, s_Modes+loop_Az+1) = Phi_Out*Bvec_hv(:, s_Modes+loop_Az+1);
+%    Psi_hv(:, s_Modes+loop_Az+1) = Psi_S*Avec_hv(:, s_Modes+loop_Az+1);
+%   end
+%   
+%   if and(PITCH,abs(loop_Az)==1)
+%    Phi_pt(:, s_Modes+loop_Az+1) = Phi_Out*Bvec_pt(:, s_Modes+loop_Az+1);
+%    Psi_pt(:, s_Modes+loop_Az+1) = Psi_S*Avec_pt(:, s_Modes+loop_Az+1);
+%   end
+%   
+%   if and(SURGE,abs(loop_Az)==1)
+%    Phi_sg(:, s_Modes+loop_Az+1) = Phi_Out*Bvec_sg(:, s_Modes+loop_Az+1);
+%    Psi_sg(:, s_Modes+loop_Az+1) = Psi_S*Avec_sg(:, s_Modes+loop_Az+1);
+%   end
+%   
+%  end % end loop_Az
+%  
+%  if sum([HEAVE,PITCH,SURGE])==3
+%   
+%  end
+%  
+%  if sum([HEAVE,PITCH,SURGE])==2
+%   if ~HEAVE
+%    
+%   elseif ~PITCH
+%    
+%   else
+%    
+%   end
+%  end
+%  
+%  if sum([HEAVE,PITCH,SURGE])==1
+%   if HEAVE
+%    
+%   elseif PITCH
+%    
+%   else
+%    X_sg= ...
+%     (mat_Q0.'*(Phi(:,s_Modes)+Phi(:,s_Modes+2))) / ...
+%     ( (modSpring-kappa*modMass-1i*modDamp) - ...
+%     (mat_Q0.'*(Phi_sg(:,s_Modes)+Phi_sg(:,s_Modes+2))));
+%    Avec(:, s_Modes)  =Avec(:, s_Modes)  +X_sg*Avec_sg(:, s_Modes);
+%    Avec(:, s_Modes+2)=Avec(:, s_Modes+2)+X_sg*Avec_sg(:, s_Modes+2);
+%    Bvec(:, s_Modes)  =Bvec(:, s_Modes)  +X_sg*Bvec_sg(:, s_Modes);
+%    Bvec(:, s_Modes+2)=Bvec(:, s_Modes+2)+X_sg*Bvec_sg(:, s_Modes+2);
+%   end
+%  end
  
 end % end isinf(RIGID)
 
@@ -867,7 +905,7 @@ E1 = real(sum(conj(Ip).*Bvec0))/wt_0(1)/cosh(k0(1)*bed);
 
 % int_{0}^{2\pi}|A(theta)|^2 dtheta = -Real{A(inc_angle)}
 if abs(E0+E1) > Tol_vec(5)
- cprintf('red',['energy error (' num2str(E0+E1) '): ' ...
+ cprintf('red',['>>> energy error (' num2str(E0+E1) '): ' ...
   'period=' num2str(1/Forcing.f) '\n'])
 end
 
@@ -875,7 +913,7 @@ end
 
 if max( abs( abs(Bvec0.*conj(Ip)).^2 + ...
   real(conj(Ip).*Bvec0)/wt_0(1)/cosh(k0(1)*bed) ) ) > Tol_vec(5)
- cprintf('red',['energy error: ' ...
+ cprintf('red',['>>> energy error: ' ...
   'period=' num2str(1/Forcing.f) '\n'])
 end
 
@@ -957,12 +995,13 @@ if strfind(outputs,'RAOs')
  % Displacement
  
  res = 1001;
- displ=zeros(2*s_Modes+1,res);
+ displ=zeros(2*s_Modes+1,res); displ_inc = displ;
  r_vec = linspace(0,radius,res);
  
  for loop_r=1:length(r_vec)
   count=1;
   for loop_Az=-s_Modes:s_Modes
+   J0 = besselj(loop_Az, k0(1)*r_vec(loop_r));
    if BESNM==1
     JJ = besselj(loop_Az, kk*r_vec(loop_r)).*exp(-abs(imag(kk*radius)));
     JJ_mu = besselj(loop_Az, [mu_0;mu_1]*r_vec(loop_r)).*...
@@ -978,7 +1017,11 @@ if strfind(outputs,'RAOs')
     C_mat(Vert_Modes+1,w2(2))*JJ_mu(2)*Amp_mu_Mat(2,:,s_Modes+1+loop_Az);
    
    displ(count,loop_r) = dum*Avec(:,s_Modes+1+loop_Az);
+   
+   displ_inc(count,loop_r) = diag(J0)*Ivec(1,s_Modes+1+loop_Az);
+   
    count = count+1;
+   
   end
  end
  clear count dum
@@ -999,22 +1042,25 @@ if strfind(outputs,'RAOs')
   evec = exp(1i*[-s_Modes:s_Modes]*th);
   evec = reshape(evec,1,2*s_Modes+1);
   full_displ = zeros(1,length(r_vec));
+  full_displ_inc = full_displ;
   
   for loop_r=1:length(r_vec)
-   full_displ(loop_r) = evec*displ(:,loop_r);
+   full_displ(loop_r)     = evec*displ(:,loop_r);
+   full_displ_inc(loop_r) = evec*displ_inc(:,loop_r);
   end
   
-  figure; plot(r_vec,real(full_displ),'r');
+  figure(PLT); plot(r_vec,real(full_displ),col);
   if 1
    hold on; plot(r_vec,real(exp(1i*k0(1)*r_vec)),'k:');
+   plot(r_vec,real(full_displ_inc),'r-.');
   end
   clear evec full_displ
  end
  
  % Inner-products
  
- A_even=zeros(s_Modes+1,Jmax+1);
- A_odd =zeros(s_Modes+1,Jmax+1);
+ A_even=zeros(s_Modes+1,Jmax+1); A_even_inc=zeros(s_Modes+1,Jmax+1);
+ A_odd =zeros(s_Modes+1,Jmax+1); A_odd_inc =zeros(s_Modes+1,Jmax+1);
  
  for loop_Az=0:s_Modes
   [wnj,Nnj] = fn_NatModes(loop_Az,Jmax,Param.nu,r_vec,radius);
@@ -1026,9 +1072,18 @@ if strfind(outputs,'RAOs')
     A_odd(loop_Az+1,loop_j) = ...
      pi*fn_Trap(r_vec.*( displ(s_Modes+1+loop_Az,:) -...
      displ(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
+    %
+    A_even_inc(loop_Az+1,loop_j) = ...
+     pi*fn_Trap(r_vec.*( displ_inc(s_Modes+1+loop_Az,:) +...
+     displ_inc(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
+    A_odd_inc(loop_Az+1,loop_j) = ...
+     pi*fn_Trap(r_vec.*( displ_inc(s_Modes+1+loop_Az,:) -...
+     displ_inc(s_Modes+1-loop_Az,:) ),wnj(loop_j,:),r_vec)/Nnj(loop_j);
    else
     A_even(loop_Az+1,loop_j) = ...
      2*pi*fn_Trap(r_vec.*displ(s_Modes+1,:),wnj(loop_j,:),r_vec)/Nnj(loop_j);
+    A_even_inc(loop_Az+1,loop_j) = ...
+     2*pi*fn_Trap(r_vec.*displ_inc(s_Modes+1,:),wnj(loop_j,:),r_vec)/Nnj(loop_j);    
    end
   end
  end
@@ -1040,12 +1095,12 @@ if strfind(outputs,'RAOs')
  end
  
  % Ensure rigid plate (if specified)
- if and(RIGID,COMM)
+ if and(RIGID>1,COMM)
   dum_A=A_even; dum_A(1,1)=0; dum_A(2,1)=0;
   if max(max(abs(dum_A)))>1e-3
    if 1
-    cprintf('green',['elastic modes excited: max=' num2str(max(max(abs(dum_A)))) '\n'])
-    cprintf('green',[fortyp '=' num2str(forval) '\n'])
+    cprintf('green',['>>> elastic modes excited: max=' num2str(max(max(abs(dum_A)))) '\n'])
+    cprintf('green',['>>> ' fortyp '=' num2str(forval) '\n'])
    else
     disp('A_even = ')
     disp(abs(A_even))
@@ -1057,7 +1112,13 @@ if strfind(outputs,'RAOs')
  %% RAOs
  
  % Heave
- H_inc = 1;
+ if RAO_TYP==0
+  H_inc = 1;
+  if COMM; cprintf('blue',['>>> intended RAO normalisation\n']); end
+ else
+  H_inc = abs(A_even_inc(1,1));
+  if COMM; cprintf('blue',['>>> actual RAO normalisation\n']); end
+ end
  H_dsk = abs(A_even(1,1));
  
  H_RAO = H_dsk/H_inc;
@@ -1066,23 +1127,39 @@ if strfind(outputs,'RAOs')
  out_val = [out_val '; H_RAO '];
  
  if COMM
-  cprintf('blue',['RAO-heave=' num2str(H_RAO) '\n'])
+  cprintf('blue',['>>> RAO-heave=' num2str(H_RAO) ...
+   ' (inc wave: ' num2str(abs(A_even_inc(1,1)/H_inc))  ') \n'])
  end
  
  % Pitch
- P_inc = 1; %k0(1);
  P_dsk = abs(A_even(2,1));
+ if RAO_TYP==0
+  P_inc = 1; P_RAO = P_dsk/P_inc; %k0(1);
+  Pang_RAO = 180*P_RAO/pi;
+ else
+  P_inc = abs(A_even_inc(2,1)); P_RAO = P_dsk/P_inc;
+  Pang_RAO = 180*abs(A_even(2,1))/pi;
+ end
  
- P_RAO = P_dsk/P_inc;
+ if RAO_TYP==0
+  out_str = [out_str '; ''RAO-pitch'' '];
+  out_val = [out_val '; P_RAO '];
  
- out_str = [out_str '; ''RAO-pitch'' '];
- out_val = [out_val '; P_RAO '];
- 
- out_str = [out_str '; ''RAO-pitch/k'' '];
- out_val = [out_val '; P_RAO/k0(1) '];
+  out_str = [out_str '; ''RAO-pitch/k'' '];
+  out_val = [out_val '; P_RAO/k0(1) '];
+ else
+  out_str = [out_str '; ''RAO-pitch/k'' '];
+  out_val = [out_val '; P_RAO '];
+ end
  
  if COMM
-  cprintf('blue',['RAO-pitch/k=' num2str(P_RAO/k0(1)) '\n'])
+  if RAO_TYP==0
+   cprintf('blue',['>>> RAO-pitch/k=' num2str(P_RAO/k0(1)) ...
+   ' (inc wave: ' num2str(abs(A_even_inc(2,1))/P_inc/k0(1))  ') \n'])
+  else
+   cprintf('blue',['>>> RAO-pitch/k=' num2str(P_RAO) ...
+   ' (inc wave: ' num2str(abs(A_even_inc(2,1))/P_inc)  ') \n'])
+  end
  end
  
  % Pitch angle / inc amp [deg/m] (denote p/a)
@@ -1091,14 +1168,17 @@ if strfind(outputs,'RAOs')
  %
  % => p/a = P_RAO  (nb / 1[m])
  
- Pang_RAO = 180*P_RAO/pi;
- 
  out_str = [out_str '; ''ANG-pitch'' '];
  out_val = [out_val '; Pang_RAO '];
  
  if SURGE
   % Surge
-  S_inc = 1;
+  if RAO_TYP==0
+   S_inc = 1;
+  else
+   S_inc = exp(1i*[-s_Modes:s_Modes]*0)*displ_inc(:,1);
+  end
+   
   S_dsk = abs(X_sg);
   
   S_RAO = S_dsk/S_inc;
@@ -1106,8 +1186,8 @@ if strfind(outputs,'RAOs')
   out_str = [out_str '; ''RAO-surge'' '];
   out_val = [out_val '; S_RAO '];
   if COMM
-   cprintf('blue',['RAO-surge=' num2str(S_RAO) ...
-    '(eccentricity=' num2str(coth(k0(1)*bed)) ')' '\n'])
+   cprintf('blue',['>>> RAO-surge=' num2str(S_RAO) ...
+    ' (eccentricity=' num2str(coth(k0(1)*bed)) ')' '\n'])
   end
  end
  
