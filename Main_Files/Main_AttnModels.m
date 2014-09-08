@@ -82,7 +82,8 @@ if strfind(PRBS,'2d lfl EMM')
  attn_2d = zeros(1,length(Tp));
  
  for loop_p=1:length(Tp)
-  out = fn_2dFloe('freq',1/Tp(loop_p),Param,'transmitted energy',1,COMM);
+  out = fn_2dFloe('freq',1/Tp(loop_p),Param,'transmitted energy',...
+   SURGE,1,COMM);
   attn_2d(loop_p) = out(1).value; clear out
  end
  
@@ -103,7 +104,8 @@ if strfind(PRBS,'2d EMM')
  attn_2d = zeros(1,length(Tp));
  
  for loop_p=1:length(Tp)
-   out = fn_2dFloe('freq',1/Tp(loop_p),Param,'transmitted energy',0,COMM,ens1);
+   out = fn_2dFloe('freq',1/Tp(loop_p),Param,'transmitted energy',...
+    SURGE,0,COMM,ens1);
    attn_2d(loop_p) = out(1).value; clear out
  end
   

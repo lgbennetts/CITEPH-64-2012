@@ -1183,8 +1183,10 @@ if strfind(outputs,'RAOs')
   
   S_RAO = S_dsk/S_inc;
   
-  out_str = [out_str '; ''RAO-surge'' '];
+  out_str = [out_str '; ''RAO-surge-nonorm'' '];
   out_val = [out_val '; S_RAO '];
+  out_str = [out_str '; ''RAO-surge-norm'' '];
+  out_val = [out_val '; S_RAO*tanh(k0(1)*bed) '];
   if COMM
    cprintf('blue',['>>> RAO-surge=' num2str(S_RAO) ...
     ' (eccentricity=' num2str(coth(k0(1)*bed)) ')' '\n'])

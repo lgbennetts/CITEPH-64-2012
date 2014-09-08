@@ -11,7 +11,8 @@
 % DO_STR    = strings (title/labels) for figures on/off
 % DO_DISP   = print data on/off
 % DO_SVFG   = save figure on/off
-% PT_TYP    = 0 (angle/inc ht); 1 (gradient/k0)  
+% PT_TYP    = 0 (angle/inc ht); 1 (gradient/k0) 
+% SG_TYP    = 0 (surge amp/inc amp); 1 (surge amp/inc amp/tank(kh)) 
 % xx        = abscissa for plot (=2 period;=3 wavelength)
 % fig       = figure handle (fig=0 picks the next available figure handle)
 % col       = colout/linestyle for data
@@ -63,12 +64,13 @@ if ~exist('DO_DISP','var');  DO_DISP=0; end
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 
 if ~exist('PT_TYP','var');   PT_TYP =1; end
+if ~exist('SG_TYP','var');   SG_TYP =1; end
 
 if DO_PLOT
  if ~exist('col','var'); 
   col=' ''k.'' , ''markersize'' , 12';
   col_nl=' ''ko'' , ''markersize'' , 12';
-  col_model={' ''k.-'' ',' ''r'' '};
+  col_model={' ''c'' ',' ''c'' '};
  end
 end
 
@@ -84,26 +86,27 @@ if ~exist('DO_DATA','var'); DO_DATA=0; end
 
 if ~exist('file_pre','var'); file_pre = 'Temp_data/b00'; end
 
+if ~exist('Tpers','var');  Tpers='Tpers=fn_Tpers(Tp);'; end
 %if ~exist('T_pers','var'); T_pers=15; end
 
-if ~exist('Tpers','var');  Tpers='Tpers=fn_Tpers(Tp);'; end
-
+if ~exist('data_out','var')
+ data_out_inc.name={'amp-harmo-steady-1st'};
+ data_out_inc.tint='[t0,t1] = fn_tint_RAO_inc(tvec,t0,Tp,Tpers);';
+ data_out.name={'amp-harmo-steady-1st'};
+ data_out.tint='[t0,t1] = fn_tint_RAO(tvec,t0,Tp,Tpers);';
+end
 % if ~exist('data_out','var') 
 %  data_out.name='amp-harmo-steady-1st';
 %  data_out.tint='t0=t0+4*Tp; t1=t0+10*Tp;'; 
 % end 
 
-if ~exist('data_out','var')
- data_out.name={'amp-harmo-steady-1st'};
- data_out.tint='[t0,t1] = fn_tint(tvec,t0,Tp,Tpers);';
-end
 
 if ~exist('DEL','var');      DEL=1; end
 if ~exist('DO_FPLT','var');  DO_FPLT=0; end 
 %if ~exist('DO_FPLT','var');  DO_FPLT='Aspec-signal'; end
 %if ~exist('DO_FPLT','var');  DO_FPLT='Aspec'; end
 
-HT=fn_WhatTestData(1,'Regular',0); ht_inds=1:length(HT); %length(HT); %
+HT=fn_WhatTestData(1,'Regular',0); ht_inds=1:length(HT); %length(HT)-6; %1; %
 
 probes=1:10; %[1,2,3,8,9]; %10; %
 %rbms={'heave'}; %,'roll+pitch','surge+sway'}; %
@@ -115,20 +118,21 @@ if ~exist('errbars','var');  errbars=1; end
 %% MODEL 
 
 if ~exist('DO_MODEL','var');   DO_MODEL  =1; end
-if ~exist('WHAT_MODEL','var'); WHAT_MODEL='3d'; end
+if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d-EMM'; end %'3d-EMM'; end % '2d-BIE'; end % 
 
-if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=2e2; end
 if DO_DISP; model_pers=HT(2,ht_inds); end
-%if ~exist('model_pers','var'); model_pers=0.6:0.05:2; end
-if ~exist('model_pers','var'); model_pers=fn_WhatTestData(79,'Regular',0); 
- model_pers = unique(model_pers(2,:)); end
+% if ~exist('model_pers','var'); model_pers=fn_WhatTestData(79,'Regular',0); 
+%  model_pers = unique(model_pers(2,:)); end
+if ~exist('model_pers','var'); model_pers=0.6:0.05:2; end
 
 count_rbm=1;
 for loop_rbm=1:length(rbms)
  if strfind(rbms{loop_rbm},'heave')
   model_outs{count_rbm} = 'RAO-heave';
  elseif strfind(rbms{loop_rbm},'surge')
-  model_outs{count_rbm} = 'RAO-surge';
+  if SG_TYP; model_outs{count_rbm} = 'RAO-surge-norm';
+  else model_outs{count_rbm} = 'RAO-surge-nonorm'; end
  elseif strfind(rbms{loop_rbm},'pitch')
   if ~PT_TYP; model_outs{count_rbm} = 'ANG-pitch'; else
    model_outs{count_rbm} = 'RAO-pitch/k'; end
@@ -152,15 +156,18 @@ if DO_MODEL
   if ~exist('Param','var'); Param = ParamDef_Oceanide(rigid);
    Param = ModParam_def(Param,1,Vert_Modes,0,0); end
   for loop_p=1:length(model_pers)
-   out = fn_2dFloe('freq',1/model_pers(loop_p),Param,'heave pitch',0,0);
+   if SG_TYP; RAO_mod='heave pitch/k surge-norm';
+   else RAO_mod='heave pitch/k surge-nonorm'; end
+   out = fn_2dFloe('freq',1/model_pers(loop_p),Param,...
+    RAO_mod,1,0,0); clear RAO_mod
    for loop_out=1:length(model_outs)
     count=1;
     while and(count>0,count<=length(out))
      if strfind(model_outs{loop_out},out(count).name)
       RAO_model_2d(loop_out,loop_p)=out(count).value;
-      if strcmp(model_outs{loop_out},'ANG-pitch')
-       RAO_model_2d(loop_out,loop_p)=180*RAO_model_2d(loop_out,loop_p)/pi;
-      end
+%       if strcmp(model_outs{loop_out},'ANG-pitch')
+%        RAO_model_2d(loop_out,loop_p)=180*RAO_model_2d(loop_out,loop_p)/pi;
+%       end
       count=0;
      else
       count=count+1;
@@ -177,10 +184,13 @@ if DO_MODEL
   
  %%% Using BIE Method & saved to file:
   
- elseif strfind(WHAT_MODEL,'2d')
+ elseif strfind(WHAT_MODEL,'2d-BIE')
+  
+  cprintf('red','>>> WHAT_MODEL=2d-BIE no longer available!!! \n')
+  return
   
   if exist('OTHER_USR','var')
-   cprintf('red','>>> Option WHAT_MODEL=2d is not available!!! \n')
+   cprintf('red','>>> Option WHAT_MODEL=2d-BIE is not available!!! \n')
    return
   end
   
@@ -246,7 +256,7 @@ if DO_MODEL
  end % END IF WHAT MODEL
  
  %% 3d disk model:
- if strfind(WHAT_MODEL,'3d')
+ if strfind(WHAT_MODEL,'3d-EMM')
   RAO_model = Main_SingleDiskModel('freq',1./model_pers,...
    Vert_Modes,model_outs,0,DO_FDSP);
  end
@@ -276,7 +286,7 @@ if DO_DATA
   
   for loop_ht=ht_inds
    for probe=probes
-    Main_SingleDiskData(HT(2,loop_ht),HT(1,loop_ht),Tpers,data_out,...
+    Main_SingleDiskData(HT(2,loop_ht),HT(1,loop_ht),Tpers,data_out_inc,...
      loop_ht,probe,'WP',DO_FPLT,1,DO_FDSP,file_pre)
     if DO_FPLT
      pause
@@ -360,28 +370,46 @@ if DO_DATA
      count_rbm=count_rbm+1;
     end % END IF '+'
     if PT_TYP
-     if or(or(~isempty(strfind(probe,'surge')),...
-       ~isempty(strfind(probe,'sway'))),...
-       ~isempty(strfind(probe,'heave')))
-      dumRAO_std(1,count_ht,loop_rbm) = (RAO(count_ht,loop_rbm)+0.001)./...
+     if ~isempty(strfind(probe,'heave'))
+      RAO_std(1,count_ht,loop_rbm) = (RAO(count_ht,loop_rbm)+0.001)./...
        (inc_amp(count_ht)-0.001);
-      dumRAO_std(2,count_ht,loop_rbm) = (RAO(count_ht,loop_rbm)-0.001)./...
+      RAO_std(2,count_ht,loop_rbm) = (RAO(count_ht,loop_rbm)-0.001)./...
        (inc_amp(count_ht)+0.001);
       RAO(count_ht,loop_rbm)       = RAO(count_ht,loop_rbm)/...
        inc_amp(count_ht);
+     elseif or(~isempty(strfind(probe,'surge')),...
+       ~isempty(strfind(probe,'sway')))
+      if SG_TYP; tkh = tanh(3.1*2*pi/HT(3,ht_inds(count_ht))/.99);
+      else tkh=1+0*HT(3,ht_inds(count_ht)); end
+      RAO_std(1,count_ht,loop_rbm) = (RAO(count_ht,loop_rbm)+0.001)./...
+       (inc_amp(count_ht)-0.001).*tkh;
+      RAO_std(2,count_ht,loop_rbm) = (RAO(count_ht,loop_rbm)-0.001)./...
+       (inc_amp(count_ht)+0.001).*tkh;
+      RAO(count_ht,loop_rbm)       = RAO(count_ht,loop_rbm)/...
+       inc_amp(count_ht).*tkh;
      else
       k0=2*pi/HT(3,ht_inds(count_ht))/.99;
-      dumRAO_std(1,count_ht,loop_rbm) = tan(pi*(RAO(count_ht,loop_rbm)+0.1)/180)./...
+      RAO_std(1,count_ht,loop_rbm) = tan(pi*(RAO(count_ht,loop_rbm)+0.1)/180)./...
        (inc_amp(count_ht)-0.001)/k0;
-      dumRAO_std(2,count_ht,loop_rbm) = tan(pi*(RAO(count_ht,loop_rbm)-0.1)/180)./...
+      RAO_std(2,count_ht,loop_rbm) = tan(pi*(RAO(count_ht,loop_rbm)-0.1)/180)./...
        (inc_amp(count_ht)+0.001)/k0;
       RAO(count_ht,loop_rbm)=tan(pi*RAO(count_ht,loop_rbm)/180)/...
        inc_amp(count_ht)/k0; clear k0
      end % END IF HEAVE OR SURGE OR SWAY
     else
-     dumRAO_std(1,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)./(inc_amp-inc_std);
-     dumRAO_std(2,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)./(inc_amp+inc_std);
-     RAO(count_ht,loop_rbm)=RAO(count_ht,loop_rbm)/inc_amp(count_ht);
+     if or(~isempty(strfind(probe,'surge')),~isempty(strfind(probe,'sway')))
+      if SG_TYP; tkh = tanh(3.1*2*pi/HT(3,ht_inds(count_ht))/.99);
+      else tkh=1+0*HT(3,ht_inds(count_ht)); end
+      RAO_std(1,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)...
+       ./(inc_amp-inc_std).*tkh;
+      RAO_std(2,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)...
+       ./(inc_amp+inc_std).*tkh;
+      RAO(count_ht,loop_rbm)=RAO(count_ht,loop_rbm)/inc_amp(count_ht).*tkh;
+     else
+      RAO_std(1,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)./(inc_amp-inc_std);
+      RAO_std(2,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)./(inc_amp+inc_std);
+      RAO(count_ht,loop_rbm)=RAO(count_ht,loop_rbm)/inc_amp(count_ht);
+     end % END IF SURGE or SWAY
     end % END IF PT_TYP
     clear out
    end

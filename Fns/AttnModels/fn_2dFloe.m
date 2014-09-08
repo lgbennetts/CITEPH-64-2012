@@ -29,11 +29,12 @@
 % visc_rp          = viscosity parameter (default = 0)
 
 function out = ...
- fn_2dFloe(fortyp,lam0,Param,outputs,LONG,COMM,Ens_size,SURGE,DO_PLOT)
+ fn_2dFloe(fortyp,lam0,Param,outputs,SURGE,LONG,COMM,Ens_size,DO_PLOT,col)
 
 %% Inputs & prelims
 
 if ~exist('DO_PLOT','var'); DO_PLOT=0; end
+if ~exist('col','var');     col='r'; end
 
 if ~exist('fortyp','var'); fortyp='freq'; end
 if ~exist('lam0','var');   lam0=1/2.5; end
@@ -50,7 +51,8 @@ if ~exist('Param','var'); Param = ParamDef_Oceanide(5);
 
 if ~LONG; if ~exist('Ens_size','var'); Ens_size = 1; end; end
 
-if ~exist('outputs','var'); outputs='transmitted energy heave pitch surge'; end
+if ~exist('outputs','var'); 
+ outputs='transmitted energy heave pitch/k surge-norm'; end
 
 depth = Param.bed;
 
@@ -178,23 +180,28 @@ else %%% NO LONG FLOE LIMIT %%%
             fn_IndFloe(dum_fl, Rm0, Tm0, Rp0, Tp0, Sm0_sg, Sp0_sg, Roots);
    
   %%% Equation of motion (surge) %%%         
-  Phi0_sg = Sm_sg; Phi1_sg = Sp_sg; 
+  Phi0_sg = Sm_sg; Phi1_sg = Sp_sg; u_sg=0; 
+  X_sg0   = zeros(1,Vert_Dim);      X_sg1 = X_sg0; 
   
-  Phi0 = eye(Vert_Dim) + Rm; Phi1 = Tm; 
-  
-  X_sg0= ...
-   ( mat_Q0.'*(Phi1-Phi0) ) / ...
-   ( -(modSpring-fq*modMass-1i*modDamp) - ...
-   (mat_Q0.'*(Phi1_sg-Phi0_sg)) );  clear Phi0 Phi1
-  
-  Phi0 = eye(Vert_Dim) + Rm; Phi1 = Tm; 
-    
-  X_sg1= ...
-   ( mat_Q0.'*(Phi1-Phi0) ) / ...
-   ( -(modSpring-fq*modMass-1i*modDamp) - ...
-   (mat_Q0.'*(Phi1_sg-Phi0_sg)) );  clear Phi0 Phi1 Phi0_sg Phi1_sg
-  
-  u_sg = X_sg0(1,1);
+  if SURGE
+   
+   Phi0 = eye(Vert_Dim) + Rm; Phi1 = Tm;
+   
+   X_sg0= ...
+    ( mat_Q0.'*(Phi1-Phi0) ) / ...
+    ( -(modSpring-fq*modMass-1i*modDamp) - ...
+    (mat_Q0.'*(Phi1_sg-Phi0_sg)) );  clear Phi0 Phi1
+   
+   Phi0 = eye(Vert_Dim) + Rm; Phi1 = Tm;
+   
+   X_sg1= ...
+    ( mat_Q0.'*(Phi1-Phi0) ) / ...
+    ( -(modSpring-fq*modMass-1i*modDamp) - ...
+    (mat_Q0.'*(Phi1_sg-Phi0_sg)) );  clear Phi0 Phi1 Phi0_sg Phi1_sg
+   
+   u_sg = X_sg0(1,1);
+   
+  end
   
   Rm = Rm + Sm_sg*X_sg0;
   Tm = Tm + Sp_sg*X_sg0;
@@ -225,7 +232,8 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
  
  [wts,xx,fac] = fn_NumInt(x_res,-floe_length/2,floe_length/2);
  
- xx_ext = (floe_length/2+2*pi/Roots0(1))*linspace(-1,1,x_res);
+%  xx_ext = (floe_length/2+2*pi/Roots0(1))*linspace(-1,1,x_res);
+ xx_ext = (floe_length/2+2*floe_length)*linspace(-1,1,x_res);
  
  v1 = 1:Vert_Dim+2; v2 = v1 + Vert_Dim+2;
  
@@ -267,17 +275,17 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
  %%% Plot
  
  if DO_PLOT
-  figure(fn_getfig)
+  figure(DO_PLOT)
   
   h1 = subplot(2,1,1); hold on; set(h1,'box','on')
   h2 = subplot(2,1,2); hold on; set(h2,'box','on')
   
   plot(h1,xx_ext,real(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
-  plot(h1,xx,real(eta),'r')
+  plot(h1,xx,real(eta),col)
   ylabel(h1,'Re(\eta)','fontsize',14)
-  title(h1,'floe profile (red) and incident wave (black)','fontsize',14)
+  title(h1,['floe profile (' col ') and incident wave (k:)'],'fontsize',14)
   plot(h2,xx_ext,imag(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
-  plot(h2,xx,imag(eta),'r')
+  plot(h2,xx,imag(eta),col)
   xlabel(h2,'x','fontsize',14); ylabel(h2,'Im(\eta)','fontsize',14)
  end
  
@@ -287,6 +295,11 @@ end
 %% OUTPUTS & FINISH 
 
 out_str = ' ''dummy'' '; out_val = ' 0 ';
+
+if strfind(outputs,'wavenumber')
+ out_str = [out_str '; ''k0'' '];
+ out_val = [out_val '; Roots0(1)'];
+end
 
 if strfind(outputs,'reflected energy')
  out_str = [out_str '; ''reflected energy'' '];
@@ -303,12 +316,23 @@ if strfind(outputs,'heave')
  out_val = [out_val '; abs((fac/floe_length)*wts*eta)'];
 end
 
-if strfind(outputs,'pitch')
- out_str = [out_str '; ''pitch'' '];
- out_val = [out_val '; abs((12*fac/floe_length^3)*wts*(eta.*xx))'];
+if strfind(outputs,'pitch/k')
+ out_str = [out_str '; ''pitch/k'' '];
+ out_val = [out_val '; abs((12*fac/floe_length^3)*wts*(eta.*xx))/Roots0(1)'];
 end
 
-if strfind(outputs,'surge')
+if strfind(outputs,'pitch-ang')
+ out_str = [out_str '; ''pitch-ang'' '];
+ out_val = [out_val ...
+  '; 180*abs((12*fac/floe_length^3)*wts*(eta.*xx))/Roots0(1)/pi'];
+end
+
+if strfind(outputs,'surge-norm')
+ out_str = [out_str '; ''surge'' '];
+ out_val = [out_val '; abs(u_sg*tanh(Roots0(1)*depth))'];
+end
+
+if strfind(outputs,'surge-nonorm')
  out_str = [out_str '; ''surge'' '];
  out_val = [out_val '; abs(u_sg)'];
 end
@@ -336,10 +360,11 @@ if COMM
    num2str(abs((12*fac/floe_length^3)*wts*(eta_inc.*xx))/Roots0(1)) ...
    ') \n'])
  end 
- if strfind(outputs,'surge')
+ if strfind(outputs,'surge*tanh(kh)')
   cprintf('blue',['>>>> surge: ' ...
-   num2str(abs(u_sg)) ...
-   ' (eccentricity=' num2str(coth(Roots0(1)*depth)) ') \n'])
+   num2str(abs(u_sg.*tanh(Roots0(1)*depth))) ...
+   '\n'])
+   %' (eccentricity=' num2str(coth(Roots0(1)*depth)) ') \n'])
  end 
  cprintf([0.3,0.3,0.3],'-----------    END: 2d Floe   ------------\n')
  cprintf([0.3,0.3,0.3],'------------------------------------------\n')
@@ -476,8 +501,8 @@ Sm_sg = dum_S0m_sg; Sp_sg = dum_S0p_sg;
 if 1
  S=[Rm(1,1),Tp(1,1);Tm(1,1),Rp(1,1)];
  if abs(abs(det(S))-1)>1e-3
-   disp('error in ice Scattering matrix!!!!!!!!!!!!!!!!!')
-   disp(['----->',num2str(abs(abs(det(S))-1))])
+   cprintf('m',['>>> error in scattering matrix fn_IndFloe: '
+     num2str(abs(abs(det(S))-1)) '\n'])
  end
 end
  
@@ -586,8 +611,8 @@ Geom0 = [capD_vec(1) d_vec(1) depth al_vec(1) be_vec(1)];
 if and(1,visc_rp==0)
  S=[Rm(1,1),Tp(1,1);Tm(1,1),Rp(1,1)];
  if abs(abs(det(S))-1)>1e-3
-   disp('error in Scattering matrix 2!!!!!!!!!!!!!!!!!')
-   disp(['----->',num2str(abs(abs(det(S))-1))])
+   cprintf('m',['>>> error in scattering matrix fn_WaterIce: '
+     num2str(abs(abs(det(S))-1)) '\n'])
  end
 end
 
@@ -595,20 +620,20 @@ return
 
 %
 
-function parameter_vector = Param_vec(freq)
-
-liquid_density = 1025; %1000; %  %in kg/m^3                                                                                                                                                                                                                                                                            
-ice_density = 922.5; %900; %  %in kg/m^3 %                                                                                                                                                                                                                                                                             
-poissons_ratio = 0.3; %1/3; %                                                                                                                                                                                         
-youngs_mod = 6e9; %5000000000; 
-
-gravity = 9.81; %1; % in m/sec^2
-kappa = (freq^2)/gravity;
-
-parameter_vector = [liquid_density, ice_density, poissons_ratio, ...
-    youngs_mod, gravity, kappa];
-    
-return
+% function parameter_vector = Param_vec(freq)
+% 
+% liquid_density = 1025; %1000; %  %in kg/m^3                                                                                                                                                                                                                                                                            
+% ice_density = 922.5; %900; %  %in kg/m^3 %                                                                                                                                                                                                                                                                             
+% poissons_ratio = 0.3; %1/3; %                                                                                                                                                                                         
+% youngs_mod = 6e9; %5000000000; 
+% 
+% gravity = 9.81; %1; % in m/sec^2
+% kappa = (freq^2)/gravity;
+% 
+% parameter_vector = [liquid_density, ice_density, poissons_ratio, ...
+%     youngs_mod, gravity, kappa];
+%     
+% return
 
 %
 

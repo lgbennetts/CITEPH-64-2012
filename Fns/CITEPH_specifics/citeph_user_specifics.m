@@ -25,7 +25,7 @@ switch user_number
   end
   
  case 2%%Luke
-  dum = {'/Volumes/Scratch/Data/','/Volumes/My_Passport/My_Data/'};
+  dum = {'/Volumes/Scratch/Xtra_Data/','/Volumes/My_Passport/My_Data/'};
   eval(['ex=exist(dum{1});'])
   count=1;
   while ex~=7

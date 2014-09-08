@@ -202,6 +202,10 @@ if ~DTYP
  
  if strcmp(wth,'inf')
   
+  cprintf('magenta',['>>> Change made to fn_ArrangeEvals: ' ...
+   'check this before running... exiting\n'])
+  return
+  
   [Im,Iz] = fn_ArrangeEvals(D,tol);
   
   if length([Im;Iz])~=length(incs)
@@ -235,7 +239,7 @@ if ~DTYP
   n0=length([Im;Iz0]); n1=length([Ip;Iz1]);
   
   if or(n0~=length(incs),n1~=length(refs))
-   cprintf('red',['Check evals' '\n'])
+   cprintf('magenta',['>>> Check evals: ' fortyp '=' num2str(lam0) '\n'])
   end
   
   %%% Rearrange
@@ -436,19 +440,28 @@ return
 
 function [Im,IzA,Ip,IzB] = fn_ArrangeEvals(D,tol)
 
-Iz = find(abs(D)<tol);
-Im = find(and(~abs(D)<tol,real(D)<-tol));
-Ip = find(and(~abs(D)<tol,real(D)>tol));
+% Iz = find(abs(D)<tol);
+% Im = find(and(~abs(D)<tol,real(D)<-tol));
+% Ip = find(and(~abs(D)<tol,real(D)>tol));
+% 
+% if length(Iz) ~= 2
+%  cprintf('magenta',['>>> Check zero evals' '\n'])
+% end
+% 
+% IzA = Iz(1); IzB = Iz(2);
+% 
+% if ~isempty(find(abs(imag(D))>tol))
+%  cprintf('blue',['>>> nb. imag component to evals: ' ...
+%   num2str(max(abs(imag(D)))) '\n'])
+% end
 
-if length(Iz) ~= 2
- cprintf('red',['Check zero evals' '\n'])
-end
-
-IzA = Iz(1); IzB = Iz(2);
-
-if ~isempty(find(abs(imag(D))>tol))
- cprintf('blue',['nb. imag component to evals: ' num2str(max(abs(imag(D)))) '\n'])
-end
+D0=D;
+[~,IzA] = min(abs(D0));
+D0(IzA) = nan;
+[~,IzB] = min(abs(D0));
+D0(IzB) = nan;
+Ip = find(real(D0)>-imag(D0));
+Im = find(real(D0)<-imag(D0));
 
 return
 

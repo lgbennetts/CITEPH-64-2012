@@ -68,7 +68,7 @@ if ~exist('DO_STR','var');   DO_STR =0; end
 if ~exist('PLOT_TYP','var'); PLOT_TYP ='trans_coeff'; end
 
 if DO_PLOT
- if ~exist('fig','var'); fig=4; end
+ if ~exist('fig','var'); fig=1; end
  if ~exist('col','var');
   col=' ''k.'' , ''markersize'' , 12';
   col_nl=' ''ko'' , ''markersize'' , 12';
@@ -76,7 +76,7 @@ if DO_PLOT
   col_nl_ii=' ''ko'' , ''markersize'' , 12';
   coll=' ''b.'' , ''markersize'' , 12';
   collnl=' ''bo'' , ''markersize'' , 12';
-  col_model=' ''b-'' ';
+  col_model=' ''c'' ';
   %col_model=' ''go'' , ''markersize'' , 12';
  end
 end
@@ -105,7 +105,7 @@ if ~exist('DO_FPLT','var');  DO_FPLT=0; end
 
 if ~exist('errbars','var');  errbars=1; end
 
-HT =fn_WhatTestData(conc,'Regular',0); ht_inds=1:4; %1:length(HT); %
+HT =fn_WhatTestData(conc,'Regular',0); 1:length(HT); %ht_inds=1:4; %
 % if strfind(t_meth,'calib')  
 %  HT0=fn_WhatTestData(conc,['Regular-' t_meth],0);
 %  intersect(intersect(HT(1,:),HT0(1,:)),intersect(HT(2,:),HT0(2,:)))
@@ -119,11 +119,11 @@ if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
 if ~exist('DO_MODEL','var'); DO_MODEL=1; end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=4e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
-if ~exist('model_pers','var'); model_pers=0.6:0.05:2; end %unique(HT(2,ht_inds)); end % 
+if ~exist('model_pers','var'); model_pers=0.6:0.1:2; end %unique(HT(2,ht_inds)); end % 
 
-what_mod = '2d BIE'; %'Boltzmann steady'; %'Rows'; %'2d EMM'; %'2d no long';
+what_mod = '2d EMM'; %'Boltzmann steady'; %'2d BIE'; %
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
