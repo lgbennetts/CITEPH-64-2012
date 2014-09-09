@@ -70,7 +70,7 @@ if DO_PLOT
  if ~exist('col','var'); 
   col=' ''k.'' , ''markersize'' , 12';
   col_nl=' ''ko'' , ''markersize'' , 12';
-  col_model={' ''c'' ',' ''c'' '};
+  col_model={' ''c'' ',' ''g'' '};
  end
 end
 
@@ -117,14 +117,14 @@ if ~exist('errbars','var');  errbars=1; end
 
 %% MODEL 
 
-if ~exist('DO_MODEL','var');   DO_MODEL  =1; end
-if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d-EMM'; end %'3d-EMM'; end % '2d-BIE'; end % 
+if ~exist('DO_MODEL','var');   DO_MODEL  = 1; end
+if ~exist('WHAT_MODEL','var'); WHAT_MODEL='3d-EMM'; end %'3d-EMM'; end % '2d-BIE'; end % 
 
-if ~exist('Vert_Modes','var'); Vert_Modes=2e2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=4e2; end
 if DO_DISP; model_pers=HT(2,ht_inds); end
 % if ~exist('model_pers','var'); model_pers=fn_WhatTestData(79,'Regular',0); 
 %  model_pers = unique(model_pers(2,:)); end
-if ~exist('model_pers','var'); model_pers=0.6:0.05:2; end
+if ~exist('model_pers','var'); model_pers=0.6:0.1:2; end
 
 count_rbm=1;
 for loop_rbm=1:length(rbms)
@@ -158,7 +158,7 @@ if DO_MODEL
   for loop_p=1:length(model_pers)
    if SG_TYP; RAO_mod='heave pitch/k surge-norm';
    else RAO_mod='heave pitch/k surge-nonorm'; end
-   out = fn_2dFloe('freq',1/model_pers(loop_p),Param,...
+   out = fn_ElasticRaft2d('freq',1/model_pers(loop_p),Param,...
     RAO_mod,1,0,0); clear RAO_mod
    for loop_out=1:length(model_outs)
     count=1;
