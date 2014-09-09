@@ -80,7 +80,14 @@ end
 %% Amplitude forcing
 
 %%% Wavemaker transfer function
-WM_TF = TF_Wavemaker(Forcing.lam0,H);
+if exist('TF_Wavemaker')==2
+   WM_TF = TF_Wavemaker(Forcing.lam0,H);
+else
+   disp('warning (Forcing_def.m): no wavemaker transfer function defined')
+   disp('(TF_Wavemaker is not present)')
+   disp('(Forcing.AmpWM=NaN)')
+   WM_TF = NaN;
+end
 
 %%% Type of amplitude forcing 'wave' or 'WM'
 type_amp = 'wave';
