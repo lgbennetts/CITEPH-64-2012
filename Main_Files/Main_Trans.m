@@ -132,7 +132,7 @@ elseif 0
 elseif 0
    what_mod = '2d WP2009';%% 2d Williams & Porter (2009)
 else
-   what_mod = ['Boltzmann steady','//','2d WP2009'];
+   what_mod = ['Boltzmann steady','//','2d EMM','//','2d WP2009'];
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
