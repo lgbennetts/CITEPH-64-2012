@@ -117,6 +117,27 @@ if strfind(PRBS,'2d EMM')
  
 end % end if 2d no long
 
+if strfind(PRBS,'2d WP2009') 
+ 
+ if ~exist('ens1','var'); ens1 = 1; end
+ 
+ attn_2d = zeros(1,length(Tp));
+ 
+ %%SURGE=1 not possible yet
+ dum_SURGE  = 0;
+ for loop_p=1:length(Tp)
+   out = fn_ElasticRaft2d_WP2009('freq',1/Tp(loop_p),Param,'transmitted energy',...
+    dum_SURGE,0,COMM,ens1);
+   attn_2d(loop_p) = out(1).value; clear out
+ end
+  
+ T_2dx = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2);  
+ clear attn_2d
+ 
+ out_str = [out_str '; ''2d no long (W&P, 2009)'' '];
+ out_val = [out_val '; T_2dx '];
+ 
+end % end if 2d no long
 %%% Integral equation method (from file): 
 
 if strfind(PRBS,'2d BIE')

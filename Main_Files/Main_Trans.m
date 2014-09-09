@@ -123,7 +123,17 @@ if ~exist('Vert_Modes','var'); Vert_Modes=2e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
 if ~exist('model_pers','var'); model_pers=0.6:0.1:2; end %unique(HT(2,ht_inds)); end % 
 
-what_mod = 'Boltzmann steady'; %'2d EMM'; %'2d BIE'; %
+if 0
+   what_mod = 'Boltzmann steady';%%steady-state Boltzmann
+elseif 0
+   what_mod = '2d EMM';%% 2d eigenfunction matching method
+elseif 0
+   what_mod = '2d BIE';%% 2d Boundary integral method
+elseif 0
+   what_mod = '2d WP2009';%% 2d Williams & Porter (2009)
+else
+   what_mod = ['Boltzmann steady','//','2d WP2009'];
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
