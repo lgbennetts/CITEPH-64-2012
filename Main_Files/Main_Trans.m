@@ -70,13 +70,13 @@ if ~exist('PLOT_TYP','var'); PLOT_TYP ='trans_coeff'; end
 if DO_PLOT
  if ~exist('fig','var'); fig=1; end
  if ~exist('col','var');
-  col=' ''r.'' , ''markersize'' , 12';
-  col_nl=' ''ro'' , ''markersize'' , 12';
+  col=' ''k.'' , ''markersize'' , 12';
+  col_nl=' ''ko'' , ''markersize'' , 12';
   col_ii=' ''kx'' , ''markersize'' , 12';
   col_nl_ii=' ''ko'' , ''markersize'' , 12';
   coll=' ''b.'' , ''markersize'' , 12';
   collnl=' ''bo'' , ''markersize'' , 12';
-  col_model=' ''k--'' ';
+  col_model=' ''c'' ';
   %col_model=' ''go'' , ''markersize'' , 12';
  end
 end
@@ -87,7 +87,7 @@ if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 
 if ~exist('DO_DATA','var'); DO_DATA=0; end
 
-if ~exist('t_meth','var');  t_meth='calib'; end %'inc'; end % 
+if ~exist('t_meth','var');  t_meth='inc'; end %'calib'; end % 
 
 if ~exist('Tpers','var');  Tpers='Tpers=fn_Tpers(Tp);'; end %'Tpers=10;'; end %
 
@@ -105,13 +105,13 @@ if ~exist('DO_FPLT','var');  DO_FPLT=0; end
 
 if ~exist('errbars','var');  errbars=1; end
 
-HT =fn_WhatTestData(conc,'Regular',0); ht_inds=1:length(HT); %length(HT)-5; %
+HT =fn_WhatTestData(conc,'Regular',0); 1:length(HT); %ht_inds=1:4; %
 % if strfind(t_meth,'calib')  
 %  HT0=fn_WhatTestData(conc,['Regular-' t_meth],0);
 %  intersect(intersect(HT(1,:),HT0(1,:)),intersect(HT(2,:),HT0(2,:)))
 % end
 
-probes=[1:3,7,10]; %1:10; %[1,2,3,8,9,10]; %1; % 1:10; % 
+probes=1:10; %1; % [1,2,3,8,9]; %[1:7,10]; %1:10; % 
 
 if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
@@ -119,21 +119,11 @@ if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
 if ~exist('DO_MODEL','var'); DO_MODEL=1; end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=2e2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=4e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
 if ~exist('model_pers','var'); model_pers=0.6:0.1:2; end %unique(HT(2,ht_inds)); end % 
 
-if 0
-   what_mod = 'Boltzmann steady';%%steady-state Boltzmann
-elseif 0
-   what_mod = '2d EMM';%% 2d eigenfunction matching method
-elseif 0
-   what_mod = '2d BIE';%% 2d Boundary integral method
-elseif 0
-   what_mod = '2d WP2009';%% 2d Williams & Porter (2009)
-else
-   what_mod = ['Boltzmann steady','//','2d EMM','//','2d WP2009'];
-end
+what_mod = '2d EMM'; %'Boltzmann steady'; %'2d BIE'; %
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
