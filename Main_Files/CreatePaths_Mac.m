@@ -9,6 +9,9 @@ path(path,'../Fns/AttnModels')
 path(path,'../Fns/AttnModels/Roots')
 path(path,'../Fns/Misc')
 
+%%Williams & Porter (2009) model:
+path(path,'../Fns/AttnModels/WP2009')
+
 %path(path,'../Fns/Misc/Weight_Norm')
 %path(path,'../Fns/Misc/Weight_Ones')
 path(path,'../Fns/Misc/Weight_Standard')
