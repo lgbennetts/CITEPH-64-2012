@@ -11,6 +11,7 @@ path(path,'../Fns/Misc')
 
 %%Williams & Porter (2009) model:
 path(path,'../Fns/AttnModels/WP2009')
+path(path,'../Fns/AttnModels/collisions')
 
 %path(path,'../Fns/Misc/Weight_Norm')
 %path(path,'../Fns/Misc/Weight_Ones')
@@ -32,6 +33,9 @@ if or(strcmp(getenv('LOGNAME'),'a1612881'),...
  path(path,'../Fns/CITEPH_specifics')
  path(path,'../Fns/MovingFourier')
  path(path,'../Fns/CollectData')
+else%%tim
+ path(path,'../Fns/CollectData')
+ path(path,'../Fns/CITEPH_specifics')
 end
 
 return

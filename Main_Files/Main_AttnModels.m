@@ -16,7 +16,7 @@
 % LONG = long floe limit (for 2d code)
 % COMM = comments on (1) or off (0)
 
-function out=Main_AttnModels(Tp,conc,PRBS,Nd,COMM,DO_PLOT)
+function out=Main_AttnModels(Tp,conc,PRBS,Nd,COMM,DO_PLOT,collision_inputs)
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% %%%% PRELIMS %%%%%%
@@ -26,7 +26,9 @@ function out=Main_AttnModels(Tp,conc,PRBS,Nd,COMM,DO_PLOT)
 
 if ~exist('PRBS','var');    PRBS='Boltzmann steady'; end
 if ~exist('COMM','var');    COMM=1;         end
-if ~exist('DO_PLOT','var'); DO_PLOT=0;      end
+%if ~exist('DO_PLOT','var'); DO_PLOT=0;      end
+if ~exist('DO_PLOT','var'); DO_PLOT=1;      end
+if ~exist('collision_inputs','var'); collision_inputs   = [];end
 
 if ~exist('Tp','var'); Tp = .65; end
 if ~exist('conc','var'); conc=79; end
@@ -34,12 +36,14 @@ if ~exist('conc','var'); conc=79; end
 if ~exist('rigid','var'); rigid=4; end
  
 if ~exist('Nd','var'); Nd = 1e2; end
+%if ~exist('Nd','var'); Nd = 4e2; end
 
 if ~exist('th_res','var'); th_res=200; end
 
 if ~exist('TEST','var'); TEST='Oceanide'; end
 
 if ~exist('SURGE','var'); SURGE=1; end
+%if ~exist('COLLS','var'); COLLS=1; end
 
 if ~exist('extra_pts','var'); extra_pts=[]; end
 if ~exist('terms_grn','var'); terms_grn=100; end
@@ -79,12 +83,13 @@ end
 
 if strfind(PRBS,'2d lfl EMM')
  
- attn_2d = zeros(1,length(Tp));
+ attn_2d    = zeros(1,length(Tp));
  
  for loop_p=1:length(Tp)
   out = fn_ElasticRaft2d('freq',1/Tp(loop_p),Param,'transmitted energy',...
    SURGE,1,COMM);
-  attn_2d(loop_p) = out(1).value; clear out
+  attn_2d(loop_p) = out(1).value;
+  clear out
  end
  
  T_2dl = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2); 
@@ -98,27 +103,133 @@ end % end if 2d long
 %%% No long floe limit
 
 if strfind(PRBS,'2d EMM') 
+ disp('Using 2d EMM...')
  
  if ~exist('ens1','var'); ens1 = 1; end
  
  attn_2d = zeros(1,length(Tp));
- 
- for loop_p=1:length(Tp)
-   out = fn_ElasticRaft2d('freq',1/Tp(loop_p),Param,'transmitted energy',...
-    SURGE,0,COMM,ens1);
-   attn_2d(loop_p) = out(1).value; clear out
+ DO_COLL   = ~isempty(collision_inputs)&(conc>.7);
+ if DO_COLL
+    Ncoll        = size(collision_inputs,1);
+    E_trans_coll = zeros(length(Tp),Ncoll);
+    disp('Calculating attenuation from collisions');
  end
-  
- T_2dx = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2);  
+ 
+ dum_SURGE  = SURGE;
+ outputs_2d = ['transmitted energy//surge-nonorm//wavenumber'];
+ %dum_SURGE  = 0;
+ for loop_p=1:length(Tp)
+  out = fn_ElasticRaft2d('freq',1/Tp(loop_p),Param,outputs_2d,...
+    dum_SURGE,0,COMM,ens1);
+
+  for loop_j=1:length(out)
+     if strcmp(out(loop_j).name,'transmitted energy')
+        attn_2d(loop_p) = out(loop_j).value;
+     end
+     if strcmp(out(loop_j).name,'surge')
+        RAOsurge  = out(loop_j).value;
+     end
+     if strcmp(out(loop_j).name,'k0')
+        k0  = out(loop_j).value;
+     end
+  end
+  clear out
+
+  if DO_COLL
+     D         = Param.floe_diam;
+     sep       = 1;
+     conc_true = (pi*D^2/4)/sep^2;
+     %%
+     alp_scat  = -log(attn_2d(loop_p));%%energy attenuation coefficient per floe
+     alp_scat  = alp_scat*conc_true/D; %%energy attenuation coefficient per meter
+     % {Tp(loop_p),alp_scat,RAOsurge}
+     scat_pram = [alp_scat,RAOsurge];
+     clear alp_scat RAOsurge;
+     %%
+     om        = 2*pi/Tp(loop_p);
+     wave_pram = [om,k0];
+     clear om k0;
+     %%
+     h         = Param.thickness;
+     rhoi      = Param.draft/h*Param.rho_0;
+     ice_pram  = [D,h,rhoi];
+     clear h rhoi D;
+     %%
+     tank_pram = [Param.MIZ_length,Param.bed];%%MIZ width and tank depth
+     out2      = fn_attn_collisions(...
+         collision_inputs,wave_pram,ice_pram,tank_pram,scat_pram,conc_true,sep);
+     E_trans_coll(loop_p,:)   = out2(1).value.';%%transmitted energy
+     E_ratio(loop_p,:)        = out2(2).value.';%%ratio to no_coll
+     phase_fac(loop_p)        = out2(3).value;
+         %%cos(ks): <0 means the floes are out of phase so more likely to collide strongly
+
+     %E_trans_coll(loop_p,:)
+     %E_ratio(loop_p,:)
+     %pause
+
+     clear wave_pram ice_pram tank_pram out2;
+     clear scat_pram conc_true sep;
+     %exp(conc*log(attn_2d(loop_p))*Param.MIZ_length/Param.floe_diam/2)
+     %E_trans_coll(loop_p,:)
+     %pause
+  end
+
+ end%%loop_p
+
+ %% calc transmitted amplitude:
+ %% NB attn_2d is |T|^2 
+ T_2dx = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2);
  clear attn_2d
  
  out_str = [out_str '; ''2d no long'' '];
  out_val = [out_val '; T_2dx '];
+ if DO_COLL
+    out_str = [out_str '; ''2d coll no long'' '];
+    out_val = [out_val '; A_trans_coll '];
+    A_trans_coll  = sqrt(E_trans_coll);
+    if 1
+       figure(13);
+       subplot(3,1,1);
+       plot(Tp,phase_fac);
+       GEN_proc_fig('Period, s','cos(ks)');
+       %%
+       subplot(3,1,2);
+       cols = {'k','g','r','c','m'};
+       leg  = [];
+       plot(Tp,E_ratio);
+       for loop_j=1:Ncoll
+          %PP(loop_j,1)  = plot(Tp,E_ratio(:,loop_j),cols{loop_j});
+          A             = collision_inputs(loop_j,1)*100;%%amp in cm
+          rc            = collision_inputs(loop_j,2);
+          leg           = [leg, ', ''(',num2str(A),'cm,',num2str(rc),')'' '];
+       end
+       %PP,leg
+       cmd  = ['Lg = legend(',leg(2:end),...
+               ', ''Location'' ,',' ''EastOutside'' );'];
+       eval(cmd);
+       GEN_proc_fig('Period, s','ET Ratio');
+       %%
+       subplot(3,1,3);
+       plot(Tp,T_2dx.^2,'k--');
+       hold on;
+       plot(Tp,E_trans_coll);
+       hold off;
+       GEN_proc_fig('Period, s','Transmitted Energy Fraction');
+       cmd  = ['Lg = legend(''No collisions'' ,',leg(2:end),...
+               ', ''Location'' ,',' ''EastOutside'' );'];
+       eval(cmd);
+       %%
+       figname = ['out/coll_diagnosics_rc',num2str(collision_inputs(1,2)),'.eps']
+       saveas(gcf,figname,'epsc');
+    end
+    clear DO_COLL Ncoll E_trans_coll E_ratio phase_fac cmd leg
+ end
  
 end % end if 2d no long
 
 if strfind(PRBS,'2d WP2009') 
- 
+ disp('Using W&P (2009)...')
+
  if ~exist('ens1','var'); ens1 = 1; end
  
  attn_2d = zeros(1,length(Tp));
@@ -131,11 +242,11 @@ if strfind(PRBS,'2d WP2009')
    attn_2d(loop_p) = out(1).value; clear out
  end
   
- T_2dx = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2);  
+ T_2dw = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2);  
  clear attn_2d
  
- out_str = [out_str '; ''2d no long (W&P, 2009)'' '];
- out_val = [out_val '; T_2dx '];
+ out_str = [out_str '; ''2d (W&P, 2009) no long'' '];
+ out_val = [out_val '; T_2dw '];
  
 end % end if 2d no long
 %%% Integral equation method (from file): 
@@ -264,6 +375,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strfind(PRBS,'Boltzmann steady')
+ disp('Using Boltzmann steady...')
  
  if ~exist('th_res','var'); th_res=1*50; end
  

@@ -43,7 +43,8 @@
 %
 % L Bennetts Sept 2013 / Adelaide
 
-function Main_Trans
+%function Main_Trans
+clear
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% %%%% PRELIMS %%%%%%
@@ -56,12 +57,14 @@ end
 
 %% GENERAL
 
-if ~exist('conc','var');     conc=39; end
+%if ~exist('conc','var');     conc=39; end
+if ~exist('conc','var');     conc=79; end
 
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 if ~exist('DO_PLOT','var');  DO_PLOT=1; end
 if ~exist('DO_DISP','var');  DO_DISP=0; end
 if ~exist('COMM','var');     COMM   =1; end
+%if ~exist('EGY','var');      EGY    =0; end%%outputs are already transmitted energy??
 if ~exist('EGY','var');      EGY    =1; end
 if ~exist('DO_STR','var');   DO_STR =0; end
 
@@ -79,13 +82,21 @@ if DO_PLOT
   col_model=' ''k--'' ';
   %col_model=' ''go'' , ''markersize'' , 12';
  end
+ if ~exist('col_wp09','var');
+  col_wp09  = ' ''r-'' ';
+  %col_wp09  = ' ''b--'' ';
+ end
+ if ~exist('col_coll','var');
+  col_coll  = ' ''-'' ';
+  %col_wp09  = ' ''b--'' ';
+ end
 end
 
 if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 
 %% DATA
 
-if ~exist('DO_DATA','var'); DO_DATA=0; end
+if ~exist('DO_DATA','var'); DO_DATA=1; end
 
 if ~exist('t_meth','var');  t_meth='calib'; end %'inc'; end % 
 
@@ -105,6 +116,7 @@ if ~exist('DO_FPLT','var');  DO_FPLT=0; end
 
 if ~exist('errbars','var');  errbars=1; end
 
+   conc
 HT =fn_WhatTestData(conc,'Regular',0); ht_inds=1:length(HT); %length(HT)-5; %
 % if strfind(t_meth,'calib')  
 %  HT0=fn_WhatTestData(conc,['Regular-' t_meth],0);
@@ -125,23 +137,26 @@ if ~exist('model_pers','var'); model_pers=0.6:0.1:2; end %unique(HT(2,ht_inds));
 
 if 0
    what_mod = 'Boltzmann steady';%%steady-state Boltzmann
-elseif 0
+elseif 1
    what_mod = '2d EMM';%% 2d eigenfunction matching method
 elseif 0
    what_mod = '2d BIE';%% 2d Boundary integral method
 elseif 0
    what_mod = '2d WP2009';%% 2d Williams & Porter (2009)
 else
-   what_mod = ['Boltzmann steady','//','2d EMM','//','2d WP2009'];
+   %what_mod = ['Boltzmann steady','//','2d EMM','//','2d WP2009'];
+   what_mod = ['2d EMM','//','2d WP2009'];
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+DO_MODEL
+what_mod
 if DO_MODEL
  
- if exist('OTHER_USR','var')
+ if exist('OTHER_USR','var') & strfind(what_mod,'2d BIE')
   cprintf('red','>>> Option WHAT_MODEL=2d BIE is not available!!! \n')
   return
  end
@@ -149,12 +164,53 @@ if DO_MODEL
  if conc==39
   dum_c = 100*pi*(0.495^2)/2;
  elseif conc==79
-  dum_c = 100*pi*(0.495^2);
+  dum_c     = 100*pi*(0.495^2);
+  DO_COLL   = 1;
+  DO_DRAG   = 1;
+  if DO_COLL
+     %wave_amp  = 40e-3;
+     wave_amp  = unique(HT(1,:)/2e3).';
+     %%
+     rest_coeff         = .9+0*wave_amp;
+     collision_inputs   = [wave_amp,rest_coeff];
+     if DO_DRAG
+         collision_inputs(:,3)   = 1e6+0*wave_amp;%%drag_coeff is 3rd column
+     end
+  else
+     collision_inputs   = [];
+  end
  end
- out=Main_AttnModels(model_pers,dum_c,what_mod,Vert_Modes,DO_FDSP,0);
+
+ out=Main_AttnModels(model_pers,dum_c,what_mod,Vert_Modes,DO_FDSP,0,collision_inputs);
+ %out.name
+ %out.value
+
  count_mods=1;
+ count_mods_wp09=1;
  for loop_mods=1:length(out)
-  if strcmp(out(loop_mods).name,'2d no long')
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %%extra models W&P (2009)
+  if strcmp(out(loop_mods).name,'2d (W&P, 2009) no long')
+   trans_model_wp09(count_mods_wp09,:)=out(loop_mods).value;
+   if EGY;%%convert to energy
+      trans_model_wp09(count_mods_wp09,:)=trans_model_wp09(count_mods_wp09,:).^2;
+   end
+   count_mods_wp09=count_mods_wp09+1;
+  elseif strcmp(out(loop_mods).name,'2d (W&P, 2009) long')
+   trans_model_wp09(count_mods_wp09,:)=out(loop_mods).value;
+   if EGY;%%convert to energy
+      trans_model_wp09(count_mods_wp09,:)=trans_model_wp09(count_mods_wp09,:).^2;
+   end
+   count_mods_wp09=count_mods_wp09+1;
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  elseif strcmp(out(loop_mods).name,'2d coll no long')
+   trans_model_coll  = out(loop_mods).value;
+   if EGY;%%convert transmitted amplitude to transmitted energy
+      trans_model_coll=trans_model_coll.^2;
+   end
+
+  elseif strcmp(out(loop_mods).name,'2d no long')
    trans_model(count_mods,:)=out(loop_mods).value;
    if EGY; trans_model(count_mods,:)=trans_model(count_mods,:).^2; end
    count_mods=count_mods+1;
@@ -171,10 +227,12 @@ if DO_MODEL
    trans_model(count_mods,:)=out(loop_mods).value;
    if EGY; trans_model(count_mods,:)=trans_model(count_mods,:).^2; end
    count_mods=count_mods+1;
+   trans_model
   elseif strcmp(out(loop_mods).name,'Rows')
    trans_model(count_mods,:)=out(loop_mods).value;
    if EGY; trans_model(count_mods,:)=trans_model(count_mods,:).^2; end
    count_mods=count_mods+1;
+   
   end
  end
  clear count_mods
@@ -546,7 +604,13 @@ if DO_DATA
     
    dum_trans     = dum_dat.trans;
    dum_trans_err = dum_dat.trans_std;
-   T_all = dum_dat.T; H_all = dum_dat.H;
+   T_all = dum_dat.T;
+   if conc==79
+      %%no variable H inside file
+      H_all = [HT(1,1:6),HT(1,6),HT(1,6),HT(1,7:end)];
+   else
+      H_all = dum_dat.H;
+   end
    
    ct=1;
    for lp=1:length(ht_inds)
@@ -671,6 +735,13 @@ if DO_PLOT
   hold on
   if strfind(what_mod,'2d BIE')
    eval(['plot(model_pers_bie,trans_model_bie,' col_model ')'])
+  end
+  if  exist('trans_model_wp09','var')
+   eval(['plot(model_pers,trans_model_wp09,' col_wp09 ')'])
+  end
+  if  exist('trans_model_coll','var')
+     'hey, plotting collisions!'
+   eval(['plot(model_pers,trans_model_coll,' col_coll ')'])
   end
   if exist('trans_model','var')
    eval(['plot(model_pers,trans_model,' col_model ')'])
