@@ -122,7 +122,7 @@ if ~DTYP
  dx = 2*pi/length(th_vec);
 
  L_mat = cos(th_vec);
- L_mat = diag(L_mat);
+ L_mat = diag(L_mat);%%Left-hand matrix
  
  R_mat1 = zeros(length(th_vec));
  mk = 2*th_res+1;
@@ -143,11 +143,12 @@ if ~DTYP
  R_mat1 = dx*R_mat1;
  
  if 0
-  R_mat0 = -beta + absorb + 0*S;
+  R_mat0 = -beta + absorb + 0*S;%%sign error??, or should absorb be <0??
  else
   R_mat0 = -sum(R_mat1,1) + absorb;
  end
  R_mat = conc*(diag(R_mat0)+R_mat1)/pi/((Param.floe_diam/2)^2);
+   %%Right-hand matrix: c/(pi*a^2)*\int S.I d\theta
  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% FOURIER SERIES
@@ -230,7 +231,8 @@ if ~DTYP
  %%%
  %%% where D+=[Im,Iz0] and D-=[Ip,Iz1]
  %%%
- %%% SL(0)=S0 and SR(w)=S1
+ %%% SL(0)=S0 (incident wave spec from left)
+ %%% SR(w)=S1 (incident wave spec from right = 0)
  %%%
  %%% where SL=S[incs] and SR=S[refs] 
  
@@ -505,5 +507,4 @@ return
 % ytil = reshape(ytil,1,length(ytil));
 % 
 % I = sum(xtil.*ytil);
-% 
-% return
+% return 
