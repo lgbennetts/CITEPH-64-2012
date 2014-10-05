@@ -210,11 +210,13 @@ EE       = [0,Param.E;
             0,Param.rho;
             0,Param.nu];
 rho_wtr  = Param.rho_0;
+DO_KC    = 1;
 
 %[Rp,Tp,Rm,Tm,Smat,Y_Gal] = SUB_RTstep_Gal_manymodes(...
 %      phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr);
 [Rp,Tp,Rm,Tm,Smat,Y_Gal] = SUB_TMstep_Gal(...
-      phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr);
+      phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr,DO_KC);
+
 %%water wavenumbers;
 Roots0   = Y_Gal{1}{1}; 
 k0       = Roots0(1);%%real root
