@@ -39,16 +39,24 @@
 % DO_MODEL   = analyse model on/off
 % Vert_Modes = number of vertical modes used for EMM method (if used)
 % model_pers = abscissa (periods) used for model
-% what_model = what model to use (see Main_AttnModel)
+% what_model = what model to use (see Main_AttnModels)
 %
 % L Bennetts Sept 2013 / Adelaide
 
-%function Main_Trans
-clear
+function Main_Trans(input_struct)
+%clear
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% %%%% PRELIMS %%%%%%
 %%%%%%%%%%%%%%%%%%%%%%
+
+if exist('input_struct','var')
+   for j=1:length(input_struct)
+      nm    = input_struct(j).Name;
+      val   = input_struct(j).Value;
+      eval([nm,' = val']);
+   end
+end
 
 if ~or(strcmp(getenv('LOGNAME'),'a1612881'),...
   strcmp(getenv('LOGNAME'),'lbennetts'))
@@ -84,10 +92,6 @@ if DO_PLOT
  end
  if ~exist('col_wp09','var');
   col_wp09  = ' ''r-'' ';
-  %col_wp09  = ' ''b--'' ';
- end
- if ~exist('col_coll','var');
-  col_coll  = ' ''-'' ';
   %col_wp09  = ' ''b--'' ';
  end
 end
@@ -135,50 +139,58 @@ if ~exist('Vert_Modes','var'); Vert_Modes=2e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
 if ~exist('model_pers','var'); model_pers=0.6:0.1:2; end %unique(HT(2,ht_inds)); end % 
 
-if 0
-   what_mod = 'Boltzmann steady';%%steady-state Boltzmann
-elseif 1
-   what_mod = '2d EMM';%% 2d eigenfunction matching method
-elseif 0
-   what_mod = '2d BIE';%% 2d Boundary integral method
-elseif 0
-   what_mod = '2d WP2009';%% 2d Williams & Porter (2009)
-else
-   %what_mod = ['Boltzmann steady','//','2d EMM','//','2d WP2009'];
-   what_mod = ['2d EMM','//','2d WP2009'];
+if ~exist('what_mod','var');
+   if 0
+      what_mod = 'Boltzmann steady';%%steady-state Boltzmann
+   elseif 1
+      what_mod = '2d EMM';%% 2d eigenfunction matching method
+   elseif 0
+      what_mod = '2d BIE';%% 2d Boundary integral method
+   elseif 0
+      what_mod = '2d WP2009';%% 2d Williams & Porter (2009)
+   else
+      %what_mod = ['Boltzmann steady','//','2d EMM','//','2d WP2009'];
+      what_mod = ['2d EMM','//','2d WP2009'];
+   end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-DO_MODEL
-what_mod
 if DO_MODEL
  
  if exist('OTHER_USR','var') & strfind(what_mod,'2d BIE')
   cprintf('red','>>> Option WHAT_MODEL=2d BIE is not available!!! \n')
   return
  end
- 
+
+ if ~exist('collision_inputs','var');
+    collision_inputs = [];
+ else
+    DO_COLL = 1;
+    DO_DRAG = 0;
+    if size(collision_inputs,2)==3
+      %%collision_inputs=[amp,rest_coeff,drag_coeff]
+      DO_DRAG = 1;
+    elseif size(collision_inputs,2)==2
+      %%collision_inputs=[amp,rest_coeff]
+    elseif size(collision_inputs,2)==1
+      %%collision_inputs=[amp]
+      collision_inputs = [collision_inputs,.9+collision_inputs];
+    end
+    Ncoll      = size(collision_inputs,1);
+    col_coll   = cell(Ncoll,1);
+    ss   = 'bgrcm';
+    for j=1:Ncoll
+       col_coll{j}   = ['-',ss(j)];
+    end
+ end
+
  if conc==39
   dum_c = 100*pi*(0.495^2)/2;
  elseif conc==79
   dum_c     = 100*pi*(0.495^2);
-  DO_COLL   = 1;
-  DO_DRAG   = 1;
-  if DO_COLL
-     %wave_amp  = 40e-3;
-     wave_amp  = unique(HT(1,:)/2e3).';
-     %%
-     rest_coeff         = .9+0*wave_amp;
-     collision_inputs   = [wave_amp,rest_coeff];
-     if DO_DRAG
-         collision_inputs(:,3)   = 1e6+0*wave_amp;%%drag_coeff is 3rd column
-     end
-  else
-     collision_inputs   = [];
-  end
  end
 
  out=Main_AttnModels(model_pers,dum_c,what_mod,Vert_Modes,DO_FDSP,0,collision_inputs);
@@ -207,7 +219,8 @@ if DO_MODEL
   elseif strcmp(out(loop_mods).name,'2d coll no long')
    trans_model_coll  = out(loop_mods).value;
    if EGY;%%convert transmitted amplitude to transmitted energy
-      trans_model_coll=trans_model_coll.^2;
+      trans_model_coll  =trans_model_coll.^2;
+      DO_LEGEND         = 1;
    end
 
   elseif strcmp(out(loop_mods).name,'2d no long')
@@ -739,12 +752,22 @@ if DO_PLOT
   if  exist('trans_model_wp09','var')
    eval(['plot(model_pers,trans_model_wp09,' col_wp09 ')'])
   end
+  if exist('trans_model','var')
+   eval(['plt(1)  = plot(model_pers,trans_model,' col_model ');']);
+   if DO_LEGEND==1
+      leg_str  = ' ''No collisions'' ';
+   end
+  end
   if  exist('trans_model_coll','var')
      'hey, plotting collisions!'
-   eval(['plot(model_pers,trans_model_coll,' col_coll ')'])
-  end
-  if exist('trans_model','var')
-   eval(['plot(model_pers,trans_model,' col_model ')'])
+     Namp   = size(collision_inputs,1);
+     for j=1:Namp
+        plt(j+1)  = plot(model_pers,trans_model_coll(:,j),col_coll{j});
+        wamp      = collision_inputs(j,1);
+        leg_str   = [leg_str,',''',num2str(1e2*wamp),'cm'''];
+     end
+     eval(['leg = legend(plt,',leg_str,',''Location'',''SouthEast'');']);
+     GEN_font(leg);
   end
   hold off
  end % END IF DO_MODEL

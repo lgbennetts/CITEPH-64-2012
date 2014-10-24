@@ -8,6 +8,9 @@ path(path,'../Fns/Parametrisation')
 path(path,'../Fns/AttnModels')
 path(path,'../Fns/AttnModels/Roots')
 path(path,'../Fns/Misc')
+path(path,'../Fns/CollectData')
+path(path,'../Fns/CITEPH_specifics')
+path(path,'scripts')
 
 %%Williams & Porter (2009) model:
 path(path,'../Fns/AttnModels/WP2009')
@@ -33,9 +36,6 @@ if or(strcmp(getenv('LOGNAME'),'a1612881'),...
  path(path,'../Fns/CITEPH_specifics')
  path(path,'../Fns/MovingFourier')
  path(path,'../Fns/CollectData')
-else%%tim
- path(path,'../Fns/CollectData')
- path(path,'../Fns/CITEPH_specifics')
 end
 
 return
