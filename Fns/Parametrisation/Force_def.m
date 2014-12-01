@@ -77,29 +77,29 @@ elseif strcmp(type_freq,'waveno')
     Forcing.kappa = (2*pi*Forcing.f).^2/g;    
 end
 
-%% Amplitude forcing
-
-%%% Wavemaker transfer function
-WM_TF = TF_Wavemaker(Forcing.lam0,H);
-
-%%% Type of amplitude forcing 'wave' or 'WM'
-type_amp = 'wave';
-
-if strcmp(type_amp,'wave')
-    %%% Wave steepness (in %)
-    Forcing.eps = 1;
-    
-    %%% Steady-wave amplitude (in m)
-    Forcing.Amp0 = Forcing.eps*Forcing.lam0/200;
-    
-    %%% WM paddle amplitude (in m)
-    Forcing.AmpWM = WM_TF*Forcing.Amp0;
-elseif strcmp(type_amp,'WM')
-    %%% WM paddle amplitude (in m)
-    Forcing.AmpWM = 0.1;
-    
-    %%% Steady-wave amplitude (in m)
-    Forcing.Amp0 = Forcing.AmpWM/WM_TF;
-end
+% %% Amplitude forcing
+% 
+% %%% Wavemaker transfer function
+% WM_TF = TF_Wavemaker(Forcing.lam0,H);
+% 
+% %%% Type of amplitude forcing 'wave' or 'WM'
+% type_amp = 'wave';
+% 
+% if strcmp(type_amp,'wave')
+%     %%% Wave steepness (in %)
+%     Forcing.eps = 1;
+%     
+%     %%% Steady-wave amplitude (in m)
+%     Forcing.Amp0 = Forcing.eps*Forcing.lam0/200;
+%     
+%     %%% WM paddle amplitude (in m)
+%     Forcing.AmpWM = WM_TF*Forcing.Amp0;
+% elseif strcmp(type_amp,'WM')
+%     %%% WM paddle amplitude (in m)
+%     Forcing.AmpWM = 0.1;
+%     
+%     %%% Steady-wave amplitude (in m)
+%     Forcing.Amp0 = Forcing.AmpWM/WM_TF;
+% end
 
 return

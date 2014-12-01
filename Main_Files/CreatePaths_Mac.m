@@ -29,6 +29,8 @@ if or(strcmp(getenv('LOGNAME'),'a1612881'),...
  path(path,'../Fns/CITEPH_specifics')
  path(path,'../Fns/MovingFourier')
  path(path,'../Fns/CollectData')
+ path(path,'../Fns/Papers')
+ path(path,'../Fns/Papers/CITEPH-Reg')
 end
 
 return

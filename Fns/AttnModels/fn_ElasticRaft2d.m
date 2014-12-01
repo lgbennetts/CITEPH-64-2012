@@ -39,14 +39,14 @@ if ~exist('DO_PLOT','var'); DO_PLOT=0; end
 if ~exist('col','var');     col    ='r'; end
 
 if ~exist('fortyp','var'); fortyp='freq'; end
-if ~exist('lam0','var');   lam0  =1/2.5; end
+if ~exist('lam0','var');   lam0  =1/1.0; end
 
-if ~exist('SURGE','var'); SURGE=1; end
+if ~exist('SURGE','var'); SURGE=0; end
 if ~exist('LONG','var');  LONG=0; end
 if ~exist('COMM','var');  COMM=1; end
 
 if ~exist('Param','var'); Param = ParamDef_Oceanide(5); 
-    Param = ModParam_def(Param,1,5,0,0); end
+    Param = ModParam_def(Param,1,50,0,0); end
 
 if ~LONG; if ~exist('Ens_size','var'); Ens_size = 1; end; end
 

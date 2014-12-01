@@ -35,7 +35,7 @@ if ~exist('rigid','var'); rigid=4; end
  
 if ~exist('Nd','var'); Nd = 1e2; end
 
-if ~exist('th_res','var'); th_res=200; end
+if ~exist('th_res','var'); th_res=100; end
 
 if ~exist('TEST','var'); TEST='Oceanide'; end
 

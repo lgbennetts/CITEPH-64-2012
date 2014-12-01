@@ -59,33 +59,31 @@ end
 if ~exist('conc','var');     conc=39; end
 
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
-if ~exist('DO_PLOT','var');  DO_PLOT=1; end
-if ~exist('DO_DISP','var');  DO_DISP=0; end
+if ~exist('DO_PLOT','var');  DO_PLOT=0; end
+if ~exist('DO_DISP','var');  DO_DISP=1; end
 if ~exist('COMM','var');     COMM   =1; end
 if ~exist('EGY','var');      EGY    =1; end
-if ~exist('DO_STR','var');   DO_STR =0; end
+if ~exist('DO_STR','var');   DO_STR =1; end
 
 if ~exist('PLOT_TYP','var'); PLOT_TYP ='trans_coeff'; end
 
 if DO_PLOT
  if ~exist('fig','var'); fig=1; end
  if ~exist('col','var');
-  col=' ''r.'' , ''markersize'' , 12';
-  col_nl=' ''ro'' , ''markersize'' , 12';
+  col=' ''k.'' , ''markersize'' , 12';
+  col_nl=' ''ko'' , ''markersize'' , 12';
   col_ii=' ''kx'' , ''markersize'' , 12';
   col_nl_ii=' ''ko'' , ''markersize'' , 12';
   coll=' ''b.'' , ''markersize'' , 12';
   collnl=' ''bo'' , ''markersize'' , 12';
-  col_model=' ''k--'' ';
+  col_model=' ''k-.'' ';
   %col_model=' ''go'' , ''markersize'' , 12';
  end
 end
 
-if ~exist('DO_FDSP','var');  DO_FDSP=0; end
-
 %% DATA
 
-if ~exist('DO_DATA','var'); DO_DATA=0; end
+if ~exist('DO_DATA','var'); DO_DATA=1; end
 
 if ~exist('t_meth','var');  t_meth='calib'; end %'inc'; end % 
 
@@ -100,18 +98,21 @@ if ~exist('data_out','var')
 end
 
 if ~exist('DEL','var');      DEL=1; end
+
+if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 if ~exist('DO_FPLT','var');  DO_FPLT=0; end
-%if ~exist('DO_FPLT','var');  DO_FPLT='Aspec-signal'; end %
+%if ~exist('DO_FPLT','var');  DO_FPLT='Aspec-signal'; end 
+%if ~exist('DO_FPLT','var');  DO_FPLT='vid'; end %
 
 if ~exist('errbars','var');  errbars=1; end
 
-HT =fn_WhatTestData(conc,'Regular',0); ht_inds=1:length(HT); %length(HT)-5; %
+HT =fn_WhatTestData(conc,'Regular',0); ht_inds=1:length(HT); %1; %
 % if strfind(t_meth,'calib')  
 %  HT0=fn_WhatTestData(conc,['Regular-' t_meth],0);
 %  intersect(intersect(HT(1,:),HT0(1,:)),intersect(HT(2,:),HT0(2,:)))
 % end
 
-probes=[1:3,7,10]; %1:10; %[1,2,3,8,9,10]; %1; % 1:10; % 
+probes=1:10; %1; % [1:3,7,10]; %[1,2,3,8,9,10]; % 
 
 if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
@@ -119,11 +120,36 @@ if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
 if ~exist('DO_MODEL','var'); DO_MODEL=1; end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=2e2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=4e1; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
-if ~exist('model_pers','var'); model_pers=0.6:0.1:2; end %unique(HT(2,ht_inds)); end % 
+if ~exist('model_pers','var'); model_pers=unique(HT(2,ht_inds)); end % 0.6:0.02:2; end %
 
-what_mod = 'Boltzmann steady'; %'2d EMM'; %'2d BIE'; %
+what_mod = '2d EMM'; %'Boltzmann steady'; %
+
+% Consistency for other users:
+
+if exist('OTHER_USR','var')
+ if ~strcmp(t_meth,'calib')
+  cprintf('r','>>> Setting t_meth=calib\n')
+  t_meth='calib';
+ end
+ if EGY~=1
+  cprintf('r','>>> Setting EGY=1\n')
+  EGY    =1;
+ end
+ if ~strcmp(Tpers,'Tpers=fn_Tpers(Tp);')
+  cprintf('r','>>> Setting Tpers=fn_Tpers(Tp)\n')
+  Tpers='Tpers=fn_Tpers(Tp);';
+ end
+ if ~strcmp(data_out.tint,'[t0,t1] = fn_tint(tvec,t0,Tp,Tpers);')
+  cprintf('r','>>> Setting data_out.tint=[t0,t1] = fn_tint(tvec,t0,Tp,Tpers)\n')
+  data_out.tint='[t0,t1] = fn_tint(tvec,t0,Tp,Tpers);';
+ end
+ if length(probes)~=10
+  cprintf('r','>>> Setting probes=1:10\n')
+  probes=1:10;
+ end 
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -131,7 +157,7 @@ what_mod = 'Boltzmann steady'; %'2d EMM'; %'2d BIE'; %
 
 if DO_MODEL
  
- if exist('OTHER_USR','var')
+ if and(exist('OTHER_USR','var'),strcmp(what_mod,'2d BIE'))
   cprintf('red','>>> Option WHAT_MODEL=2d BIE is not available!!! \n')
   return
  end
@@ -578,7 +604,7 @@ if DO_PLOT
   if ~exist('eps_vec','var'); hd(1)=subplot(1,1,1); hold on;
   else  hd(1)=subplot(2,1,1); hold on; hd(2)=subplot(2,1,2); hold on; end
   %%% Higest amplitude waves
-  [~,IA] = unique(T_vec); IA = [0,IA];
+  [~,IA] = unique(T_vec); IA = [0,IA.'];
   jj_nl=[]; ct=1;
   for loop=find(diff(IA)>1)
    dum_inds=IA(loop)+1:IA(loop+1);
@@ -677,22 +703,23 @@ if DO_PLOT
    saveas(figure(fig),['Figs/Harmo2nd_' num2str(conc) '_' dt '@' tm '.fig']);
   end
  end
- fn_fullscreen(fig)
+ fn_halfscreen(fig)
 end % END DO_PLOT
 
 %% DISPLAY
 
 if DO_DISP
  if DO_DATA
-  cprintf(0.4*[1,1,1],['Periods & amplitudes:\n'])
-  disp(HT(2,ht_inds))
-  disp(HT(1,ht_inds)/2)
+  cprintf(0.4*[1,1,1],['Data: periods & amplitudes:\n'])
+  disp(T_vec) %disp(HT(2,ht_inds))
+  disp(H_vec) %disp(HT(1,ht_inds)/2)
   cprintf(0.4*[1,1,1],['Transmission coefficients:\n'])
-  disp(trans_coeff)
+  disp(trans_coeff.')
  end
  if DO_MODEL
-  cprintf(0.4*[1,1,1],['Model:\n'])
+  cprintf(0.4*[1,1,1],['Model: periods\n'])
   disp(model_pers)
+  cprintf(0.4*[1,1,1],['Transmission coefficients:\n'])
   disp(trans_model)
  end % END IF DO_MODEL
 end % end DO_DISP
