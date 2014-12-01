@@ -354,7 +354,7 @@ jj0 = find(~or(th_vec(incs)>pi*th0,th_vec(incs)<-pi*th0));
 if strcmp(wth,'inf')
  I0 = (V(:,[Im;Iz])*c0).';
  I  = (V(:,[Im;Iz])*diag(exp(D([Im;Iz])*Param.MIZ_length))*c0).';
- if ~isempty(find(abs(imag([I,I0]))>1e-3)) %tol))
+ if ~isempty(find(abs(imag([I,I0]))>tol))
   cprintf('red',['Check I and I0: ', int2str(loop_x), ', ', ...
    num2str(max(abs(imag(I)))), '\n'])
  end
@@ -368,7 +368,7 @@ else
  I0 = V(incs,:)*diag([exp(D0*0);exp(D1*(0-wth))])*c;
  I  = V(incs,:)*diag([exp(D0*Param.MIZ_length);...
   exp(D1*(Param.MIZ_length-wth))])*c;
- if ~isempty(find(abs(imag([I;I0]))>1e-3)) %tol))
+ if ~isempty(find(abs(imag([I;I0]))>tol))
   cprintf('red',['Check I and I0: ', int2str(loop_x), ', ', ...
    num2str(max(abs(imag(I)))), '\n'])
  end

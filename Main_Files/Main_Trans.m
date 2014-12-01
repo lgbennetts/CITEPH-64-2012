@@ -120,7 +120,7 @@ if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
 if ~exist('DO_MODEL','var'); DO_MODEL=1; end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=4e1; end
+if ~exist('Vert_Modes','var'); Vert_Modes=4e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
 if ~exist('model_pers','var'); model_pers=unique(HT(2,ht_inds)); end % 0.6:0.02:2; end %
 

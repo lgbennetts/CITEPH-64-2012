@@ -117,7 +117,7 @@ if ~exist('errbars','var');  errbars=1; end
 %% MODEL 
 
 if ~exist('DO_MODEL','var');   DO_MODEL  = 1; end
-if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d-EMM'; end %'3d-EMM'; end % '2d-BIE'; end % 
+if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d-EMM'; end %'3d-EMM'; end % 
 
 if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
