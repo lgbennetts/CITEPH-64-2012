@@ -39,7 +39,7 @@
 % DO_MODEL   = analyse model on/off
 % Vert_Modes = number of vertical modes used for EMM method (if used)
 % model_pers = abscissa (periods) used for model
-% what_model = what model to use (see Main_AttnModel)
+% what_mod   = what model to use (see Main_AttnModel)
 %
 % L Bennetts Sept 2013 / Adelaide
 
@@ -59,7 +59,7 @@ end
 if ~exist('conc','var');     conc=39; end
 
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
-if ~exist('DO_PLOT','var');  DO_PLOT=0; end
+if ~exist('DO_PLOT','var');  DO_PLOT=1; end
 if ~exist('DO_DISP','var');  DO_DISP=1; end
 if ~exist('COMM','var');     COMM   =1; end
 if ~exist('EGY','var');      EGY    =1; end
@@ -604,7 +604,12 @@ if DO_PLOT
   if ~exist('eps_vec','var'); hd(1)=subplot(1,1,1); hold on;
   else  hd(1)=subplot(2,1,1); hold on; hd(2)=subplot(2,1,2); hold on; end
   %%% Higest amplitude waves
-  [~,IA] = unique(T_vec); IA = [0,IA.'];
+  [~,IA] = unique(T_vec);
+  if size(IA,1)==1
+     IA = [0,IA];
+  else
+     IA = [0,IA.'];
+  end
   jj_nl=[]; ct=1;
   for loop=find(diff(IA)>1)
    dum_inds=IA(loop)+1:IA(loop+1);
@@ -703,7 +708,7 @@ if DO_PLOT
    saveas(figure(fig),['Figs/Harmo2nd_' num2str(conc) '_' dt '@' tm '.fig']);
   end
  end
- fn_halfscreen(fig)
+ %fn_halfscreen(fig)
 end % END DO_PLOT
 
 %% DISPLAY
