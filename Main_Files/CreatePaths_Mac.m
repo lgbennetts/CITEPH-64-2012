@@ -8,6 +8,8 @@ path(path,'../Fns/Parametrisation')
 path(path,'../Fns/AttnModels')
 path(path,'../Fns/AttnModels/Roots')
 path(path,'../Fns/Misc')
+path(path,'../Fns/CollectData')
+path(path,'../Fns/CITEPH_specifics')
 
 %path(path,'../Fns/Misc/Weight_Norm')
 %path(path,'../Fns/Misc/Weight_Ones')
@@ -26,9 +28,7 @@ if or(strcmp(getenv('LOGNAME'),'a1612881'),...
  path(path,'../Fns/MLM')
  path(path,'../Fns/AttnModels/GrafInteraction')
  path(path,'../Fns/Greens_fns')
- path(path,'../Fns/CITEPH_specifics')
  path(path,'../Fns/MovingFourier')
- path(path,'../Fns/CollectData')
  path(path,'../Fns/Papers')
  path(path,'../Fns/Papers/CITEPH-Reg')
 end
