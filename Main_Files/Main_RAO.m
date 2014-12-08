@@ -501,8 +501,13 @@ end % IF DO_DATA
 
 if DO_PLOT
  if ~exist('fig','var'); fig = fn_getfig(length(rbms)); end
- %%% Higest amplitude waves
- [~,IA] = unique(HT(2,ht_inds)); IA = [0,IA.'];
+ %%% Highest amplitude waves
+ [~,IA] = unique(HT(2,ht_inds));
+ if size(IA,1)==1
+    IA = [0,IA];
+ else
+    IA = [0,IA.'];
+ end
  jj_nl=[]; ct=1;
  for loop=find(diff(IA)>1)
   dum_inds=IA(loop)+1:IA(loop+1);
@@ -571,7 +576,7 @@ if DO_PLOT
    tm=[sprintf('%0.2d',clockout(4)) ':' sprintf('%0.2d',clockout(5)) ':' sprintf('%0.2d',floor(clockout(6)))];
    saveas(figure(fig(loop_rbm)),['Figs/RAO_' rbms{loop_rbm} '_' dt '@' tm '.fig']);
   end
-  fn_halfscreen(fig(loop_rbm))
+  %fn_halfscreen(fig(loop_rbm))
  end % END LOOP_RBM
 end % END DO_PLOT
 
