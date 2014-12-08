@@ -2,11 +2,21 @@ function [alp,WW,tau_init,T_relax] = fn_ode_drag_LinearLaw(...
             prams1,coll_inputs,zz0,VV0,prams2)
 %% need: om,d=draft,cD_dim,h,RAO_surge
 %% prams1      = [om,d,RAO_surge,h]; d=draft
-%% coll_inputs = [A,rest_coeff,cD_dim];
+%% coll_inputs = [A,rest_coeff,cD];
 %% prams2      = [conc,cg,f_coll] to convert to attenuation coefficient
 %% also:
 %% zz0: time (\omega*t) at moment of collision
 %% VV0: velocity at moment of collision
+%%
+%% drag law: tau=-(rhow*d*omega)*kD*|v'|v'
+%%  > kD non-dimensional
+%%  > v' = v_disc-v_wave,
+%%          where v_wave is the velocity the disc would have been
+%%          moving at if it hadn't had a collision
+%%  > calibrate kD so initial stress is the 
+%%       same as initial stress from quadratic drag law:
+%%       tau=-rhow*cD*|v'|v'
+%% pass in cD
 
 do_test  = 0;
 rhow     = 1025;
@@ -20,7 +30,7 @@ tau_init = [0;0];%% initial (max) stress
 if nargin==0
    'test inputs'
    do_test     = 1;
-   cD          = 1e1;%%kg/m^3
+   cD          = 1e3;%% non-dimensional
    A           = 2e-2;
    h           = 3.3e-2;
    d           = 1.8e-2;%%draft
@@ -45,11 +55,6 @@ if nargin==0
    VV0   = [V1;V2];
    zz0   = [omt1;omt2];
 
-   tau_init       = 2e4;%%Pa - enable for comparison with quadratic drag law
-   y_init         = V1+rest_coeff*V1;
-   cD             = abs( tau_init/(om*d*rhow*y_init) )
-   clear tau_init y_init;
-   
    prams1      = [om,d,RAOsurge,h];
    coll_inputs = [A,rest_coeff,cD];
    %%
@@ -90,14 +95,20 @@ tau_fac  = sd*(rhow*g*X);    %%convert stress from nondimensional to dimensional
 
 for j=1:2
 
-   eps         = 5e-4;
-   z_relax     = -log(eps)/cD;
-   T_relax(j)  = z_relax/om;
-   %%
    V0    = VV0(j)/(X*om);%%initial speed [nondimensional]
    v0    = -rest_coeff*V0;
    z0    = zz0(j);%%initial value of z=\omega*t
    zspan = z0+[0,om/f_coll];
+
+   %% calibrate linear drag law
+   %% using cD and initial speed
+   %% (this gives the same initial stress
+   %%  as from a quadratic drag law)
+   kD = cD*abs(V0-v0)/d/om;
+   %%
+   eps         = 5e-4;
+   z_relax     = -log(eps)/kD;
+   T_relax(j)  = z_relax/om;
    %%
    N     = 2e2;
 
@@ -106,13 +117,13 @@ for j=1:2
    zvec  = [zvec;zzz(2:end)];
    clear zzz;
 
-   f1    = particular_soln(zvec,cD);
+   f1    = particular_soln(zvec,kD);
    Cj    = v0-f1(1);
-   u1    = Cj*exp(-cD*(zvec-z0))+f1;
-   tau1  = tau_fac*stress_fun(zvec,u1,cD);%%dimensional stress
-   w1    = cumtrapz(zvec,work_fun(zvec,u1,cD));%%nondimensional work
+   u1    = Cj*exp(-kD*(zvec-z0))+f1;
+   tau1  = tau_fac*stress_fun_lin(zvec,u1,kD);%%dimensional stress
+   w1    = cumtrapz(zvec,work_fun_lin(zvec,u1,kD));%%nondimensional work
    W1    = Wfac*w1;%%dimensional work
-   WW(j) = Wfac0*trapz(zvec,work_fun(zvec,u1,cD));%%work/E->attenuation coefficient
+   WW(j) = Wfac0*trapz(zvec,work_fun_lin(zvec,u1,kD));%%work/E->attenuation coefficient
 
    if do_test%%plot and compare with ode45
       tst_work = [WW(j)*E,W1(end)]
@@ -139,13 +150,13 @@ for j=1:2
       %solver   = @ode23;col = 'm';
       solver   = @ode45,col   = '--b';
       %%
-      [zout,v1_out]  = feval(solver,@(z,v1) stress_fun(z,v1,cD),zspan,v0);
+      [zout,v1_out]  = feval(solver,@(z,v1) stress_fun_lin(z,v1,kD),zspan,v0);
       V1_out         = -sin(zout);
-      tau_out        = tau_fac*stress_fun(zout,v1_out,cD);%%[Pa]
+      tau_out        = tau_fac*stress_fun_lin(zout,v1_out,kD);%%[Pa]
       if 0
          figure(4)
-         plot(zout,tau_fac*stress_fun(zout,v1_out,cD),'b',...
-              zvec,tau_fac*stress_fun(zvec,u1,cD),'k');
+         plot(zout,tau_fac*stress_fun_lin(zout,v1_out,kD),'b',...
+              zvec,tau_fac*stress_fun_lin(zvec,u1,kD),'k');
          {zvec(1),zout(1)}
          pause
          close
@@ -171,13 +182,13 @@ for j=1:2
       %    end
       % end
       % %%
-      W_out = cumtrapz(zout,work_fun(zout,v1_out,cD));%%nondimensional work
+      W_out = cumtrapz(zout,work_fun_lin(zout,v1_out,kD));%%nondimensional work
       W_out = Wfac*W_out;                             %%[J/m^2]
       % WW(j) = W_out(jR);
       if 0
          figure(4)
-         ig1   = Wfac*work_fun(zvec,u1,cD);
-         ig2   = Wfac*work_fun(zout,v1_out,cD);{zvec,ig1;zout,ig2}
+         ig1   = Wfac*work_fun_lin(zvec,u1,kD);
+         ig2   = Wfac*work_fun_lin(zout,v1_out,kD);{zvec,ig1;zout,ig2}
          plot(zvec,ig1,'b',...
               zout,ig2,'k');
          {zvec(1),zout(1);
@@ -224,25 +235,35 @@ end%%end j loop
 alp   = conc*f_coll*sum(WW)/cg;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function f=particular_soln(z,cD)
+function f=particular_soln(z,kD)
 
-f  = -cD^2/(cD^2+1)*sin(z) + cD/(cD^2+1)*cos(z);
+f  = -kD^2/(kD^2+1)*sin(z) + kD/(kD^2+1)*cos(z);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function tau   = stress_fun(t,u1,cD)
+function tau   = stress_fun_lin(t,u1,kD)
 %%stress from drag law
 
 v1    = -sin(t);
 y     = u1-v1;
-tau   = -cD*y;
+tau   = -kD*y;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function W   = work_fun(t,u1,cD)
+function W   = work_fun_lin(t,u1,kD)
 %% integrand stress*[dx/dt]
 %% since \int stress*dx=\int stress*[dx/dt]*dt
 %% dx/dt=relative velocity, y=v1-V1
 
 v1    = -sin(t);
 y     = u1-v1;
-tau   = stress_fun(t,u1,cD);
+tau   = stress_fun_lin(t,u1,kD);
 W     = abs(tau.*y);%%relative velocity
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function tau   = stress_fun_quad(t,v1,cD)
+%% stress from quadratic drag law
+%% - use this to calibrate linear drag coefficient
+
+V1    = -sin(t);
+y     = v1-V1;
+sgn   = -sign(y);
+tau   = cD*sgn.*y.^2;

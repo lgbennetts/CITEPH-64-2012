@@ -25,26 +25,34 @@ name_str = [name_str,';', ' ''DO_DATA'' '];
 val_str  = [val_str, ';', '   DO_DATA   '];
 
 if 0
-   wave_amp = 5e-2;
+   %% do collisions:
+   %% - no drag, only restitution coefficient
+   wave_amp          = 1e-2*[1;1.5;2;4;5];
+   rest_coeff        = .05;
+   collision_inputs  = [wave_amp,rest_coeff+0*wave_amp];
+   name_str          = [name_str,';', ' ''collision_inputs'' '];
+   val_str           = [val_str, ';', '   collision_inputs   '];
 else
-   wave_amp = 1e-2*[1;1.5;2;4;5];
+   %% do collisions:
+   %% - drag, only restitution coefficient
+   wave_amp          = 1e-2*[1;1.5;2;4;5];
+   rest_coeff        = .05;
+   drag_coeff        = 1;
+   collision_inputs  = [wave_amp,rest_coeff+0*wave_amp,drag_coeff+0*wave_amp];
+   name_str          = [name_str,';', ' ''collision_inputs'' '];
+   val_str           = [val_str, ';', '   collision_inputs   '];
 end
-rest_coeff        = .05;
-collision_inputs  = [wave_amp,rest_coeff+0*wave_amp];
-name_str          = [name_str,';', ' ''collision_inputs'' '];
-val_str           = [val_str, ';', '   collision_inputs   '];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%create input_struct
 eval(['input_struct = struct(''Name'',{',...
        name_str,'}, ''Value'', {',...
        val_str,'});'] );
 
-if 1
-   for j=1:length(input_struct)
-      disp(input_struct(j));
-   end
-   %return;
-end
+%disp('Inputs to Main_Trans from fig_coll.m:');
+%for j=1:length(input_struct)
+%   disp(input_struct(j));
+%end
 
 %%main call;
 Main_Trans(input_struct);

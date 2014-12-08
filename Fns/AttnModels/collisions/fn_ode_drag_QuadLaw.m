@@ -1,4 +1,4 @@
-function [alp,WW,tau_init,T_relax] = fn_ode_drag_law(...
+function [alp,WW,tau_init,T_relax] = fn_ode_drag_QuadLaw(...
             prams1,coll_inputs,zz0,VV0,prams2)
 %% need: om,d=draft,cD_dim,h,RAO_surge
 %% prams1      = [om,d,RAO_surge,h]; d=draft
@@ -7,6 +7,12 @@ function [alp,WW,tau_init,T_relax] = fn_ode_drag_law(...
 %% also:
 %% zz0: time (\omega*t) at moment of collision
 %% VV0: velocity at moment of collision
+%%
+%% drag law: tau=-rhow*cD*|v'|v'
+%%  > cD non-dimensional
+%%  > v' = v_disc-v_wave,
+%%          where v_wave is the velocity the disc would have been
+%%          moving at if it hadn't had a collision
 
 do_test  = 0;
 rhow     = 1025;
@@ -19,7 +25,7 @@ tau_init = [0;0];%% initial (max) stress
 
 if nargin==0
    do_test     = 1;
-   cD_dim      = 1e6;%%kg/m^3
+   cD          = 1e3;%% - nondimensional
    A           = 2e-2;
    h           = 3.3e-2;
    d           = 1.8e-2;%%draft
@@ -46,14 +52,14 @@ if nargin==0
    clear omt1 omt2 V1 V2;
    
    prams1      = [om,d,RAOsurge,h];
-   coll_inputs = [A,rest_coeff,cD_dim];
+   coll_inputs = [A,rest_coeff,cD];
    %%
    f_coll   = om/pi;%%2*f
    conc     = .77;
    cg       = 1;
    prams2   = [f_coll,conc,cg];
    clear om d RAOsurge h
-   clear A rest_coeff cD_dim
+   clear A rest_coeff cD
    clear f_coll conc cg
 end
 
@@ -67,7 +73,7 @@ h        = prams1(4);
 %% coll_inputs = [A,rest_coeff,cD_dim];%%NB currently scalars
 A           = coll_inputs(1);
 rest_coeff  = coll_inputs(2);
-cD_dim      = coll_inputs(3);
+cD          = coll_inputs(3);
 
 %% prams2   = [f_coll,conc,cg];
 f_coll   = prams2(1);
@@ -76,9 +82,9 @@ cg       = prams2(3);
 
 X        = RAOsurge*A;
 sd       = om^2/g;
-cD       = cD_dim*X/(rhow*d);%%non-dimensional drag coeff
-Wfac     = sd*(rhow*g*X^2);  %%convert work from nondimensional to dimensional
-tau_fac  = sd*(rhow*g*X);    %%convert stress from nondimensional to dimensional
+cD       = cD*X/d;            %% rescaled drag coeff
+Wfac     = sd*(rhow*g*X^2);   %% convert work from nondimensional to dimensional
+tau_fac  = sd*(rhow*g*X);     %% convert stress from nondimensional to dimensional
 
 for j=1:2
 
@@ -94,9 +100,9 @@ for j=1:2
       %solver   = @ode23;col = 'm';
       solver   = @ode45;col   = 'b';
       %%
-      [zout,v1_out]  = feval(solver,@(z,v1) stress_fun(z,v1,cD),zspan,v0);
+      [zout,v1_out]  = feval(solver,@(z,v1) stress_fun_quad(z,v1,cD),zspan,v0);
       V1_out         = -sin(zout);
-      tau_out        = tau_fac*stress_fun(zout,v1_out,cD);%%[Pa]
+      tau_out        = tau_fac*stress_fun_quad(zout,v1_out,cD);%%[Pa]
       %%
       tau0        = tau_out(1);
       tau_init(j) = tau0;
@@ -118,7 +124,7 @@ for j=1:2
          end
       end
       %%
-      W_out = cumtrapz(zout,work_fun(zout,v1_out,cD));%%nondimensional work
+      W_out = cumtrapz(zout,work_fun_quad(zout,v1_out,cD));%%nondimensional work
       W_out = Wfac*W_out;                             %%[J/m^2]
       WW(j) = W_out(jR);
       %%
@@ -135,7 +141,7 @@ for j=1:2
          xlim(zspan/pi);
          %%
          subplot(3,1,2);
-         tau_out  = stress_fun(zout,v1_out,cD);
+         tau_out  = stress_fun_quad(zout,v1_out,cD);
          plot(zout/pi,tau_out);
          xl = get(gca,'xlim');
          x  = xl(1)+.2*(xl(2)-xl(1));
@@ -288,8 +294,9 @@ end
 alp   = conc*f_coll*sum(WW)/cg;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function tau   = stress_fun(t,v1,cD)
-%%stress from drag law
+function tau   = stress_fun_quad(t,v1,cD)
+%% stress from drag law
+%% - non-dimensional
 
 V1    = -sin(t);
 y     = v1-V1;
@@ -297,13 +304,13 @@ sgn   = -sign(y);
 tau   = cD*sgn.*y.^2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function W   = work_fun(t,v1,cD)
+function W   = work_fun_quad(t,v1,cD)
 %% integrand stress*[dx/dt]
 %% since \int stress*dx=\int stress*[dx/dt]*dt
 %% dx/dt=relative velocity, y=v1-V1
 
 V1    = -sin(t);
 y     = v1-V1;
-tau   = stress_fun(t,v1,cD);
+tau   = stress_fun_quad(t,v1,cD);
 %W     = abs(tau.*v1);
 W     = abs(tau.*y);%%relative velocity

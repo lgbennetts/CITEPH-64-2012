@@ -39,7 +39,7 @@
 % DO_MODEL   = analyse model on/off
 % Vert_Modes = number of vertical modes used for EMM method (if used)
 % model_pers = abscissa (periods) used for model
-% what_model = what model to use (see Main_AttnModels)
+% what_mod   = what model to use (see Main_AttnModels)
 %
 % L Bennetts Sept 2013 / Adelaide
 
