@@ -10,3 +10,5 @@
 *.gz
 Docs/CITEPH/*
 *.DS_Store
+tmp-mas
+tmp-dev
