@@ -16,3 +16,5 @@ Main_Trans         # to perform comparisons of transmission by multipe disks
 Main_CollisionData # to analyse collision data
 
 see the help at the beginning at each of these main functions 
+
+Contact luke.bennetts@adelaide.edu.au to report problems

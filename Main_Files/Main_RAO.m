@@ -12,7 +12,7 @@
 % DO_DISP   = print data on/off
 % DO_SVFG   = save figure on/off
 % PT_TYP    = 0 (angle/inc ht); 1 (gradient/k0) 
-% SG_TYP    = 0 (surge amp/inc amp); 1 (surge amp/inc amp/tank(kh)) 
+% SG_TYP    = 0 (surge amp/inc amp); 1 (surge amp * tank(kh)/inc amp) 
 % xx        = abscissa for plot (=2 period;=3 wavelength)
 % fig       = figure handle (fig=0 picks the next available figure handle)
 % col       = colout/linestyle for data
@@ -39,9 +39,9 @@
 % Vert_Modes = number of vertical modes used for EMM method (if used)
 % model_pers = abscissa (periods) used for model
 % WHAT_MODEL = what model to use 
-%              2d     (boundary integral eqn method)
 %              2d-EMM (eigenfunction matching method)
 %              3d     (eigenfunction matching method)
+%              2d     (boundary integral eqn method - NOT AVAILABLE)
 %
 % L Bennetts Aug 2013 / Adelaide
 
@@ -59,8 +59,8 @@ end
 %% GENERAL
 
 if ~exist('DO_PLOT','var');  DO_PLOT=1; end
-if ~exist('DO_STR','var');   DO_STR=0; end
-if ~exist('DO_DISP','var');  DO_DISP=0; end
+if ~exist('DO_STR','var');   DO_STR=1; end
+if ~exist('DO_DISP','var');  DO_DISP=1; end
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 
 if ~exist('PT_TYP','var');   PT_TYP =1; end
@@ -70,7 +70,7 @@ if DO_PLOT
  if ~exist('col','var'); 
   col=' ''k.'' , ''markersize'' , 12';
   col_nl=' ''ko'' , ''markersize'' , 12';
-  col_model={' ''c'' ',' ''c'' '};
+  col_model={' ''k:'' ',' ''k-.'' '};
  end
 end
 
@@ -82,7 +82,7 @@ if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 
 %% DATA
 
-if ~exist('DO_DATA','var'); DO_DATA=0; end
+if ~exist('DO_DATA','var'); DO_DATA=1; end
 
 if ~exist('file_pre','var'); file_pre = 'Temp_data/b00'; end
 
@@ -100,7 +100,6 @@ end
 %  data_out.tint='t0=t0+4*Tp; t1=t0+10*Tp;'; 
 % end 
 
-
 if ~exist('DEL','var');      DEL=1; end
 if ~exist('DO_FPLT','var');  DO_FPLT=0; end 
 %if ~exist('DO_FPLT','var');  DO_FPLT='Aspec-signal'; end
@@ -117,14 +116,14 @@ if ~exist('errbars','var');  errbars=1; end
 
 %% MODEL 
 
-if ~exist('DO_MODEL','var');   DO_MODEL  =1; end
-if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d-EMM'; end %'3d-EMM'; end % '2d-BIE'; end % 
+if ~exist('DO_MODEL','var');   DO_MODEL  = 1; end
+if ~exist('WHAT_MODEL','var'); WHAT_MODEL='2d-EMM'; end %'3d-EMM'; end % 
 
-if ~exist('Vert_Modes','var'); Vert_Modes=2e2; end
-if DO_DISP; model_pers=HT(2,ht_inds); end
-% if ~exist('model_pers','var'); model_pers=fn_WhatTestData(79,'Regular',0); 
-%  model_pers = unique(model_pers(2,:)); end
-if ~exist('model_pers','var'); model_pers=0.6:0.05:2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
+if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
+if ~exist('model_pers','var'); model_pers=fn_WhatTestData(39,'Regular',0); 
+ model_pers = unique(model_pers(2,:)); end
+%if ~exist('model_pers','var'); model_pers=0.6:0.02:2; end
 
 count_rbm=1;
 for loop_rbm=1:length(rbms)
@@ -141,12 +140,37 @@ for loop_rbm=1:length(rbms)
 end
 clear count_rbm
   
+% Consistency for other users:
+
+if exist('OTHER_USR','var')
+ if PT_TYP==0
+  cprintf('r','>>> Setting PT_TYP=1\n')
+  PT_TYP =1;
+ end
+ if SG_TYP==0
+  cprintf('r','>>> Setting SG_TYP=1\n')
+  SG_TYP =1;
+ end
+ if ~strcmp(Tpers,'Tpers=fn_Tpers(Tp);')
+  cprintf('r','>>> Setting Tpers=fn_Tpers(Tp)\n')
+  Tpers='Tpers=fn_Tpers(Tp);';
+ end
+ if ~strcmp(data_out.tint,'[t0,t1] = fn_tint(tvec,t0,Tp,Tpers);')
+  cprintf('r','>>> Setting data_out.tint=[t0,t1] = fn_tint(tvec,t0,Tp,Tpers)\n')
+  data_out.tint='[t0,t1] = fn_tint(tvec,t0,Tp,Tpers);';
+ end
+ if length(probes)~=10
+  cprintf('r','>>> Setting probes=1:10\n')
+  probes=1:10;
+ end
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%%%%%%%%%%%%%%%%%%%%%% NUMERICAL MODEL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if DO_MODEL
- 
+      
  %% 2d model:
  %%% Using EMM during runtime:
  
@@ -158,7 +182,7 @@ if DO_MODEL
   for loop_p=1:length(model_pers)
    if SG_TYP; RAO_mod='heave pitch/k surge-norm';
    else RAO_mod='heave pitch/k surge-nonorm'; end
-   out = fn_2dFloe('freq',1/model_pers(loop_p),Param,...
+   out = fn_ElasticRaft2d('freq',1/model_pers(loop_p),Param,...
     RAO_mod,1,0,0); clear RAO_mod
    for loop_out=1:length(model_outs)
     count=1;
@@ -186,7 +210,7 @@ if DO_MODEL
   
  elseif strfind(WHAT_MODEL,'2d-BIE')
   
-  cprintf('red','>>> WHAT_MODEL=2d-BIE no longer available!!! \n')
+  cprintf('red','>>> WHAT_MODEL=2d-BIE not available!!! \n')
   return
   
   if exist('OTHER_USR','var')
@@ -387,7 +411,7 @@ if DO_DATA
        (inc_amp(count_ht)+0.001).*tkh;
       RAO(count_ht,loop_rbm)       = RAO(count_ht,loop_rbm)/...
        inc_amp(count_ht).*tkh;
-     else
+     else % PITCH
       k0=2*pi/HT(3,ht_inds(count_ht))/.99;
       RAO_std(1,count_ht,loop_rbm) = tan(pi*(RAO(count_ht,loop_rbm)+0.1)/180)./...
        (inc_amp(count_ht)-0.001)/k0;
@@ -396,7 +420,7 @@ if DO_DATA
       RAO(count_ht,loop_rbm)=tan(pi*RAO(count_ht,loop_rbm)/180)/...
        inc_amp(count_ht)/k0; clear k0
      end % END IF HEAVE OR SURGE OR SWAY
-    else
+    else % PT_TYP=0
      if or(~isempty(strfind(probe,'surge')),~isempty(strfind(probe,'sway')))
       if SG_TYP; tkh = tanh(3.1*2*pi/HT(3,ht_inds(count_ht))/.99);
       else tkh=1+0*HT(3,ht_inds(count_ht)); end
@@ -405,14 +429,14 @@ if DO_DATA
       RAO_std(2,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)...
        ./(inc_amp+inc_std).*tkh;
       RAO(count_ht,loop_rbm)=RAO(count_ht,loop_rbm)/inc_amp(count_ht).*tkh;
-     else
+     else % HEAVE OR PITCH
       RAO_std(1,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)./(inc_amp-inc_std);
       RAO_std(2,count_ht,loop_rbm) = RAO(count_ht,loop_rbm)./(inc_amp+inc_std);
       RAO(count_ht,loop_rbm)=RAO(count_ht,loop_rbm)/inc_amp(count_ht);
      end % END IF SURGE or SWAY
     end % END IF PT_TYP
     clear out
-   end
+   end % END LOOP_RBM
    clear outputs
    count_ht=count_ht+1;
   end
@@ -438,16 +462,16 @@ if DO_DATA
   dum_RAO = zeros(7,length(rbms));
   dum_RAO_std = zeros(2,7,length(rbms));
   
-  for lp=1:length(rbms)
-   if ~isempty(strfind(rbms{lp},'heave'))
+  for loop_rbm=1:length(rbms)
+   if ~isempty(strfind(rbms{loop_rbm},'heave'))
     dum_dat=load('Data/RAO_Heave');
     dum_RAO(:,loop_rbm)=dum_dat.Hv;
     dum_RAO_std(:,:,loop_rbm)=dum_dat.Hv_std;
-   elseif ~isempty(strfind(rbms{lp},'pitch'))
+   elseif ~isempty(strfind(rbms{loop_rbm},'pitch'))
     dum_dat=load('Data/RAO_Pitch');
     dum_RAO(:,loop_rbm)=dum_dat.Pt;
     dum_RAO_std(:,:,loop_rbm)=dum_dat.Pt_std;
-   elseif ~isempty(strfind(rbms{lp},'surge'))
+   elseif ~isempty(strfind(rbms{loop_rbm},'surge'))
     dum_dat=load('Data/RAO_Surge');
     dum_RAO(:,loop_rbm)=dum_dat.Sg;
     dum_RAO_std(:,:,loop_rbm)=dum_dat.Sg_std;
@@ -477,8 +501,13 @@ end % IF DO_DATA
 
 if DO_PLOT
  if ~exist('fig','var'); fig = fn_getfig(length(rbms)); end
- %%% Higest amplitude waves
- [~,IA] = unique(HT(2,ht_inds)); IA = [0,IA];
+ %%% Highest amplitude waves
+ [~,IA] = unique(HT(2,ht_inds));
+ if size(IA,1)==1
+    IA = [0,IA];
+ else
+    IA = [0,IA.'];
+ end
  jj_nl=[]; ct=1;
  for loop=find(diff(IA)>1)
   dum_inds=IA(loop)+1:IA(loop+1);
@@ -513,7 +542,7 @@ if DO_PLOT
      prb_str=[prb_str ', ' int2str(probes(loop))];
     end
     title([rbms{loop_rbm} ': ' Tpers ' periods; interval ' ...
-     data_out.tint ' probes ' prb_str],'fontsize',14)
+     data_out.tint ' probes ' prb_str],'fontsize',14,'interpreter','none')
    end % END DO_STR
   end
   if DO_STR
@@ -547,21 +576,19 @@ if DO_PLOT
    tm=[sprintf('%0.2d',clockout(4)) ':' sprintf('%0.2d',clockout(5)) ':' sprintf('%0.2d',floor(clockout(6)))];
    saveas(figure(fig(loop_rbm)),['Figs/RAO_' rbms{loop_rbm} '_' dt '@' tm '.fig']);
   end
-  fn_fullscreen(fig(loop_rbm))
+  %fn_halfscreen(fig(loop_rbm))
  end % END LOOP_RBM
 end % END DO_PLOT
 
 %% DISPLAY
 
 if DO_DISP
- cprintf(0.4*[1,1,1],['Periods:\n'])
- disp(HT(2,ht_inds))
  for loop_rbm=1:length(rbms)
   if and(~exist('k0','var'),...
     or(or(or(~isempty(strfind(rbms{loop_rbm},'surge')),...
-     ~isempty(strfind(rbms{loop_rbm},'sway'))),...
-     ~isempty(strfind(rbms{loop_rbm},'pitch'))),...
-     ~isempty(strfind(rbms{loop_rbm},'roll'))))
+    ~isempty(strfind(rbms{loop_rbm},'sway'))),...
+    ~isempty(strfind(rbms{loop_rbm},'pitch'))),...
+    ~isempty(strfind(rbms{loop_rbm},'roll'))))
    bed=3.1; k0=zeros(1,length(ht_inds));
    count_ht=1;
    for loop_ht=ht_inds
@@ -574,39 +601,68 @@ if DO_DISP
   end % end calc k0
  end
  
- for loop_rbm=1:length(rbms)
-  count_ht=1;
-  for loop_ht=ht_inds
+ if DO_DATA
+  cprintf(0.4*[1,1,1],['Periods:\n'])
+  disp(HT(2,ht_inds))
+  for loop_rbm=1:length(rbms)
+   count_ht=1;
+   for loop_ht=ht_inds
+    if or(~isempty(strfind(rbms{loop_rbm},'surge')),...
+      ~isempty(strfind(rbms{loop_rbm},'sway')))
+     if SG_TYP
+      disp_vec(:,count_ht)=[RAO(count_ht,loop_rbm)];
+     else
+      disp_vec(:,count_ht)=[RAO(count_ht,loop_rbm);...
+        coth(k0(count_ht)*bed)];
+     end
+    elseif or(~isempty(strfind(rbms{loop_rbm},'pitch')),...
+      ~isempty(strfind(rbms{loop_rbm},'roll')))
+     if SG_TYP
+      disp_vec(:,count_ht)=[RAO(count_ht,loop_rbm)];
+     else
+      disp_vec(:,count_ht)=[RAO(count_ht,loop_rbm)*inc_amp(count_ht);...
+      tan(pi*RAO(count_ht,loop_rbm)*inc_amp(count_ht)/180)/k0(count_ht);...
+      RAO(count_ht,loop_rbm)];
+     end
+    else
+     disp_vec(:,count_ht)=[RAO(count_ht,loop_rbm)];
+    end
+    count_ht=count_ht+1;
+   end % end loop_ht
    if or(~isempty(strfind(rbms{loop_rbm},'surge')),...
      ~isempty(strfind(rbms{loop_rbm},'sway')))
-   disp_vec(:,count_ht)=[RAO(count_ht,loop_rbm);...
-    coth(k0(count_ht)*bed)];
-  elseif or(~isempty(strfind(rbms{loop_rbm},'pitch')),...
-    ~isempty(strfind(rbms{loop_rbm},'roll')))
-   disp_vec(:,count_ht)=[RAO(count_ht,loop_rbm)*inc_amp(count_ht);...
-    tan(pi*RAO(count_ht,loop_rbm)*inc_amp(count_ht)/180)/k0(count_ht);...
-    RAO(count_ht,loop_rbm)];
-  else
-   disp_vec(:,count_ht)=[RAO(count_ht,loop_rbm)];
-  end
-  count_ht=count_ht+1;
-  end % end loop_ht
-  if or(~isempty(strfind(rbms{loop_rbm},'surge')),...
-     ~isempty(strfind(rbms{loop_rbm},'sway')))
-   cprintf(0.4*[1,1,1],[rbms{loop_rbm} ' RAO, eccentricity:\n'])
-  elseif or(~isempty(strfind(rbms{loop_rbm},'pitch')),...
-    ~isempty(strfind(rbms{loop_rbm},'roll')))
-   cprintf(0.4*[1,1,1],[rbms{loop_rbm} ' angle (degs), tan(ang)/k, angle/amp:\n'])
-  else
-   cprintf(0.4*[1,1,1],[rbms{loop_rbm} ' RAO:\n'])
-  end
-  disp(disp_vec)
-  if DO_MODEL
+    if SG_TYP
+     cprintf(0.4*[1,1,1],[rbms{loop_rbm} ' *tanh(kh):\n'])
+    else
+     cprintf(0.4*[1,1,1],[rbms{loop_rbm} ' RAO, eccentricity:\n'])
+    end
+   elseif or(~isempty(strfind(rbms{loop_rbm},'pitch')),...
+     ~isempty(strfind(rbms{loop_rbm},'roll')))
+    if PT_TYP
+     cprintf(0.4*[1,1,1],[rbms{loop_rbm} ' tan(ang)/k\n'])
+    else
+     cprintf(0.4*[1,1,1],[rbms{loop_rbm} ' angle (degs), '...
+      'tan(ang)/k, angle/amp:\n'])
+    end
+   else
+    cprintf(0.4*[1,1,1],[rbms{loop_rbm} ' RAO:\n'])
+   end
+   disp(disp_vec)
+   clear disp_vec
+  end % for loop_rbm
+ end % END IF DO_DATA
+ if DO_MODEL
+  cprintf(0.4*[1,1,1],['Periods:\n'])
+  disp(model_pers)
+  for loop_rbm=1:length(rbms)
    cprintf(0.4*[1,1,1],['Model ' model_outs{loop_rbm} ':\n'])
-   disp(RAO_model(loop_rbm,:))
-  end % END IF DO_MODEL
-  clear disp_vec
- end % for loop_rbm
+   if strfind(WHAT_MODEL,'3d')
+    disp(RAO_model(loop_rbm,:))
+   else
+    disp(RAO_model_2d(loop_rbm,:))
+   end
+  end
+ end % END IF DO_MODEL
 end % end DO_DISP
 
 return

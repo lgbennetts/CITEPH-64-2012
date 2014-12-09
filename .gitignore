@@ -1,14 +1,5 @@
-*.asv
-*.m~
-*.out
-*.aux
-*.bbl
-*.dvi
-*.log
-*.ps
 *.swp
 *.gz
 Docs/CITEPH/*
 *.DS_Store
-tmp-mas
-tmp-dev
+Main_Files/out/*

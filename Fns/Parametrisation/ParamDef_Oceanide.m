@@ -21,7 +21,7 @@ Param.thickness = 33e-3;
 Param.g = 9.81*ones(Param.Np,1);            
 
 % Density of fluid (in kg\,m^{-3})
-Param.rho_0 = 1025*ones(Param.Np,1);           
+Param.rho_0 = 1000*ones(Param.Np,1);           
 
 %%%%% Choose to give draught 1.8/100 %%%%%
 

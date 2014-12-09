@@ -1,53 +1,52 @@
-% function fn_2dFloe(TEST,fortyp,lam0,conc,Ens_size,COMM)
+% function fn_ElasticRaft2d(TEST,fortyp,lam0,conc,Ens_size,COMM)
 %
-% DESCRIPTION: THIS FUNCTION WILL CALCULATE REFLECTION & TRANSMISSION
-% COEFFICIENTS FOR FLOES OF UNIFORM THICKNESS: THE LENGTH OF THE FLOES
-% IS EITHER (A) LONG; OR (B) RANDOMLY SELECTED FROM A UNIFORM DIST.
+% DESCRIPTION: 
+%
+% THIS FUNCTION WILL CALCULATE REFLECTION & TRANSMISSION
+% COEFFICIENTS AND RAOs FOR 2D PROBLEM OF A 1D ELASTIC RAFT OF UNIFORM 
+% THICKNESS ON FINITE DEPTH FLUID: 
 %
 % nb. Attn model used in the WIM as at July 2013 (+ floe length dep)
 % nb. vertical modes cosh(k(z+h))/cosh(kh) fixed
 %
 % INPUTS:
-%
-% TEST = which problem
-%        option 1 = 'Oceanide'    
-% fortyp = 'freq' or 'wlength' or 'waveno'
-% lam_vec = a vector of forcing fortyp
-% conc = concentration of ice cover
-% Ens_size = how many members of ensemble
+%   
+% fortyp   = 'freq' or 'wlength' or 'waveno'
+% lam0     = corresponding forcing value
+% Param    = e.g. ModParam_def(ParamDef_Oceanide(RIGID),1,N,0,0)
+%            where Young's modulus = RIGID*1e9 & N vertical modes
+% outputs  = 'wavenumber', 'reflected energy', 'transmitted energy'
+%           'heave', 'pitch/k', 'surge-norm'
+% SURGE    = surge on (1, default) or off (0)
+% LONG     = long raft limit on (1) or off (0, default)
+% COMM     = comments on (1, default) or off (0)
+% Ens_size = how many members of ensemble (default=1)
 %            only necessary when long floe limit off
-% COMM = comments on or off
-% Nd   = number of vertical modes
-%
-% OUTPUTS:
-%
-% TT    = Transmitted energy
+% DO_PLOT  = plot raft (fig handle) or not (0, default)
+% col      = colour of raft displacement (only when DO_PLOT~=0)
 %
 % EXTRA VARIABLES:
 %
 % parameter_vector = [liq_dens, ice_dens, poiss, youngs, grav, freq^2/g]
 % visc_rp          = viscosity parameter (default = 0)
 
-function out = ...
- fn_2dFloe(fortyp,lam0,Param,outputs,SURGE,LONG,COMM,Ens_size,DO_PLOT,col)
+function out = fn_ElasticRaft2d...
+ (fortyp,lam0,Param,outputs,SURGE,LONG,COMM,Ens_size,DO_PLOT,col)
 
 %% Inputs & prelims
 
 if ~exist('DO_PLOT','var'); DO_PLOT=0; end
-if ~exist('col','var');     col='r'; end
+if ~exist('col','var');     col    ='r'; end
 
 if ~exist('fortyp','var'); fortyp='freq'; end
-if ~exist('lam0','var');   lam0=1/2.5; end
+if ~exist('lam0','var');   lam0  =1/1.0; end
 
-if ~exist('LONG','var'); LONG=0; end
-if ~exist('COMM','var'); COMM=1; end
-
-if ~exist('SURGE','var'); SURGE=1; end
-
-if ~exist('RIGID','var'); RIGID=10; end
+if ~exist('SURGE','var'); SURGE=0; end
+if ~exist('LONG','var');  LONG=0; end
+if ~exist('COMM','var');  COMM=1; end
 
 if ~exist('Param','var'); Param = ParamDef_Oceanide(5); 
-    Param = ModParam_def(Param,1,5,0,0); end
+    Param = ModParam_def(Param,1,50,0,0); end
 
 if ~LONG; if ~exist('Ens_size','var'); Ens_size = 1; end; end
 
@@ -99,12 +98,7 @@ clear damp spring
 
 %-------------------------------------------------------------------------%
 
-%visc_rp = 0; %1e-1; %1e-1; % 
-
 %% FREE-SURF ROOTS
-
-%Roots0 = roots_rp0(parameter_vector, 0, Vert_Dim-1, 0, depth, 0);
-%Roots0=Roots0.';
 
 Roots0 = zeros(Vert_Dim,1); 
 
@@ -124,7 +118,7 @@ else mat_Q0=0*mat_A0(:,1); end
 
 if COMM
   cprintf([0.3,0.3,0.3],'------------------------------------------\n')
-  cprintf([0.3,0.3,0.3],'----------   START: 2d Floe    -----------\n')
+  cprintf([0.3,0.3,0.3],'------   START: 2d elastic raft    -------\n')
 end
 
 if COMM
@@ -206,7 +200,8 @@ else %%% NO LONG FLOE LIMIT %%%
   Rm = Rm + Sm_sg*X_sg0;
   Tm = Tm + Sp_sg*X_sg0;
   Rp = Rp + Sm_sg*X_sg1;
-  Tp = Tp + Sp_sg*X_sg1; clear X_sg0 X_sg1
+  Tp = Tp + Sp_sg*X_sg1; %clear X_sg0 X_sg1
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       
   r_vec(loop) = abs(Rm(1,1))^2;
   t_vec(loop) = abs(Tm(1,1))^2;      
@@ -246,7 +241,8 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
  dum_M(v1,v1)=eye(Vert_Dim+2); dum_M(v2,v2)=eye(Vert_Dim+2);
  dum_M(v1,v2)=-Rp0*diag(El); dum_M(v2,v1)=-Rp0*diag(El);
  
- dum_v(v1,1) = Tm0*am;       dum_v(v2,1) =Tm0*bm;
+ dum_v(v1,1) = Tm0*am + Sp0_sg*(X_sg0*am+X_sg1*bm);       
+ dum_v(v2,1) = Tm0*bm - Sp0_sg*(X_sg0*am+X_sg1*bm);
  
  dum_amps = dum_M\dum_v;
  
@@ -366,7 +362,7 @@ if COMM
    '\n'])
    %' (eccentricity=' num2str(coth(Roots0(1)*depth)) ') \n'])
  end 
- cprintf([0.3,0.3,0.3],'-----------    END: 2d Floe   ------------\n')
+ cprintf([0.3,0.3,0.3],'-------    END: 2d elastic raft   --------\n')
  cprintf([0.3,0.3,0.3],'------------------------------------------\n')
 end
 
