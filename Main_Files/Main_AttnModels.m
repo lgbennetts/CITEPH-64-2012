@@ -144,6 +144,8 @@ if strfind(PRBS,'2d EMM')
      alp_scat  = alp_scat*conc_true/D; %%energy attenuation coefficient per meter
      % {Tp(loop_p),alp_scat,RAOsurge}
      scat_pram = [alp_scat,RAOsurge];
+%    disp('inputs to fn_attn_collisions:')
+%    disp([Tp(loop_p),scat_pram])
      clear alp_scat RAOsurge;
      %%
      om        = 2*pi/Tp(loop_p);
@@ -158,6 +160,11 @@ if strfind(PRBS,'2d EMM')
      tank_pram = [Param.MIZ_length,Param.bed];%%MIZ width and tank depth
      out2      = fn_attn_collisions(...
          collision_inputs,wave_pram,ice_pram,tank_pram,scat_pram,conc_true,sep);
+%     for j=1:4
+%        disp(out2(j).name)
+%        disp(out2(j).value)
+%     end
+
      E_trans_coll(loop_p,:)   = out2(1).value.';%%transmitted energy
      E_ratio(loop_p,:)        = out2(2).value.';%%ratio to no_coll
      phase_fac(loop_p)        = out2(3).value;

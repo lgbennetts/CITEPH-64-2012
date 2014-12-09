@@ -28,7 +28,7 @@ if 0
    %% do collisions:
    %% - no drag, only restitution coefficient
    wave_amp          = 1e-2*[1;1.5;2;4;5];
-   rest_coeff        = .05;
+   rest_coeff        = .9;
    collision_inputs  = [wave_amp,rest_coeff+0*wave_amp];
    name_str          = [name_str,';', ' ''collision_inputs'' '];
    val_str           = [val_str, ';', '   collision_inputs   '];
@@ -36,8 +36,8 @@ else
    %% do collisions:
    %% - drag, only restitution coefficient
    wave_amp          = 1e-2*[1;1.5;2;4;5];
-   rest_coeff        = .05;
-   drag_coeff        = 1;
+   rest_coeff        = .9;
+   drag_coeff        = 1.5e-2;
    collision_inputs  = [wave_amp,rest_coeff+0*wave_amp,drag_coeff+0*wave_amp];
    name_str          = [name_str,';', ' ''collision_inputs'' '];
    val_str           = [val_str, ';', '   collision_inputs   '];

@@ -2,7 +2,7 @@
 %% Author: Timothy Williams
 %% Date: 20140910, 15:40:45 CEST
 
-function [alp,out2] = attn_coeff_collisions(...
+function [alp,out2] = fn_attn_coeff_collisions(...
    coll_inputs,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll)
 %% CALL: alp = attn_collisions(wave_pram,ice_pram,RAOsurge,conc,sep)
 %% NB attenuation dependent on wave amplitude;

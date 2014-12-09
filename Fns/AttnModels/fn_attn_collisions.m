@@ -12,24 +12,29 @@ SAVE_FIG = 1;%%save figure (applies only if do_test==1)
 
 if nargin==0
    do_test  = 1;
+
+   %% test values of period, atten coeff & RAO:
+   Pr = [0.600000000000000   1.338103972350944   0.100165667108768;
+         0.700000000000000   0.747557856183909   0.052160250017141;
+         0.800000000000000   0.348147985774269   0.071685650316035;
+         0.900000000000000   0.130727294306743   0.248405897948845;
+         1.000000000000000   0.040483625102722   0.424789743445342;
+         1.100000000000000   0.010949152443493   0.568508129170096;         
+         1.200000000000000   0.002741119333405   0.675795470159642;
+         1.300000000000000   0.000663042702987   0.753782222015318;
+         1.400000000000000   0.000158591732050   0.810410234457964;
+         1.500000000000000   0.000037663265687   0.851899193743405;
+         1.600000000000000   0.000008732130036   0.882717732096967;
+         1.700000000000000   0.000001908850026   0.906017578886554;
+         1.800000000000000   0.000000361113044   0.924079514969838;
+         1.900000000000000   0.000000046705884   0.938600332994220;
+         2.000000000000000   0.000000000934621   0.950887407839559];
+
+   j_test   = find(Pr(:,1)==.9);
+   om       = 2*pi/Pr(j_test,1);
+   alp_scat = Pr(j_test,2);
+   RAOsurge = Pr(j_test,3);
    %%
-   if 0
-      om       = 2*pi/.6;
-      alp_scat = 1.338103972350944;
-      RAOsurge = 0.100165667108768;
-   elseif 1
-      om       = 2*pi/.7;
-      alp_scat = 0.747557856183909;
-      RAOsurge = 0.052160250017141;
-   elseif 1
-      om       = 2*pi/1.1;
-      alp_scat = 0.010949152443493;
-      RAOsurge = 0.568508129170096;
-   elseif 1
-      om       = 2*pi/1.5;
-      alp_scat = 3.766326568716634e-05;
-      RAOsurge = 0.851899193743405;
-   end
    k           = om^2/g;
    cp          = om/k;
    wave_pram0  = [om,k];
@@ -48,9 +53,9 @@ if nargin==0
          50e-2    0.9];
    else
       %%add drag
-      A0          = 20e-2;%+zeros(5,1);
+      A0          = 20e-2+zeros(2,1);
       rest_coeff  = .9+0*A0;
-      cD          = 1e4+0*A0;%%non-dim (linear law)
+      cD          = 1e3+0*A0;%%non-dim (linear law)
       coll_inputs = [A0,rest_coeff,cD];
       clear cD;
    end
@@ -126,16 +131,19 @@ if DO_DRAG & COLL
 
    for jd   = 1:Ncoll
       ci0   = coll_inputs(jd,:);
-      omt0  = [out2(1).value,out2(2).value];%%collision times
-      vel0  = [out2(1).value,out2(2).value];%%collision velocities
+      omt0  = [out2(1).value(jd),out2(2).value(jd)];%%collision times
+      vel0  = [out2(3).value(jd),out2(4).value(jd)];%%collision velocities
       %%
       drag_prams1 = [om,d,RAOsurge,h];
       drag_prams2 = [f_coll,conc,cg];
       %%
+      %drag_fxn,drag_prams1,ci0,omt0,vel0,drag_prams2
       [ad,WW,tau_init,T_relax] = feval(drag_fxn,...
          drag_prams1,ci0,omt0,vel0,drag_prams2);
       %%
-      alp_drag(jd) = ad;
+      if ~isnan(ad)
+         alp_drag(jd) = ad;
+      end
    end
    ad_all(:,1) = alp_drag;
    alp         = alp+alp_drag;
@@ -162,14 +170,15 @@ for n=2:nx+1
       alp_drag = 0*A0;
       for jd   = 1:Ncoll
          ci1   = coll_inputs(jd,:);
-         omt0  = [out2(1).value,out2(2).value];%%collision times
-         vel0  = [out2(1).value,out2(2).value];%%collision velocities
+         omt0  = [out2(1).value(jd),out2(2).value(jd)];%%collision times
+         vel0  = [out2(3).value(jd),out2(4).value(jd)];%%collision velocities
          %%
          [ad,WW,tau_init,T_relax] = feval(drag_fxn,...
             drag_prams1,ci1,omt0,vel0,drag_prams2);
          %%
-         alp_drag(jd)   = ad;
-         % {ad,alp_coll}
+         if ~isnan(ad)
+            alp_drag(jd)   = ad;
+         end
       end
       ad_all(:,n) = alp_drag;
       alp         = alp+alp_drag;

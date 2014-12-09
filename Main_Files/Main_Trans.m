@@ -745,6 +745,9 @@ if DO_PLOT
  %%% MODEL %%%
  %%%%%%%%%%%%%
  if DO_MODEL
+  disp('Periods:');
+  disp(model_pers.');
+
   hold on
   if strfind(what_mod,'2d BIE')
    eval(['plot(model_pers_bie,trans_model_bie,' col_model ')'])
@@ -757,9 +760,10 @@ if DO_PLOT
    if DO_LEGEND==1
       leg_str  = ' ''No collisions'' ';
    end
+   disp('Model results - no collisions:');
+   disp(trans_model.');
   end
   if  exist('trans_model_coll','var')
-     'hey, plotting collisions!'
      Namp   = size(collision_inputs,1);
      for j=1:Namp
         plt(j+1)  = plot(model_pers,trans_model_coll(:,j),col_coll{j});
@@ -768,6 +772,9 @@ if DO_PLOT
      end
      eval(['leg = legend(plt,',leg_str,',''Location'',''SouthEast'');']);
      GEN_font(leg);
+     %%
+     disp('Collision model results:');
+     disp(trans_model_coll);
   end
   hold off
  end % END IF DO_MODEL
