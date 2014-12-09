@@ -1,5 +1,5 @@
 % function out = ...
-%  fn_ElasticRaft2d_WP2009(fortyp,lam0,Param,outputs,LONG,COMM,Ens_size,DO_PLOT,col)
+%  fn_ElasticRaft2d_WP2009(fortyp,lam0,Param,outputs,SURGE,LONG,COMM,Ens_size,DO_PLOT,col)
 %
 % DESCRIPTION: THIS FUNCTION WILL CALCULATE REFLECTION & TRANSMISSION
 % COEFFICIENTS FOR FLOES OF UNIFORM THICKNESS: THE LENGTH OF THE FLOES
@@ -48,9 +48,13 @@
 %% 'pitch/k'               P=[pitch RAO]/k0 => pitch=[pitch RAO]*inc_amp=P*(ka) ie P=pitch/steepness
 %% 'pitch-ang'             180*P/pi
 
+%% SURGE:
+%% 'surge-nonorm'          surge RAO (m for 1m amplitude)      abs(u_sg)
+%% 'surge-norm'            surge normalised by ??????????      abs(u_sg*tanh(k0*depth))
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+% SURGE=0/1 surge on/off
 % LONG=0/1  long floe approx on/off
 % COMM = comments on or off
 % Ens_size = how many members of ensemble
@@ -68,18 +72,18 @@
 % visc_rp          = viscosity parameter (default = 0)
 
 function out = ...
- fn_2dFloe_WP2009(fortyp,lam0,Param,outputs,LONG,COMM,Ens_size,DO_PLOT,col)
+ fn_2dFloe_WP2009(fortyp,lam0,Param,outputs,SURGE,LONG,COMM,Ens_size,DO_PLOT,col)
 
 %Model used
 smod  = 'Williams & Porter (2009) model';
 
 %% Inputs & prelims
 
-if ~exist('DO_PLOT','var'); DO_PLOT=1; end
+if ~exist('DO_PLOT','var'); DO_PLOT=0; end
 if ~exist('col','var');     col='r'; end
 
 if ~exist('fortyp','var'); fortyp='freq'; end
-if ~exist('lam0','var');   lam0=1/1.5; end
+if ~exist('lam0','var');   lam0=1/2.5; end
 
 if ~exist('LONG','var'); LONG=0; end
 %if LONG==0
@@ -90,21 +94,28 @@ if ~exist('LONG','var'); LONG=0; end
 
 if ~exist('COMM','var'); COMM=1; end
 
+if ~exist('SURGE','var'); SURGE=0; end
+if SURGE==1
+   SURGE = 0;
+   disp(['Surge not yet possible in ',smod,':'])
+   disp(['Setting SURGE=0'])
+end
+
+
 %if ~exist('RIGID','var'); RIGID=10; end
 
 if ~exist('Param','var');
-   Param = ParamDef_Oceanide(5);
+   Param = ParamDef_Oceanide(5); 
  end
 
 if ~LONG; if ~exist('Ens_size','var'); Ens_size = 1; end; end
 
 if ~exist('outputs','var'); 
- outputs='transmitted energy || heave || pitch/k || surge-norm'; end
+ outputs='transmitted energy heave pitch/k surge-norm'; end
 
 depth = Param.bed;
 
 Forcing = Force_def(Param.g(1), depth, fortyp, lam0);
-fortyp  = 'freq';%%so comments are correct if fortyp is not initially 'freq'
 
 
 thickness = Param.thickness;
@@ -165,6 +176,8 @@ parameter_vector = [Param.rho_0, Param.rho, Param.nu, Param.E, ...
 %% end
 %% 
 %% mat_A0 = wtd_cosh_cosh(Vert_Dim, Roots0, depth);    
+%% if SURGE; mat_Q0 = fn_Qmat(depth,draught,Roots0); 
+%% else mat_Q0=0*mat_A0(:,1); end
 
 %% Begin calculations:
 
@@ -174,9 +187,13 @@ if COMM
 end
 
 if COMM
- cprintf([0.3,0.3,0.3],['>>> ' fortyp ' = ' num2str(Forcing.f) '\n'])
+ cprintf([0.3,0.3,0.3],['>>> ' fortyp ' = ' num2str(lam0) '\n'])
  if ~LONG 
-  cprintf([0.3,0.3,0.3],['>>> without surge (not possible with Williams & Porter (2009)) \n'])
+  if SURGE
+   cprintf([0.3,0.3,0.3],['>>> with surge \n'])
+  else
+   cprintf([0.3,0.3,0.3],['>>> without surge \n'])
+  end
   cprintf([0.3,0.3,0.3],['>>> floe length = ' num2str(floe_length) '\n'])
   cprintf([0.3,0.3,0.3],['>>> ensemble = ' num2str(Ens_size) '\n'])
  else
@@ -190,6 +207,10 @@ end
      
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% ONE INTERFACE 
+
+%[Rm0,Tm0,Rp0,Tp0,Sm0_sg,Sp0_sg,Roots,c_vec] = ...
+%            fn_WaterIce(parameter_vector, Vert_Dim, DimG, Roots0, ... 
+%            mat_A0, mat_Q0, thickness, depth, draught, al, be, SURGE);
 
 %%inputs for SUB_RTstep_Gal_manymodes.m 
 hh          = [0,Param.thickness];
@@ -211,13 +232,9 @@ EE       = [0,Param.E;
             0,Param.rho;
             0,Param.nu];
 rho_wtr  = Param.rho_0;
-DO_KC    = 1;
 
-%[Rp,Tp,Rm,Tm,Smat,Y_Gal] = SUB_RTstep_Gal_manymodes(...
-%      phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr);
-[Rp,Tp,Rm,Tm,Smat,Y_Gal] = SUB_TMstep_Gal(...
-      phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr,DO_KC);
-
+[Rp,Tp,Rm,Tm,Smat,Y_Gal] = SUB_RTstep_Gal_manymodes(...
+			 phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr);
 %%water wavenumbers;
 Roots0   = Y_Gal{1}{1}; 
 k0       = Roots0(1);%%real root
@@ -232,8 +249,8 @@ Roots = Y_Gal{1}{2};
 k_ice = Roots(1);%%real root
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
            
-if COMM; cprintf([0.3,0.3,0.3],['>>> ice lam || k   = ' ...
-  num2str(2*pi/Roots(1)) ' || ' num2str(Roots(1)) '\n']); end           
+if COMM; cprintf([0.3,0.3,0.3],['>>> ice lam/k   = ' ...
+  num2str(2*pi/Roots(1)) '/' num2str(Roots(1)) '\n']); end           
         
 if LONG %%% LONG FLOE LIMIT %%%
  
@@ -267,8 +284,14 @@ else %%% NO LONG FLOE LIMIT %%%
          b1_w        = B1.*disp_fac2/disp_fac1(1);%%waves from right edge in expansion for displacement
       end
 
-      %%SURGE not accounted for
-      u_sg  = 0;
+      %[Rm,Tm,Rp,Tp,Sm_sg,Sp_sg] = ...
+      %          fn_IndFloe(dum_fl, Rm0, Tm0, Rp0, Tp0, Sm0_sg, Sp0_sg, Roots);
+       
+      if SURGE
+         %%not done
+      else
+         u_sg  = 0;
+      end
       
       r_vec(loop) = abs(R(1))^2;
       t_vec(loop) = abs(T(1))^2;
@@ -292,7 +315,6 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
  
    x_res          = 501;
    [wts,xx,fac]   = fn_NumInt(x_res,-floe_length/2,floe_length/2);
-   xx_ext         = (floe_length/2+2*floe_length)*linspace(-1,1,x_res);
 
    ExL      = exp(1i*(xx+floe_length/2)*Roots(1:M_inner).');
    ExR      = flipud(ExL);
@@ -302,7 +324,6 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
    %%% Plot
    if DO_PLOT
       figure(DO_PLOT)
-      clf;
       
       h1 = subplot(2,1,1); hold on; set(h1,'box','on')
       h2 = subplot(2,1,2); hold on; set(h2,'box','on')
@@ -312,8 +333,7 @@ if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
       %%floe profile
       plot(h1,xx,real(eta),col)
       ylabel(h1,'Re(\eta)','fontsize',14)
-      title(h1,{['floe profile (' col ') and incident wave (k:)'],...
-                ['period = ',num2str(1/lam0),'s']},'fontsize',14)
+      title(h1,['floe profile (' col ') and incident wave (k:)'],'fontsize',14)
 
       %%incident wave
       plot(h2,xx_ext,imag(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
