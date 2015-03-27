@@ -1,7 +1,7 @@
 % function out=fn_WhatTestData(conc,TYP)
 %
 % DESCRIPTION: produces the periods, heights, wavelengths (non-dim wrt floe diam)
-%              and steepnesses for the expts
+%              and steepnesses for the expts, ka
 %
 % INPUTS:
 %
@@ -199,8 +199,10 @@ Param = ParamDef_Oceanide;
 
 for loop=1:size(out,2)
  Forcing = Force_def(Param.g(1), Param.bed, 'freq', 1/out(2,loop));
- out(3,loop) = Forcing.lam0/.99;
- out(4,loop) = out(3,loop)\out(1,loop)/10;
+ out(3,loop) = Forcing.lam0/.99;   % lambda/diameter = lambda/2R
+ %out(3,loop) = 2*pi*0.495/Forcing.lam0; % kR
+ out(4,loop) = out(3,loop)\out(1,loop)/10; % 2R*a/lambda ???
+ out(5,loop) = 2*pi*0.001*out(1,loop)/Forcing.lam0; % ka
 end
 
 clear Forcing
