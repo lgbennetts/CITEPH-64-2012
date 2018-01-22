@@ -81,10 +81,7 @@ if nargin==0
    if 1
       %% test without drag
       rest_coeff  = [1
-                     .8
-                     .6
-                     .4
-                     .2
+                     .5
                      0];
       A0 = 20e-2+0*rest_coeff;
       coll_inputs.incident_amplitudes  = A0;
@@ -113,7 +110,7 @@ if nargin==0
    ice_pram    = [D,h,rhoi];
    clear D h rhoi
    %%
-   scat_pram   = [alp_scat,RAOsurge];
+   scat_pram   = [alp_scat,RAOsurge]
    clear alp_scat RAOsurge
    %%
    MIZwidth    = 5;
@@ -155,6 +152,7 @@ A_all(:,1)  = A0;
 %%
 ac_all      = zeros(Ncoll,nx+1);
 ac_all(:,1) = alp_coll;
+
 
 %% ========================================================
 %% finite difference
@@ -274,8 +272,13 @@ if do_test
    hold on;
    plot(x,exp(-alp_scat*x),'--');
    [Am,jm]  = max(A0);
-   ttl   = title(['Period: ',num2str(2*pi/om),...
-                  's; Rest. Coeff.: ', num2str(coll_inputs2(1,2))]);
+   if ~DO_DRAG
+      ttl   = title(['Period: ',num2str(2*pi/om),...
+                  's; no drag']);
+   else
+      ttl   = title(['Period: ',num2str(2*pi/om),...
+                  's; using drag']);
+   end
    GEN_font(ttl);
    hold off;
    GEN_proc_fig('x, m','E/E0');
@@ -326,9 +329,19 @@ if do_test
    eval(cmd);
 
    if SAVE_FIG%%save figure
-      figname  = ['eg_coll_T',num2str(2*pi/om),...
-                  's_rc', num2str(rc(1)),'.eps']
-      saveas(gcf,['out/',figname],'epsc');
+      outdir   = 'out';
+      if ~exist(outdir,'dir')
+         mkdir(outdir)
+      end
+      if ~DO_DRAG
+         figname  = ['eg_coll_T',num2str(2*pi/om),...
+                  's_NoDrag.eps']
+      else
+         figname  = ['eg_coll_T',num2str(2*pi/om),...
+                  's_Drag.eps']
+      end
+      saveas(gcf,[outdir,'/',figname],'epsc');
+      disp(['Saved ',outdir,'/',figname])
    end
 end
 
