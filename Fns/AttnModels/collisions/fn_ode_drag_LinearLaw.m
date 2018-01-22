@@ -8,7 +8,7 @@ function [alp,WW,tau_init,T_relax] = fn_ode_drag_LinearLaw(...
 %% zz0: time (\omega*t) at moment of collision
 %% VV0: velocity at moment of collision
 %%
-%% drag law: tau=-(rhow*d*omega)*kD*|v'|v'
+%% drag law: tau=-(rhow*d*omega)*kD*v'
 %%  > kD non-dimensional
 %%  > v' = v_disc-v_wave,
 %%          where v_wave is the velocity the disc would have been
