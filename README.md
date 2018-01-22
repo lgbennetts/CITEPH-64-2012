@@ -12,7 +12,7 @@ CreatePaths_Mac # to create the necessary paths
 then run:
 
 Main_RAO           # to perform comparisons for a single disk
-Main_Trans         # to perform comparisons of transmission by multipe disks
+Main_Trans         # to perform comparisons of transmission by multiple disks
 Main_CollisionData # to analyse collision data
 
 see the help at the beginning at each of these main functions 
