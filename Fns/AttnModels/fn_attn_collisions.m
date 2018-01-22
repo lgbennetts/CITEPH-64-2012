@@ -1,6 +1,43 @@
 %% attn_collisions.m
 %% Author: Timothy Williams
 %% Date: 20140910, 15:40:45 CEST
+%% out = fn_attn_collisions(...
+%%   coll_inputs,...
+%%   wave_pram0,...
+%%   ice_pram,...
+%%   tank_pram,...
+%%   scat_pram,...
+%%   conc,...
+%%   sep)
+%% * coll_inputs = struct:
+%%      coll_inputs.use_drag = 1 or 0;
+%%      coll_inputs.incident_amplitudes  = A0;
+%%      coll_inputs.restitution_coefficients  = rest_coeff;
+%%      coll_inputs.drag_coeffients = cD;
+%%      coll_inputs.drag_law = 'linear';
+%%    where A0 is a vector of incident wave amplitudes (m),
+%%    and rest_coeff is a vector of restitution coefficents (from 0 to 1).
+%%    If drag is used, cD is a vector of drag coefficients (dimensionless)
+%%       where the drag law is tau=-cD*|v'|v', and v'=v_floe-v_wave
+%%       (ie want to drag the floe velocity back to the wave velocity).
+%%    If the drag law is linear, tau_linear = -kD*v', where kD is calibrated
+%%       so that tau_linear(0)=tau(0).
+%% * wave_pram0 = [omega,k] 
+%%    where omega is the radial frequency, 2*pi/[wave period] (not a vector)
+%%    and k is the wave number
+%% * ice_pram = [D,h,rhoi],
+%%    where D is the diameter (m),
+%%    h is the thickness,
+%%    and rhoi is the density of the "ice"
+%% * tank_pram = [MIZwidth,H],
+%%    where MIZwidth is the width of the band of floes
+%%    and H is the water depth
+%% * scat_pram = [alp_scat,RAOsurge],
+%%    where alp_scat is the attenuation due to scattering
+%%    and RAOsurge is the surge for a wave of unit amplitude
+%% * conc is the area fraction of the disks in the MIZ
+%% * sep is the spacing between the disk centers (m)
+
 
 function out   =...
    fn_attn_collisions(coll_inputs,wave_pram0,ice_pram,tank_pram,scat_pram,conc,sep)
@@ -40,26 +77,33 @@ if nargin==0
    wave_pram0  = [om,k];
    clear om k
    %%
-   if 0
-      A0          = 50e-2;%+zeros(5,1);
-      rest_coeff  = .9+0*A0;
-      coll_inputs = [A0,rest_coeff];
-   elseif 0
-      coll_inputs =...
-        [10e-2    0.9
-         15e-2    0.9
-         20e-2    0.9
-         40e-2    0.9
-         50e-2    0.9];
+   coll_inputs.use_drag = 0;
+   if 1
+      %% test without drag
+      rest_coeff  = [1
+                     .8
+                     .6
+                     .4
+                     .2
+                     0];
+      A0 = 20e-2+0*rest_coeff;
+      coll_inputs.incident_amplitudes  = A0;
+      coll_inputs.restitution_coefficients  = rest_coeff;
+      clear A0 rest_coeff;
    else
       %%add drag
       A0          = 20e-2+zeros(2,1);
       rest_coeff  = .9+0*A0;
-      cD          = 1e3+0*A0;%%non-dim (linear law)
-      coll_inputs = [A0,rest_coeff,cD];
-      clear cD;
+      rest_coeff  = 0*A0;
+      cD          = [.5e3;1e3];%%non-dim (linear law)
+      %%
+      coll_inputs.use_drag        = 1;
+      coll_inputs.incident_amplitudes  = A0;
+      coll_inputs.restitution_coefficients  = rest_coeff;
+      coll_inputs.drag_coefficients = cD;
+      coll_inputs.drag_law = 'linear';
+      clear cD A0 rest_coeff;
    end
-   clear A0 rest_coeff
    %%
    D           = .99;
    sep         = 1.00;
@@ -82,15 +126,10 @@ end
 MIZwidth = tank_pram(1);
 H        = tank_pram(2);
 %%
-A0          = coll_inputs(:,1);
-rest_coeff  = coll_inputs(:,2);
-Ncoll       = length(A0);
-DO_DRAG     = 0;
-if size(coll_inputs,2)==3
-   DO_DRAG  = 1;%%include drag; 3rd column is drag coefficient
-   drag_fxn = @fn_ode_drag_LinearLaw; %%linear drag law
-   %drag_fxn = @fn_ode_drag_QuadLaw;  %%quadratic drag law
-end
+[A0,rest_coeff,cD,DO_DRAG,drag_fxn] =...
+   check_collision_inputs(coll_inputs);
+Ncoll = length(A0);
+coll_inputs2 = [A0,rest_coeff,cD];
 %%
 om       = wave_pram0(1);
 k        = wave_pram0(2);
@@ -107,7 +146,7 @@ dx = x(2);
 alp_scat = scat_pram(1);
 RAOsurge = scat_pram(2);
 [alp_coll,out2]   = fn_attn_coeff_collisions(...
-   coll_inputs,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll);
+   coll_inputs2,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll);
 
 %A_all    = A0*eye(nx+1,1);
 %ac_all   = alp_coll*eye(nx+1,1);
@@ -117,7 +156,8 @@ A_all(:,1)  = A0;
 ac_all      = zeros(Ncoll,nx+1);
 ac_all(:,1) = alp_coll;
 
-%%finite difference
+%% ========================================================
+%% finite difference
 S0    = A0.^2/2;
 S     = S0;
 alp   = alp_scat+alp_coll;
@@ -130,7 +170,7 @@ if DO_DRAG & COLL
    d        = ice_pram(3)*h/rhow;
 
    for jd   = 1:Ncoll
-      ci0   = coll_inputs(jd,:);
+      ci0   = coll_inputs2(jd,:);
       omt0  = [out2(1).value(jd),out2(2).value(jd)];%%collision times
       vel0  = [out2(3).value(jd),out2(4).value(jd)];%%collision velocities
       %%
@@ -149,14 +189,15 @@ if DO_DRAG & COLL
    alp         = alp+alp_drag;
 end
 
+%%
 for n=2:nx+1
    S                 = S.*exp(-alp*dx);
    A                 = sqrt(2*S);
-   coll_inputs(:,1)  = A;
+   coll_inputs2(:,1) = A;
    %%
    if COLL
       [alp_coll,out2]   = fn_attn_coeff_collisions(...
-         coll_inputs,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll);
+         coll_inputs2,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll);
       COLL  = ~isempty(find(alp_coll));
    else
       alp_coll = 0*A0;
@@ -169,7 +210,7 @@ for n=2:nx+1
    if DO_DRAG & COLL
       alp_drag = 0*A0;
       for jd   = 1:Ncoll
-         ci1   = coll_inputs(jd,:);
+         ci1   = coll_inputs2(jd,:);
          omt0  = [out2(1).value(jd),out2(2).value(jd)];%%collision times
          vel0  = [out2(3).value(jd),out2(4).value(jd)];%%collision velocities
          %%
@@ -184,7 +225,10 @@ for n=2:nx+1
       alp         = alp+alp_drag;
    end
 end
+%% ========================================================
 
+
+%% ========================================================
 %%output transmitted energy:
 E_t   = real(S./S0);%%transmitted energy
 out_str  = [ ' ''transmitted energy'' '];
@@ -207,6 +251,7 @@ out_val  = [out_val '; 2*pi/om' ];
 cmd   = ['out=struct( ''name'', {' out_str ...
          '}, ''value'', {' out_val '});'];
 eval(cmd);
+%% ========================================================
 
 if 0%do_test==0
    for lj=1:length(out)
@@ -230,15 +275,22 @@ if do_test
    plot(x,exp(-alp_scat*x),'--');
    [Am,jm]  = max(A0);
    ttl   = title(['Period: ',num2str(2*pi/om),...
-                  's; Rest. Coeff.: ', num2str(coll_inputs(1,2))]);
+                  's; Rest. Coeff.: ', num2str(coll_inputs2(1,2))]);
    GEN_font(ttl);
    hold off;
    GEN_proc_fig('x, m','E/E0');
    leg   = [];
    for loop_j=1:Ncoll
       A     = A0(loop_j)*100;%%amp in cm
-      rc    = coll_inputs(loop_j,2);
-      leg   = [leg, ', ''(',num2str(A),'cm,',num2str(rc),')'' '];
+      rc = rest_coeff(loop_j);
+      if ~DO_DRAG
+         leg = [leg, ', ''(',num2str(A),'cm,',...
+            num2str(rc),')'' '];
+      else
+         cd  = cD(loop_j);
+         leg = [leg, ', ''(',num2str(A),'cm,',...
+            num2str(rc),',',num2str(cd),')'' '];
+      end
    end
    cmd  = ['Lg = legend(',leg(2:end),...
            ',''No Collisions'', ''Location'' ,',' ''EastOutside'' );'];
@@ -258,9 +310,16 @@ if do_test
    plot(x,0*x+alp_scat,'--');
    GEN_proc_fig('x, m','\alpha_{tot}, m^{-1}');
    for loop_j=1:Ncoll
-      A     = A0(loop_j)*100;%%amp in cm
-      rc    = coll_inputs(loop_j,2);
-      leg   = [leg, ', ''(',num2str(A),'cm,',num2str(rc),')'' '];
+      A  = A0(loop_j)*100;%%amp in cm
+      rc = rest_coeff(loop_j);
+      if ~DO_DRAG
+         leg = [leg, ', ''(',num2str(A),'cm,',...
+            num2str(rc),')'' '];
+      else
+         cd  = cD(loop_j);
+         leg = [leg, ', ''(',num2str(A),'cm,',...
+            num2str(rc),',',num2str(cd),')'' '];
+      end
    end
    cmd  = ['Lg = legend(',leg(2:end),...
            ',''No Collisions'',  ''Location'' ,',' ''EastOutside'' );'];
@@ -272,3 +331,36 @@ if do_test
       saveas(gcf,['out/',figname],'epsc');
    end
 end
+
+%% ==================================================================
+function [A0,rest_coeff,cD,DO_DRAG,drag_fxn] =...
+            check_collision_inputs(coll_inputs)
+
+
+A0          = coll_inputs.incident_amplitudes;
+Ncoll       = length(A0);
+rest_coeff  = coll_inputs.restitution_coefficients;
+cD          = [];
+drag_fxn    = @fn_ode_drag_QuadLaw;  %%quadratic drag law
+DO_DRAG     = coll_inputs.use_drag;
+if DO_DRAG
+   cD = coll_inputs.drag_coefficients;
+   if strcmp(coll_inputs.drag_law,'linear')
+      drag_fxn = @fn_ode_drag_LinearLaw; %%linear drag law
+   end
+   if length(cD)~=Ncoll
+      raise_error('drag coeffients');
+   end
+end
+if length(rest_coeff)~=Ncoll
+   raise_error('restitution coeffients');
+end
+
+%% ==================================================================
+function raise_error(type)
+
+err.message = ['Incident amplitudes vector and ',...
+               type,...
+               ' vectors have different sizes'];
+err.identifier = 'AttnModels:fn_atten_collisions';
+error(err);
