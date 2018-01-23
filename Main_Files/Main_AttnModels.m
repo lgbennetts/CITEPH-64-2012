@@ -108,7 +108,7 @@ if strfind(PRBS,'2d EMM')
  if ~exist('ens1','var'); ens1 = 1; end
  
  attn_2d = zeros(1,length(Tp));
- DO_COLL   = ~isempty(collision_inputs)&(conc>.7);
+ DO_COLL = ~isempty(collision_inputs)&(conc>.7);
  if DO_COLL
     Ncoll        = size(collision_inputs,1);
     E_trans_coll = zeros(length(Tp),Ncoll);
