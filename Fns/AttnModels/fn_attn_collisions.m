@@ -45,10 +45,17 @@ function out   =...
 g        = 9.81;
 rhow     = 1025;
 do_test  = 0;
-SAVE_FIG = 1;%%save figure (applies only if do_test==1)
 
+%%do some tests if 0/1 argument entered
 if nargin==0
    do_test  = 1;
+elseif nargin==1
+   do_test  = coll_inputs;
+   clear coll_inputs;
+end
+
+if do_test~=0
+   SAVE_FIG = 1;%%save figure (applies only if do_test==1)
 
    %% test values of period, atten coeff & RAO:
    Pr = [0.600000000000000   1.338103972350944   0.100165667108768;
@@ -77,29 +84,81 @@ if nargin==0
    wave_pram0  = [om,k];
    clear om k
    %%
-   coll_inputs.use_drag = 0;
-   if 1
-      %% test without drag
-      rest_coeff  = [1
-                     .5
+   if do_test==1
+      %% test effect of amps without drag:
+      %% NB rest_coeff = 1 gives no energy loss due to collisions
+      %A0 = [40e-2];
+      A0 = [1e-2;
+            2e-2;
+            3e-2;
+            4e-2;
+            5e-2;
+            10e-2;
+            15e-2];
+      rest_coeff = .5+0*A0;
+      coll_inputs.incident_amplitudes  = A0;
+      coll_inputs.restitution_coefficients  = rest_coeff;
+      coll_inputs.use_drag = 0;
+      clear A0 rest_coeff;
+   elseif do_test==2
+      %% test without drag:
+      %% NB rest_coeff = 1 gives no energy loss due to collisions
+      rest_coeff  = [.9;
+                     .75;
+                     .5;
                      0];
       A0 = 20e-2+0*rest_coeff;
       coll_inputs.incident_amplitudes  = A0;
       coll_inputs.restitution_coefficients  = rest_coeff;
+      coll_inputs.use_drag = 0;
       clear A0 rest_coeff;
-   else
+   elseif do_test==3
       %%add drag
-      A0          = 20e-2+zeros(2,1);
-      rest_coeff  = .9+0*A0;
-      rest_coeff  = 0*A0;
-      cD          = [.5e3;1e3];%%non-dim (linear law)
-      %%
-      coll_inputs.use_drag        = 1;
-      coll_inputs.incident_amplitudes  = A0;
-      coll_inputs.restitution_coefficients  = rest_coeff;
+      cD = [1e-2;
+            1e-1;
+            1e0;
+            1e1;
+            1e2;
+            1e3;
+            1e4];%%non-dim (linear law)
+      %cD = 1e-3;
+      A0          = 20e-2+0*cD;
+      rest_coeff  = 1+0*A0;
+         %% NB rest_coeff = 1 gives no energy loss due to collisions
+
+      coll_inputs.incident_amplitudes = A0;
+      coll_inputs.restitution_coefficients = rest_coeff;
+      coll_inputs.use_drag = 1;
       coll_inputs.drag_coefficients = cD;
       coll_inputs.drag_law = 'linear';
       clear cD A0 rest_coeff;
+   elseif do_test==4
+      %%add drag
+      cD = [1e-5;
+            1e-4;
+            1e-3;
+            1e-2;
+            1e-1;
+            1;
+            1e1;
+            1e2;
+            1e3;
+            1e4];%%non-dim (linear law)
+      %cD = 1e-3;
+      A0          = 20e-2+0*cD;
+      rest_coeff  = 1+0*A0;
+         %% NB rest_coeff = 1 gives no energy loss due to collisions
+
+      coll_inputs.incident_amplitudes = A0;
+      coll_inputs.restitution_coefficients = rest_coeff;
+      coll_inputs.use_drag = 1;
+      coll_inputs.drag_coefficients = cD;
+      coll_inputs.drag_law = 'quadratic';
+      clear cD A0 rest_coeff;
+   else
+      err.message = 'bad value for "do_test"';
+      err.identifier = 'AttnModels:fn_atten_collisions';
+      error(err);
    end
    %%
    D           = .99;
@@ -132,96 +191,128 @@ om       = wave_pram0(1);
 k        = wave_pram0(2);
 f_coll   = om/pi;%%2*f
 %%
-cg          = om/2/k;%%inf depth
-cg          = cg+H/(2*om*g*k)*(g^2*k^2-om^4);%%finite depth correction
-wave_pram   = [wave_pram0,cg];
+cg        = om/2/k;%%inf depth
+cg        = cg+H/(2*om*g*k)*(g^2*k^2-om^4);%%finite depth correction
+wave_pram = [wave_pram0,cg];
 
 nx = 200;
 x  = linspace(0, MIZwidth,nx+1)';
 dx = x(2);
 
+%% ========================================================
+%% Set the "initial conditions" (x=0)
+
+%% ATTEN DUE TO SCATTERING
+%% - independent of wave amplitude (and therefore x)
 alp_scat = scat_pram(1);
+
+%% call fn_atten_coeff_collisions to get the
+%% atten due to restitution coeffient ~= 1
+%% (determined by the restitution coefficient)
 RAOsurge = scat_pram(2);
-[alp_coll,out2]   = fn_attn_coeff_collisions(...
+out2   = fn_attn_coeff_collisions(...
    coll_inputs2,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll);
+alp_coll = out2.atten_coeff;
+
+%% are there any collisions at all?
+COLL = ~isempty(find(out2.status));
 
 %A_all    = A0*eye(nx+1,1);
 %ac_all   = alp_coll*eye(nx+1,1);
 A_all       = zeros(Ncoll,nx+1);
 A_all(:,1)  = A0;
-%%
+
+%% ATTEN DUE TO RESTITUTION COEFFIENT ~= 1
 ac_all      = zeros(Ncoll,nx+1);
 ac_all(:,1) = alp_coll;
 
 
-%% ========================================================
-%% finite difference
-S0    = A0.^2/2;
-S     = S0;
-alp   = alp_scat+alp_coll;
-COLL  = ~isempty(find(alp_coll));
 
+alp_drag = 0*A0;
 if DO_DRAG & COLL
-   ad_all   = zeros(Ncoll,nx+1);
-   alp_drag = 0*A0;
    h        = ice_pram(2);
    d        = ice_pram(3)*h/rhow;
 
-   for jd   = 1:Ncoll
+   for jd = 1:Ncoll
+      if out2.status(jd)==0
+         %% skip if no collisions for these combinations
+         %% of amp, freq & restitution coefficient
+         continue;
+      end
       ci0   = coll_inputs2(jd,:);
-      omt0  = [out2(1).value(jd),out2(2).value(jd)];%%collision times
-      vel0  = [out2(3).value(jd),out2(4).value(jd)];%%collision velocities
+      omt0  = [out2.omt1(jd),out2.omt2(jd)];%%collision times
+      vel0  = [out2.V1(jd),out2.V2(jd)];%%collision velocities
       %%
       drag_prams1 = [om,d,RAOsurge,h];
       drag_prams2 = [f_coll,conc,cg];
-      %%
+
       %drag_fxn,drag_prams1,ci0,omt0,vel0,drag_prams2
       [ad,WW,tau_init,T_relax] = feval(drag_fxn,...
          drag_prams1,ci0,omt0,vel0,drag_prams2);
       %%
-      if ~isnan(ad)
+      if isnan(ad)
+         disp([jd,Ncoll]);
+         disp('"ad" is NaN');
+      else
          alp_drag(jd) = ad;
       end
    end
-   ad_all(:,1) = alp_drag;
-   alp         = alp+alp_drag;
 end
+alp = alp_scat+alp_coll+alp_drag;%%initial atten
 
-%%
+%% ATTEN DUE TO DRAG:
+%% - if fn_atten_coeff_collisions determines
+%% there are any collisions, calc a drag to get back
+%% to following the waves
+ad_all = zeros(Ncoll,nx+1);
+ad_all(:,1) = alp_drag;
+%% ========================================================
+
+
+%% ========================================================
+%% finite difference
+S0 = A0.^2/2;
+S  = S0;
 for n=2:nx+1
    S                 = S.*exp(-alp*dx);
    A                 = sqrt(2*S);
    coll_inputs2(:,1) = A;
    %%
    if COLL
-      [alp_coll,out2]   = fn_attn_coeff_collisions(...
+      out2 = fn_attn_coeff_collisions(...
          coll_inputs2,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll);
-      COLL  = ~isempty(find(alp_coll));
+      COLL = ~isempty(find(out2.status));
+      alp_coll = out2.atten_coeff;
    else
       alp_coll = 0*A0;
    end
    %%
-   alp           = alp_scat+alp_coll;
    A_all(:,n)    = A;
    ac_all(:,n)   = alp_coll;
 
+   alp_drag = 0*A0;
    if DO_DRAG & COLL
-      alp_drag = 0*A0;
       for jd   = 1:Ncoll
+         if out2.status(jd)==0
+            continue;
+         end
          ci1   = coll_inputs2(jd,:);
-         omt0  = [out2(1).value(jd),out2(2).value(jd)];%%collision times
-         vel0  = [out2(3).value(jd),out2(4).value(jd)];%%collision velocities
+         omt0  = [out2.omt1(jd),out2.omt2(jd)];%%collision times
+         vel0  = [out2.V1(jd),out2.V2(jd)];%%collision velocities
          %%
          [ad,WW,tau_init,T_relax] = feval(drag_fxn,...
             drag_prams1,ci1,omt0,vel0,drag_prams2);
          %%
-         if ~isnan(ad)
-            alp_drag(jd)   = ad;
+         if isnan(ad)
+            disp([jd,Ncoll]);
+            disp('"ad" is NaN');
+         else
+            alp_drag(jd) = ad;
          end
       end
-      ad_all(:,n) = alp_drag;
-      alp         = alp+alp_drag;
    end
+   ad_all(:,n) = alp_drag;
+   alp         = alp_scat+alp_coll+alp_drag;
 end
 %% ========================================================
 
@@ -251,6 +342,7 @@ cmd   = ['out=struct( ''name'', {' out_str ...
 eval(cmd);
 %% ========================================================
 
+
 if 0%do_test==0
    for lj=1:length(out)
       disp([out(lj).name,':']);
@@ -258,7 +350,10 @@ if 0%do_test==0
    end
 end
 
-if do_test
+
+%% ========================================================
+%% make test plots
+if do_test>0
    for lj=1:length(out)
       disp([out(lj).name,':']);
       disp(out(lj).value);
@@ -268,50 +363,26 @@ if do_test
    %%plot amplitude;
    dd = diag(1./A0);
    subplot(2,1,1);
-   plot(x,(dd*A_all).^2);
+
+   %% plot no-collisions results 1st
+   plot(x,exp(-alp_scat*x),'-k','linewidth',2);
    hold on;
-   plot(x,exp(-alp_scat*x),'--');
+
+   plot(x,(dd*A_all).^2);
    [Am,jm]  = max(A0);
    if ~DO_DRAG
       ttl   = title(['Period: ',num2str(2*pi/om),...
                   's; no drag']);
    else
       ttl   = title(['Period: ',num2str(2*pi/om),...
-                  's; using drag']);
+                  's; using drag (',...
+                  coll_inputs.drag_law,...
+                  ')']);
    end
    GEN_font(ttl);
    hold off;
    GEN_proc_fig('x, m','E/E0');
-   leg   = [];
-   for loop_j=1:Ncoll
-      A     = A0(loop_j)*100;%%amp in cm
-      rc = rest_coeff(loop_j);
-      if ~DO_DRAG
-         leg = [leg, ', ''(',num2str(A),'cm,',...
-            num2str(rc),')'' '];
-      else
-         cd  = cD(loop_j);
-         leg = [leg, ', ''(',num2str(A),'cm,',...
-            num2str(rc),',',num2str(cd),')'' '];
-      end
-   end
-   cmd  = ['Lg = legend(',leg(2:end),...
-           ',''No Collisions'', ''Location'' ,',' ''EastOutside'' );'];
-   eval(cmd);
-
-   %%plot alp_coll;
-   subplot(2,1,2);
-   leg   = [];
-   if DO_DRAG
-      drag_fxn
-      plot(x,ac_all+alp_scat+ad_all,'-.');
-      hold on;
-      leg   = [leg, ', ''drag'' '];
-   end
-   plot(x,ac_all+alp_scat);
-   hold on;
-   plot(x,0*x+alp_scat,'--');
-   GEN_proc_fig('x, m','\alpha_{tot}, m^{-1}');
+   leg   = '''No collisions''';
    for loop_j=1:Ncoll
       A  = A0(loop_j)*100;%%amp in cm
       rc = rest_coeff(loop_j);
@@ -324,8 +395,38 @@ if do_test
             num2str(rc),',',num2str(cd),')'' '];
       end
    end
-   cmd  = ['Lg = legend(',leg(2:end),...
-           ',''No Collisions'',  ''Location'' ,',' ''EastOutside'' );'];
+   cmd  = ['Lg = legend(',leg,...
+           ', ''Location'' ,''EastOutside'');'];
+   eval(cmd);
+
+   %%plot alp_coll;
+   subplot(2,1,2);
+   leg   = [];
+
+   plot(x,0*x+alp_scat,'-k','linewidth',2);
+   hold on;
+   if DO_DRAG
+      plot(x,ac_all+alp_scat+ad_all,'-');
+   else
+      plot(x,ac_all+alp_scat,'-');
+   end
+
+   GEN_proc_fig('x, m','\alpha_{tot}, m^{-1}');
+   leg = '''No collisions''';
+   for loop_j=1:Ncoll
+      A  = A0(loop_j)*100;%%amp in cm
+      rc = rest_coeff(loop_j);
+      if ~DO_DRAG
+         leg = [leg, ', ''(',num2str(A),'cm,',...
+            num2str(rc),')'' '];
+      else
+         cd  = cD(loop_j);
+         leg = [leg, ', ''(',num2str(A),'cm,',...
+            num2str(rc),',',num2str(cd),')'' '];
+      end
+   end
+   cmd  = ['Lg = legend(',leg,...
+           ', ''Location'' , ''EastOutside'' );'];
    eval(cmd);
 
    if SAVE_FIG%%save figure
@@ -334,8 +435,13 @@ if do_test
          mkdir(outdir)
       end
       if ~DO_DRAG
+         if do_test==1
+            ss = '_amp';
+         else
+            ss = '_rc';
+         end
          figname  = ['eg_coll_T',num2str(2*pi/om),...
-                  's_NoDrag.eps']
+                  's_NoDrag',ss,'.eps']
       else
          figname  = ['eg_coll_T',num2str(2*pi/om),...
                   's_Drag.eps']
@@ -344,6 +450,8 @@ if do_test
       disp(['Saved ',outdir,'/',figname])
    end
 end
+%% ========================================================
+
 
 %% ==================================================================
 function [A0,rest_coeff,cD,DO_DRAG,drag_fxn] =...

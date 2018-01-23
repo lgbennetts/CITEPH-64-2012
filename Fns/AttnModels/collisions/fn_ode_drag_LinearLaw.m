@@ -107,7 +107,7 @@ cg       = prams2(3);
 
 X        = RAOsurge*A;
 sd       = om^2/g*d;
-cD       = cD*X/d %%rescaled drag coeff: du/dz=cD*|V-v|*(V-v)
+cD       = cD*X/d; %%rescaled drag coeff: du/dz=cD*|V-v|*(V-v)
 Wfac     = sd*(rhow*g*X^2);  %%convert work from nondimensional to dimensional
 E        = rhow*g*A^2/2;
 Wfac0    = 2*RAOsurge^2*sd;%[Wfac0*E,Wfac],pause 
@@ -145,8 +145,8 @@ for j=1:2
    W1    = Wfac*w1;%%dimensional work
    WW(j) = Wfac0*trapz(zvec,work_fun_lin(zvec,u1,kD));%%work/E->attenuation coefficient
 
-   tau0 = tau1(1)
-   [v0,u1(1)]
+   tau0 = tau1(1);
+   %[v0,u1(1)]
    tau_init(j) = tau0;
 
    if do_test%%plot and compare with ode45

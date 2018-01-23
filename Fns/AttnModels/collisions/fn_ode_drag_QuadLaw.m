@@ -112,7 +112,7 @@ cg     = prams2(3);
 
 X        = RAOsurge*A;
 sd       = d*om^2/g;
-cD       = cD*X/d     %% rescaled drag coeff
+cD       = cD*X/d;    %% rescaled drag coeff
 Wfac     = sd*(rhow*g*X^2);   %% convert work from nondimensional to dimensional
 tau_fac  = sd*(rhow*g*X);     %% convert stress from nondimensional to dimensional
 
@@ -140,7 +140,7 @@ for j=1:2
       tau_out       = tau_fac*stress_fun_quad(zout,v1_out,cD);%%[Pa]
       %%
       tau0 = tau_out(1);
-      [tau0,tau_fac*cD*abs(V0-v0)*(V0-v0)]
+      %[tau0,tau_fac*cD*abs(V0-v0)*(V0-v0)]
       %[v0,v1_out(1)]
       %error('hey')
       tau_init(j) = tau0;
