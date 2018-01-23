@@ -1,7 +1,7 @@
 function [alp,WW,tau_init,T_relax] = fn_ode_drag_QuadLaw(...
             prams1,coll_inputs,zz0,VV0,prams2)
 %% need: om,d=draft,cD_dim,h,RAO_surge
-%% prams1      = [om,d,RAO_surge,h]; d=draft
+%% prams1      = [om,d,RAO_surge,h]; d=draft, h=thickness
 %% coll_inputs = [A,rest_coeff,cD_dim];
 %% prams2      = [conc,cg,f_coll] to convert to attenuation coefficient
 %% also:
@@ -24,28 +24,50 @@ WW       = [0;0];%% work done (per unit area) by drag stress
 tau_init = [0;0];%% initial (max) stress 
 
 if nargin==0
+   'using test inputs'
    do_test     = 1;
-   cD          = 1e3;%% - nondimensional
-   A           = 2e-2;
+   %cD          = 1e-3;%% - nondimensional
+   cD          = 1e2;%% - nondimensional
+   A           = 5e-2;
    h           = 3.3e-2;
    d           = 1.8e-2;%%draft
    rest_coeff  = .9;
 
+   %% =====================================
+   %%inputs to fn_attn_coeff_collisions
+   coll_inputs0 = [A,rest_coeff];
+   %%
    if 1
-      om       = 2*pi/1.1;
-      omt1     = 1.205531059037677;
-      V1       = -0.060661652608385;
-      omt2     = -1.021253028778352;
-      V2       = 0.055383740125916;
+      period   = 1.1;
       RAOsurge = 0.568508129170096;
    else
-      om       = 2*pi/1.5;
-      omt1     = 0.508439575729424;
-      V1       = -0.034743261608009;
-      omt2     = -1.861452883782580;
-      V2       = 0.068375052575801;
+      period   = 1.5;
       RAOsurge = 0.851899193743405;
    end
+   om = 2*pi/period;
+   k  = om^2/g;
+   cg = om/2/k;
+   wave_pram0 = [om,k,cg]
+
+   sep   = 1;
+   D  = .99;
+   rhoi  = d/h*rhow;
+   ice_pram0 = [D,h,rhoi];
+
+   conc     = .77;
+   om       = 2*pi/period;
+   f_coll   = om/pi;%%2*f
+
+   out = fn_attn_coeff_collisions(...
+      coll_inputs0,wave_pram0,ice_pram0,...
+      RAOsurge,conc,sep,f_coll)
+
+   omt1     = out.omt1;
+   V1       = out.V1;
+   omt2     = out.omt2;
+   V2       = out.V2;
+   clear wave_pram0,ice_pram0,coll_inputs0;
+   %% =====================================
 
    VV0   = [V1;V2];
    zz0   = [omt1;omt2];
@@ -54,9 +76,6 @@ if nargin==0
    prams1      = [om,d,RAOsurge,h];
    coll_inputs = [A,rest_coeff,cD];
    %%
-   f_coll   = om/pi;%%2*f
-   conc     = .77;
-   cg       = 1;
    prams2   = [f_coll,conc,cg];
    clear om d RAOsurge h
    clear A rest_coeff cD
@@ -71,18 +90,29 @@ RAOsurge = prams1(3);
 h        = prams1(4);
 
 %% coll_inputs = [A,rest_coeff,cD_dim];%%NB currently scalars
-A           = coll_inputs(1);
-rest_coeff  = coll_inputs(2);
-cD          = coll_inputs(3);
+A          = coll_inputs(1);
+rest_coeff = coll_inputs(2);
+cD         = coll_inputs(3);
 
 %% prams2   = [f_coll,conc,cg];
-f_coll   = prams2(1);
-conc     = prams2(2);
-cg       = prams2(3);
+f_coll = prams2(1);
+conc   = prams2(2);
+cg     = prams2(3);
+
+%% nondim:
+%% speed: vfac=X*omega
+%% time:  z=t*omega
+%%
+%% drag eqn:
+%% rhoi*h*dU/dt=rhoi*h*vfac*omega*dU'/dz=tau_fac*tau
+%% where tau_fac=rhoi*h*X*omega^2
+%% also tau=rhow*cD*vfac^2*|V'-U'|(V'-U')
+%% so tau/tau_fac = (rhow*vfac^2/tau_fac)*cD*|V'-U'|(V'-U')
+%%                = (X/d)*cD*|V'-U'|(V'-U')
 
 X        = RAOsurge*A;
-sd       = om^2/g;
-cD       = cD*X/d;            %% rescaled drag coeff
+sd       = d*om^2/g;
+cD       = cD*X/d     %% rescaled drag coeff
 Wfac     = sd*(rhow*g*X^2);   %% convert work from nondimensional to dimensional
 tau_fac  = sd*(rhow*g*X);     %% convert stress from nondimensional to dimensional
 
@@ -91,25 +121,37 @@ for j=1:2
    V0    = VV0(j)/(X*om);%%initial speed [nondimensional]
    v0    = -rest_coeff*V0;
    z0    = zz0(j);%%initial value of z=\omega*t
+   %[V0,-sin(z0)]
+
    %zvec  = z0+(0:N)'*dz;
    %sgn   = sign(V0);
 
    if 1%%use matlab solver
-      zspan    = z0+[0,pi];
+      zspan    = z0+[0,pi];%interval of (t\omega)
       %solver   = @ode113;col = 'k';
       %solver   = @ode23;col = 'm';
       solver   = @ode45;col   = 'b';
+
+      %% solve rhoi*dv/dt=tau, v(0)=v0
+      %% nondim u=v/(X*omega), z=t*omega
+      %% du/dz=tau/tau_fac
+      [zout,v1_out] = feval(solver,@(z,v1) stress_fun_quad(z,v1,cD),zspan,v0);
+      V1_out        = -sin(zout);
+      tau_out       = tau_fac*stress_fun_quad(zout,v1_out,cD);%%[Pa]
       %%
-      [zout,v1_out]  = feval(solver,@(z,v1) stress_fun_quad(z,v1,cD),zspan,v0);
-      V1_out         = -sin(zout);
-      tau_out        = tau_fac*stress_fun_quad(zout,v1_out,cD);%%[Pa]
-      %%
-      tau0        = tau_out(1);
+      tau0 = tau_out(1);
+      [tau0,tau_fac*cD*abs(V0-v0)*(V0-v0)]
+      %[v0,v1_out(1)]
+      %error('hey')
       tau_init(j) = tau0;
 
       %%find 1st time stress is 0 - defines a 'relaxation' time
-      jz          = find(tau0*tau_out<0,1,'first');
-      T_relax(j)  = zout(jz)/om;
+      jz = find(tau0*tau_out<0,1,'first');
+      if isempty(jz)
+         T_relax(j) = NaN;
+      else
+         T_relax(j) = zout(jz)/om;
+      end
 
       %%determine when to calculate the work done
       if 0;
@@ -129,7 +171,7 @@ for j=1:2
       WW(j) = W_out(jR);
       %%
       if do_test
-         figure(2);
+         figure(200+j);
          subplot(3,1,1);
          plot(zout/pi,V1_out,'r');
          hold on;
@@ -139,6 +181,7 @@ for j=1:2
          hold off;
          GEN_proc_fig('\omega{t}/\pi','v_1');
          xlim(zspan/pi);
+         legend('V_{wave}','V_{floe}','T_{relax}')
          %%
          subplot(3,1,2);
          tau_out  = stress_fun_quad(zout,v1_out,cD);
@@ -290,18 +333,17 @@ for j=1:2
    %%    end
    %% end
 end
-
-alp   = conc*f_coll*sum(WW)/cg;
+alp = conc*f_coll*sum(WW)/cg;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function tau   = stress_fun_quad(t,v1,cD)
 %% stress from drag law
 %% - non-dimensional
 
-V1    = -sin(t);
-y     = v1-V1;
-sgn   = -sign(y);
-tau   = cD*sgn.*y.^2;
+V1  = -sin(t);
+y   = v1-V1;
+sgn = -sign(y);
+tau = cD*sgn.*y.^2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function W   = work_fun_quad(t,v1,cD)
