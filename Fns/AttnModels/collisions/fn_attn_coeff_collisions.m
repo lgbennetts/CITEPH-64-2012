@@ -1,10 +1,10 @@
 %% fn_attn_coeff_collisions.m
 %% Author: Timothy Williams
 %% Date: 20140910, 15:40:45 CEST
-
-function [alp,out2] = fn_attn_coeff_collisions(...
-   coll_inputs,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll)
-%% CALL: alp = attn_collisions(wave_pram,ice_pram,RAOsurge,conc,sep)
+%%
+%% out = attn_collisions(...
+%%          wave_pram,ice_pram,RAOsurge,conc,sep)
+%%
 %% NB attenuation dependent on wave amplitude;
 %% wave_pram = [om,A,k,cg]: radial freq, amplitude, wave number, group vel
 %% ice_pram  = [D,h,rhoi]:  ice floe diameter, thickness and density
@@ -13,6 +13,17 @@ function [alp,out2] = fn_attn_coeff_collisions(...
 %% sep: ice floe separation (distance between centres)
 %% NB sep>D.
 %% TODO: calc sep from conc & D if it's not specified
+%%
+%% out = struct:
+%%   out.atten_coeff - atten coeff
+%%   out.status      - any collisions (0/1)
+%%   out.omt1        - time of collision 1
+%%   out.omt2        - time of collision 2
+%%   out.V1          - velocity of collision 1
+%%   out.V2          - velocity of collision 2
+
+function out = fn_attn_coeff_collisions(...
+   coll_inputs,wave_pram,ice_pram,RAOsurge,conc,sep,f_coll)
 
 do_test  = 0;
 g        = 9.81;
@@ -42,15 +53,16 @@ if nargin==0
 end
 
 
-A           = coll_inputs(:,1);%%wave amplitude
-rest_coeff  = coll_inputs(:,2);%%restitution coefficient
-alp         = 0*A;%%Attenuation coefficient if no collision;
-Ncoll       = length(A);
+A          = coll_inputs(:,1);%%wave amplitudes
+rest_coeff = coll_inputs(:,2);%%restitution coefficients
+alp        = 0*A;%%Attenuation coefficient if no collision;
+Ncoll      = length(A);
 %%
-omt1  = NaN+0*A;
-omt2  = NaN+0*A;
-V1    = NaN+0*A;
-V2    = NaN+0*A;
+omt1     = NaN+0*A;
+omt2     = NaN+0*A;
+V1       = NaN+0*A;
+V2       = NaN+0*A;
+status   = 0*A;
 %%
 om = wave_pram(1);%%wave radial frequency
 k  = wave_pram(2);%%wave number
@@ -61,72 +73,98 @@ if ~exist('f_coll','var')
    f_coll   = 2*f;%%collision freq = 2x wave frequency
 end
 
-D           = ice_pram(1);%%floe diameter
-h           = ice_pram(2);%%ice thickness
-rhoi        = ice_pram(3);%%ice density
+D     = ice_pram(1);%%floe diameter
+h     = ice_pram(2);%%ice thickness
+rhoi  = ice_pram(3);%%ice density
 
-A_floe      = pi*D^2/4;
-rho_floes   = conc/A_floe;%%floes per unit area - only needed for testing, cancels out
+A_floe    = pi*D^2/4;
+rho_floes = conc/A_floe;%%floes per unit area - only needed for testing, cancels out
 
 if ~exist('conc','var')
    conc  = 1;
 end
+
+err.identifier = 'AttnModels:fn_atten_coeff_collisions';
 if ~exist('sep','var')
    %% WORK OUT sep from conc & D
    %% TODO: implement this
+   err.message = 'argument "sep" not given';
+   error(err);
 end
 if sep<=D
    disp(['sep = ',num2str(sep),'m; D = ',num2str(D),'m']);
-   error('separation of floe centres ("sep") should be larger than the diameter ("D")',...
-         'sep-check')
+   err.message = ['separation of floe centres ("sep") ',...
+                  'should be larger than the diameter ("D")'];
+   error(err);
 end
 
-X     = RAOsurge*A;%%absolute surge
-ks    = k*sep;
-Csq   = 2*(1-cos(ks));
-C     = sqrt(Csq);
+X    = RAOsurge*A;%%absolute surge
+ks   = k*sep;
+Csq  = 2*(1-cos(ks));
+C    = sqrt(Csq);
+bet0 = (rhoi*h*om^2)/(2*rhow*g)*RAOsurge^2;
 
+verbose = 0;
 if C==0
-   disp('No collision - floes moving exactly in phase');
-   out2  = struct('name',{'omt1';'omt2';'V1';'V2'},...
-                  'value',{omt1;omt2;V1;V2});
-   return;
+   %% independent of wave amplitude
+   %% (only a function of wave freq and separation)
+   if verbose
+      disp('No collision - floes moving exactly in phase');
+   end
+   out.atten_coeff = alp;
+   out.status = status;
+   out.omt1   = omt1;
+   out.omt2   = omt2;
+   out.V1     = V1;
+   out.V2     = V2;
+   return
 end
 
-cosZ              = (sep-D)./(X*C);%%Z=om*t+phi
-jok               = 1:Ncoll;
-jsm               = find(abs(cosZ)>1);
-jok(jsm)          = [];
-cosZ(jsm)         = [];
-rest_coeff(jsm)   = [];
-X(jsm)            = [];
-if isempty(jok)
-   disp('No collision - surge amplitudes too small to produce a collision');
-   out2  = struct('name',{'omt1';'omt2';'V1';'V2'},...
-                  'value',{omt1;omt2;V1;V2});
-   return;
+for jc=1:Ncoll
+
+   %% check if floes moving exactly in phase
+   %% (no collisions)
+
+   %% check if surge amplitudes too small
+   %% (no collisions)
+   cosZ  = (sep-D)/(X(jc)*C);%%Z=om*t+phi
+   if abs(cosZ)>1
+      if verbose
+         disp([jc,Ncoll]);
+         disp(['No collision - surge amplitudes ',...
+               'too small to produce a collision']);
+      end
+      continue;
+   end
+
+   %% collisions if got to here
+   status(jc) = 1;
+
+   %% angle phi - 2 possibilities
+   %% NB phi2 = phi+pi gives the same dE
+   tan_phi = 2*sin(ks)/Csq;
+   phi     = atan(tan_phi);
+   zet1    = acos(cosZ);
+   
+   bet     = bet0*(1-rest_coeff(jc)^2);%%nondimensional
+   F_av    = fn_Fcoll(2*ks,2*zet1-2*phi);
+   alp(jc) = (conc*f_coll*bet.*F_av)/cg;%%attenuation per meter
+
+   %%extra outputs:
+   %% times and speeds of collisions
+   %% - for use in drag model
+   omt1(jc) = zet1-phi;
+   omt2(jc) = -zet1-phi;
+   V1(jc)   = -om*X(jc)*sin(omt1(jc));
+   V2(jc)   = -om*X(jc)*sin(omt2(jc));
 end
 
-%%angle phi - 2 possibilities
-tan_phi  = 2*sin(ks)/Csq;
-phi      = atan(tan_phi);
-%phi2     = phi+pi;%%this gives the same dE
-zet1  = acos(cosZ);
-
-bet      = (rhoi*h*om^2)/(2*rhow*g)*RAOsurge^2*(1-rest_coeff.^2);%%nondimensional
-%F_av  = .5*(fn_Fcoll(2*ks,2*zet1-2*phi)+fn_Fcoll(2*ks,-2*zet1-2*phi));
-F_av     = fn_Fcoll(2*ks,2*zet1-2*phi);
-alp(jok) = (conc*f_coll*bet.*F_av)/cg;%%attenuation per meter
-
-%%extra outputs:
-%% times and speeds of collisions
-%% - for use in drag model
-omt1(jok)   = zet1-phi;
-omt2(jok)   = -zet1-phi;
-V1(jok)     = -om*X.*sin(omt1(jok));
-V2(jok)     = -om*X.*sin(omt2(jok));
-out2        = struct('name',{'omt1';'omt2';'V1';'V2'},...
-                     'value',{omt1;omt2;V1;V2});
+out.atten_coeff = alp;
+out.status = status;
+out.omt1   = omt1;
+out.omt2   = omt2;
+out.V1     = V1;
+out.V2     = V2;
 if 0
    A,omt1,V1,omt2,V2
    pause
@@ -187,9 +225,9 @@ if do_test
    %                            (rhoi*h*om^2)/(rhow*g)*(1-rc^2)*RAOsurge^2*F_av*E ]
 
    %%test at omt2:
-   Vsq   = V1_2^2+V2_2^2;
-   Usq   = rc^2*Vsq;
-   dE2   = .5*m*(Vsq-Usq);
+   Vsq = V1_2^2+V2_2^2;
+   Usq = rc^2*Vsq;
+   dE2 = .5*m*(Vsq-Usq);
    %%
    if 0
       dE          = [dE1,dE2]
