@@ -1,7 +1,7 @@
 function [alp,WW,tau_init,T_relax] = fn_ode_drag_LinearLaw(...
             prams1,coll_inputs,zz0,VV0,prams2)
 %% need: om,d=draft,cD_dim,h,RAO_surge
-%% prams1      = [om,d,RAO_surge,h]; d=draft
+%% prams1      = [om,d,RAO_surge,h]; d=draft, h=thickness
 %% coll_inputs = [A,rest_coeff,cD];
 %% prams2      = [conc,cg,f_coll] to convert to attenuation coefficient
 %% also:
@@ -16,6 +16,7 @@ function [alp,WW,tau_init,T_relax] = fn_ode_drag_LinearLaw(...
 %%  > calibrate kD so initial stress is the 
 %%       same as initial stress from quadratic drag law:
 %%       tau=-rhow*cD*|v'|v'
+%%  > ie kD=cD*|v'|/(d*omega)
 %% pass in cD
 
 do_test  = 0;
@@ -28,44 +29,62 @@ WW       = [0;0];%% work done (per unit area) by drag stress
 tau_init = [0;0];%% initial (max) stress 
 
 if nargin==0
-   'test inputs'
+   'using test inputs'
    do_test     = 1;
-   cD          = 1e3;%% non-dimensional
-   A           = 2e-2;
+   %cD          = 1e-3;%% - nondimensional
+   cD          = 1e2;%% - nondimensional
+   A           = 5e-2;
    h           = 3.3e-2;
    d           = 1.8e-2;%%draft
    rest_coeff  = .9;
 
+   %% =====================================
+   %%inputs to fn_attn_coeff_collisions
+   coll_inputs0 = [A,rest_coeff];
+   %%
    if 1
-      om       = 2*pi/1.1;
-      omt1     = 1.205531059037677;
-      V1       = -0.060661652608385;
-      omt2     = -1.021253028778352;
-      V2       = 0.055383740125916;
+      period   = 1.1;
       RAOsurge = 0.568508129170096;
    else
-      om       = 2*pi/1.5;
-      omt1     = 0.508439575729424;
-      V1       = -0.034743261608009;
-      omt2     = -1.861452883782580;
-      V2       = 0.068375052575801;
+      period   = 1.5;
       RAOsurge = 0.851899193743405;
    end
+   om = 2*pi/period;
+   k  = om^2/g;
+   cg = om/2/k;
+   wave_pram0 = [om,k,cg]
+
+   sep   = 1;
+   D  = .99;
+   rhoi  = d/h*rhow;
+   ice_pram0 = [D,h,rhoi];
+
+   conc     = .77;
+   om       = 2*pi/period;
+   f_coll   = om/pi;%%2*f
+
+   out = fn_attn_coeff_collisions(...
+      coll_inputs0,wave_pram0,ice_pram0,...
+      RAOsurge,conc,sep,f_coll)
+
+   omt1     = out.omt1;
+   V1       = out.V1;
+   omt2     = out.omt2;
+   V2       = out.V2;
+   clear wave_pram0,ice_pram0,coll_inputs0;
+   %% =====================================
 
    VV0   = [V1;V2];
    zz0   = [omt1;omt2];
-
+   clear omt1 omt2 V1 V2;
+   
    prams1      = [om,d,RAOsurge,h];
    coll_inputs = [A,rest_coeff,cD];
    %%
-   f_coll   = om/pi;%%2*f
-   conc     = .77;
-   cg       = 1;
    prams2   = [f_coll,conc,cg];
    clear om d RAOsurge h
    clear A rest_coeff cD
    clear f_coll conc cg
-   clear omt1 omt2 V1 V2;
 end
 
 
@@ -88,6 +107,7 @@ cg       = prams2(3);
 
 X        = RAOsurge*A;
 sd       = om^2/g*d;
+cD       = cD*X/d %%rescaled drag coeff: du/dz=cD*|V-v|*(V-v)
 Wfac     = sd*(rhow*g*X^2);  %%convert work from nondimensional to dimensional
 E        = rhow*g*A^2/2;
 Wfac0    = 2*RAOsurge^2*sd;%[Wfac0*E,Wfac],pause 
@@ -104,7 +124,7 @@ for j=1:2
    %% using cD and initial speed
    %% (this gives the same initial stress
    %%  as from a quadratic drag law)
-   kD = cD*abs(V0-v0)/d/om;
+   kD = cD*abs(V0-v0);
    %%
    eps         = 5e-4;
    z_relax     = -log(eps)/kD;
@@ -125,13 +145,17 @@ for j=1:2
    W1    = Wfac*w1;%%dimensional work
    WW(j) = Wfac0*trapz(zvec,work_fun_lin(zvec,u1,kD));%%work/E->attenuation coefficient
 
+   tau0 = tau1(1)
+   [v0,u1(1)]
+   tau_init(j) = tau0;
+
    if do_test%%plot and compare with ode45
       tst_work = [WW(j)*E,W1(end)]
 
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-      figure(2);
+      figure(300+j);
       subplot(3,1,1);
-      plot(zvec/pi,u1,'k',zvec/pi,-sin(zvec),'r');
+      plot(zvec/pi,u1,'k');%%analytic soln
       hold on;
       %plot(zvec/pi,f1,'r--');
       xlim(zspan/pi);
@@ -143,12 +167,11 @@ for j=1:2
       plot(zvec/pi,W1,'k');
       hold on;
       xlim(zspan/pi);
-      pause
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
       %solver   = @ode113;col = 'k';
       %solver   = @ode23;col = 'm';
-      solver   = @ode45,col   = '--b';
+      solver   = @ode45,col   = '--r';
       %%
       [zout,v1_out]  = feval(solver,@(z,v1) stress_fun_lin(z,v1,kD),zspan,v0);
       V1_out         = -sin(zout);
@@ -162,8 +185,6 @@ for j=1:2
          close
       end
       %%
-      tau0        = tau_out(1);
-      tau_init(j) = tau0;
 
       % %%find 1st time stress is 0 - defines a 'relaxation' time
       % jz          = find(tau0*tau_out<0,1,'first');
@@ -198,16 +219,17 @@ for j=1:2
          close
       end
       %%
-      figure(2);
+      figure(300+j);
       subplot(3,1,1);
-      plot(zout/pi,V1_out,'r');
+      plot(zout/pi,V1_out,'b');
       hold on;
-      plot(zout/pi,v1_out,col);
+      plot(zout/pi,v1_out,col);%%ode45 soln
       yl = get(gca,'ylim');
       plot((z0+z_relax)/pi+0*yl,yl,'g');
       hold off;
       GEN_proc_fig('\omega{t}/\pi','v_1');
       xlim(zspan/pi);
+      legend('V_{floe} (AS)','V_{wave}','V_{floe} (NS)','T_{relax}')
       %%
       subplot(3,1,2);
       plot(zout/pi,tau_out);
