@@ -168,22 +168,13 @@ if DO_MODEL
  if ~exist('collision_inputs','var');
     collision_inputs = [];
  else
-    DO_COLL = 1;
-    DO_DRAG = 0;
-    if size(collision_inputs,2)==3
-      %%collision_inputs=[amp,rest_coeff,drag_coeff]
-      DO_DRAG = 1;
-    elseif size(collision_inputs,2)==2
-      %%collision_inputs=[amp,rest_coeff]
-    elseif size(collision_inputs,2)==1
-      %%collision_inputs=[amp]
-      collision_inputs = [collision_inputs,.9+collision_inputs];
-    end
-    Ncoll      = size(collision_inputs,1);
-    col_coll   = cell(Ncoll,1);
-    ss   = 'bgrcm';
+    DO_COLL  = 1;
+    DO_DRAG  = collision_inputs.use_drag;
+    Ncoll    = length(collision_inputs.incident_amplitudes);
+    col_coll = cell(Ncoll,1);
+    ss = 'bgrcm';
     for j=1:Ncoll
-       col_coll{j}   = ['-',ss(j)];
+       col_coll{j} = ['-',ss(j)];
     end
  end
 
@@ -664,8 +655,9 @@ if DO_PLOT
  if DO_DATA
   if ~exist('eps_vec','var'); hd(1)=subplot(1,1,1); hold on;
   else  hd(1)=subplot(2,1,1); hold on; hd(2)=subplot(2,1,2); hold on; end
-  %%% Higest amplitude waves
-  [~,IA] = unique(T_vec); IA = [0,IA];
+  %%% Highest amplitude waves
+  [~,IA] = unique(T_vec)
+  IA = [0;IA];
   jj_nl=[]; ct=1;
   for loop=find(diff(IA)>1)
    dum_inds=IA(loop)+1:IA(loop+1);
@@ -764,10 +756,10 @@ if DO_PLOT
    disp(trans_model.');
   end
   if  exist('trans_model_coll','var')
-     Namp   = size(collision_inputs,1);
+     Namp   = length(collision_inputs.incident_amplitudes);
      for j=1:Namp
         plt(j+1)  = plot(model_pers,trans_model_coll(:,j),col_coll{j});
-        wamp      = collision_inputs(j,1);
+        wamp      = collision_inputs.incident_amplitudes(j);
         leg_str   = [leg_str,',''',num2str(1e2*wamp),'cm'''];
      end
      eval(['leg = legend(plt,',leg_str,',''Location'',''SouthEast'');']);

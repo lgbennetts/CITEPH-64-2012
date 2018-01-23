@@ -27,20 +27,25 @@ val_str  = [val_str, ';', '   DO_DATA   '];
 if 0
    %% do collisions:
    %% - no drag, only restitution coefficient
-   wave_amp          = 1e-2*[1;1.5;2;4;5];
-   rest_coeff        = .9;
-   collision_inputs  = [wave_amp,rest_coeff+0*wave_amp];
-   name_str          = [name_str,';', ' ''collision_inputs'' '];
-   val_str           = [val_str, ';', '   collision_inputs   '];
+   amps = 1e-2*[1;1.5;2;4;5];
+   collision_inputs.incident_amplitudes = amps;
+   collision_inputs.restitution_coefficients = .9+0*amps;
+   collision_inputs.drag_coefficients        = 0*amps;
+   collision_inputs.use_drag = 0;
+   name_str = [name_str,';', ' ''collision_inputs'' '];
+   val_str  = [val_str, ';', '   collision_inputs   '];
 else
    %% do collisions:
    %% - drag, only restitution coefficient
-   wave_amp          = 1e-2*[1;1.5;2;4;5];
-   rest_coeff        = .9;
-   drag_coeff        = 1.5e-2;
-   collision_inputs  = [wave_amp,rest_coeff+0*wave_amp,drag_coeff+0*wave_amp];
-   name_str          = [name_str,';', ' ''collision_inputs'' '];
-   val_str           = [val_str, ';', '   collision_inputs   '];
+   amps = 1e-2*[1;1.5;2;4;5];
+   collision_inputs.incident_amplitudes = amps;
+   collision_inputs.restitution_coefficients = .9+0*amps;
+   collision_inputs.drag_coefficients        = 1.5e-2+0*amps;
+   %collision_inputs.drag_law = 'linear';
+   collision_inputs.drag_law = 'quadratic';
+   collision_inputs.use_drag = 1;
+   name_str = [name_str,';', ' ''collision_inputs'' '];
+   val_str  = [val_str, ';', '   collision_inputs   '];
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -61,5 +66,5 @@ Main_Trans(input_struct);
 box on;
 xlim([0,2.2]);
 GEN_proc_fig('Wave Period, s','Transmitted Energy');
-fig_name = ['out/data_comp_rc',num2str(rest_coeff),'.eps'];
+fig_name = ['out/data_comp.eps'];
 saveas(gcf,fig_name,'epsc');

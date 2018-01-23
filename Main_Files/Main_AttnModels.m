@@ -110,7 +110,7 @@ if strfind(PRBS,'2d EMM')
  attn_2d = zeros(1,length(Tp));
  DO_COLL = ~isempty(collision_inputs)&(conc>.7);
  if DO_COLL
-    Ncoll        = size(collision_inputs,1);
+    Ncoll        = length(collision_inputs.incident_amplitudes);
     E_trans_coll = zeros(length(Tp),Ncoll);
     disp('Calculating attenuation from collisions');
  end
@@ -206,9 +206,12 @@ if strfind(PRBS,'2d EMM')
        plot(Tp,E_ratio);
        for loop_j=1:Ncoll
           %PP(loop_j,1)  = plot(Tp,E_ratio(:,loop_j),cols{loop_j});
-          A             = collision_inputs(loop_j,1)*100;%%amp in cm
-          rc            = collision_inputs(loop_j,2);
-          leg           = [leg, ', ''(',num2str(A),'cm,',num2str(rc),')'' '];
+          A   = collision_inputs.incident_amplitudes(loop_j)*100;%%amp in cm
+          rc  = collision_inputs.restitution_coefficients(loop_j);
+          cD  = collision_inputs.drag_coefficients(loop_j);
+          leg = [leg, ', ''(',num2str(A),'cm,',...
+                  num2str(rc),',',...
+                  num2str(cD),')'' '];
        end
        %PP,leg
        cmd  = ['Lg = legend(',leg(2:end),...
@@ -222,11 +225,11 @@ if strfind(PRBS,'2d EMM')
        plot(Tp,E_trans_coll);
        hold off;
        GEN_proc_fig('Period, s','Transmitted Energy Fraction');
-       cmd  = ['Lg = legend(''No collisions'' ,',leg(2:end),...
+       cmd  = ['Lg = legend(''No collisions'' ',leg,...
                ', ''Location'' ,',' ''EastOutside'' );'];
        eval(cmd);
        %%
-       figname = ['out/coll_diagnosics_rc',num2str(collision_inputs(1,2)),'.eps']
+       figname = ['out/coll_diagnosics.eps']
        saveas(gcf,figname,'epsc');
     end
     clear DO_COLL Ncoll E_trans_coll E_ratio phase_fac cmd leg
