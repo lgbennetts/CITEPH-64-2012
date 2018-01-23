@@ -229,6 +229,7 @@ if strfind(PRBS,'2d EMM')
                ', ''Location'' ,',' ''EastOutside'' );'];
        eval(cmd);
        %%
+       fn_fullscreen;
        figname = ['out/coll_diagnosics.eps']
        saveas(gcf,figname,'epsc');
     end

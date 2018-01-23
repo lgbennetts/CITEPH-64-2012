@@ -428,6 +428,7 @@ if do_test>0
    cmd  = ['Lg = legend(',leg,...
            ', ''Location'' , ''EastOutside'' );'];
    eval(cmd);
+   fn_fullscreen;
 
    if SAVE_FIG%%save figure
       outdir   = 'out';
@@ -444,7 +445,7 @@ if do_test>0
                   's_NoDrag',ss,'.eps']
       else
          figname  = ['eg_coll_T',num2str(2*pi/om),...
-                  's_Drag.eps']
+                  's_Drag_',coll_inputs.drag_law,'.eps']
       end
       saveas(gcf,[outdir,'/',figname],'epsc');
       disp(['Saved ',outdir,'/',figname])
