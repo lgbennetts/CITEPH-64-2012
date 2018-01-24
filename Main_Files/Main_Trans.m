@@ -51,10 +51,10 @@ function Main_Trans(input_struct)
 %%%%%%%%%%%%%%%%%%%%%%
 
 if exist('input_struct','var')
-   for j=1:length(input_struct)
-      nm    = input_struct(j).Name;
-      val   = input_struct(j).Value;
-      eval([nm,' = val']);
+   fields   = fieldnames(input_struct);
+   for j=1:length(fields)
+      nm    = fields{j};
+      eval([nm,' = input_struct.',nm]);
    end
 end
 

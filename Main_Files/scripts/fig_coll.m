@@ -3,61 +3,57 @@
 %% Date: 20141024, 16:21:01 CEST
 clear;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-conc  = 79;
-name_str = ' ''conc'' ';
-val_str  = '   conc   ';
+%% ===================================================
+%% inputs to Main_Trans
 
-DO_PLOT  = 1;
-name_str = [name_str,';', ' ''DO_PLOT'' '];
-val_str  = [val_str, ';', '   DO_PLOT   '];
-
-DO_MODEL = 1;
-name_str = [name_str,';', ' ''DO_MODEL'' '];
-val_str  = [val_str, ';', '   DO_MODEL   '];
-
-what_mod = '2d EMM';
-name_str = [name_str,';', ' ''what_mod'' '];
-val_str  = [val_str, ';', '   what_mod   '];
-
-DO_DATA  = 1;
-name_str = [name_str,';', ' ''DO_DATA'' '];
-val_str  = [val_str, ';', '   DO_DATA   '];
+input_struct.conc  = 79;
+input_struct.DO_PLOT  = 1;
+input_struct.DO_MODEL = 1;
+input_struct.what_mod = '2d EMM';
+input_struct.DO_DATA  = 1;
 
 if 0
-   %% do collisions:
-   %% - no drag, only restitution coefficient
+   %% do collisions, no drag
+   input_struct.collision_inputs.use_drag = 0;
+
+   %% wave amps
    amps = 1e-2*[1;1.5;2;4;5];
-   collision_inputs.incident_amplitudes = amps;
-   collision_inputs.restitution_coefficients = .9+0*amps;
-   collision_inputs.drag_coefficients        = 0*amps;
-   collision_inputs.use_drag = 0;
-   name_str = [name_str,';', ' ''collision_inputs'' '];
-   val_str  = [val_str, ';', '   collision_inputs   '];
+   input_struct.collision_inputs.incident_amplitudes = amps;
+
+   %% restitution coefficients
+   input_struct.collision_inputs.restitution_coefficients = .9+0*amps;
+   %input_struct.collision_inputs.restitution_coefficients = 0*amps;
+
+   %% show inputs
+   disp(input_struct.collision_inputs.restitution_coefficients);
 else
-   %% do collisions:
-   %% - drag, only restitution coefficient
+   %% do collisions, with drag
+   input_struct.collision_inputs.use_drag = 1;
+
+   %% wave amps
    amps = 1e-2*[1;1.5;2;4;5];
-   collision_inputs.incident_amplitudes = amps;
-   collision_inputs.restitution_coefficients = .9+0*amps;
-   collision_inputs.drag_coefficients        = 1.5e-2+0*amps;
-   %collision_inputs.drag_law = 'linear';
-   collision_inputs.drag_law = 'quadratic';
-   collision_inputs.use_drag = 1;
-   name_str = [name_str,';', ' ''collision_inputs'' '];
-   val_str  = [val_str, ';', '   collision_inputs   '];
+   input_struct.collision_inputs.incident_amplitudes = amps;
+
+   %% restitution coefficients
+   input_struct.collision_inputs.restitution_coefficients = .9+0*amps;
+   %input_struct.collision_inputs.restitution_coefficients = 0*amps;
+
+   %% drag coefficients
+   %input_struct.collision_inputs.drag_coefficients = 1.5e-2+0*amps;
+   input_struct.collision_inputs.drag_coefficients = 8e-3+0*amps;
+   %input_struct.collision_inputs.drag_coefficients = 1.5e-3+0*amps;
+
+   %% type of drag law
+   %input_struct.collision_inputs.drag_law = 'linear';
+   input_struct.collision_inputs.drag_law = 'quadratic';
+
+   %% show inputs
+   disp(input_struct.collision_inputs.drag_coefficients);
+   disp(input_struct.collision_inputs.restitution_coefficients);
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ===================================================
 
-%%create input_struct
-eval(['input_struct = struct(''Name'',{',...
-       name_str,'}, ''Value'', {',...
-       val_str,'});'] );
-
-%disp('Inputs to Main_Trans from fig_coll.m:');
-%for j=1:length(input_struct)
-%   disp(input_struct(j));
-%end
+save('out/fig_coll.mat','input_struct');
 
 %%main call;
 Main_Trans(input_struct);

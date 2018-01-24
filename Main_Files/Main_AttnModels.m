@@ -208,10 +208,15 @@ if strfind(PRBS,'2d EMM')
           %PP(loop_j,1)  = plot(Tp,E_ratio(:,loop_j),cols{loop_j});
           A   = collision_inputs.incident_amplitudes(loop_j)*100;%%amp in cm
           rc  = collision_inputs.restitution_coefficients(loop_j);
-          cD  = collision_inputs.drag_coefficients(loop_j);
-          leg = [leg, ', ''(',num2str(A),'cm,',...
-                  num2str(rc),',',...
-                  num2str(cD),')'' '];
+          if collision_inputs.use_drag==1
+             cD  = collision_inputs.drag_coefficients(loop_j);
+             leg = [leg, ', ''(',num2str(A),'cm,',...
+                     num2str(rc),',',...
+                     num2str(cD),')'' '];
+          else
+             leg = [leg, ', ''(',num2str(A),'cm,',...
+                     num2str(rc), ')'' '];
+          end
        end
        %PP,leg
        cmd  = ['Lg = legend(',leg(2:end),...
