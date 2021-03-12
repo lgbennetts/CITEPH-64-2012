@@ -43,7 +43,9 @@
 %
 % L Bennetts Sept 2013 / Adelaide
 
-function Main_Trans
+function Main_Trans(my_inputs)
+
+if exist('my_inputs','var'); eval(my_inputs); end
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% %%%% PRELIMS %%%%%%
@@ -56,7 +58,7 @@ end
 
 %% GENERAL
 
-if ~exist('conc','var');     conc=39; end
+if ~exist('conc','var') || isempty(conc);     conc=39; end
 
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 if ~exist('DO_PLOT','var');  DO_PLOT=1; end
@@ -120,11 +122,11 @@ if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
 if ~exist('DO_MODEL','var'); DO_MODEL=1; end
 
-if ~exist('Vert_Modes','var'); Vert_Modes=4e2; end
+if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
 if DO_DISP; model_pers=unique(HT(2,ht_inds)); end
 if ~exist('model_pers','var'); model_pers=unique(HT(2,ht_inds)); end % 0.6:0.02:2; end %
 
-what_mod = '2d EMM'; %'Boltzmann steady'; %
+what_mod = 'Boltzmann steady'; %'2d EMM'; %
 
 % Consistency for other users:
 

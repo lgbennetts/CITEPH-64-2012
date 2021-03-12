@@ -282,7 +282,7 @@ if ~DTYP
   %%%
   %%% where SL=S[incs] and SR=S[refs] 
   
-  [Im,Ip,Iz0,Iz1] = fn_ArrangeEvals(D,0);
+  [Im,Iz0,Ip,Iz1] = fn_ArrangeEvals(D,0);
   
   n0=length([Im;Iz0]); n1=length([Ip;Iz1]);
   
