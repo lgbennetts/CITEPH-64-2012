@@ -60,11 +60,6 @@ if ~exist('wth','var'); wth=Param.MIZ_length; end
 
 if PLOT; x = linspace(0,Param.MIZ_length,6); end
 
-if PLOT ~=0
- if ~exist('fig','var'); fig=1; end
- if ~exist('col','var');col='r-'; end
-end
-
 %% Numerics
 
 if ~exist('tol','var'); tol=1e-5; end
@@ -427,7 +422,8 @@ end % END If ~DTYP
 
 if PLOT
  if ~DTYP
-  figure(fig); hold on %h1 = subplot(1,1,1);
+  figure; h1 = subplot(1,1,1);  
+  %figure(h1); hold on %h1 = subplot(1,1,1);
   %%%%%%%%%%%%%%%%%%% 
   %%%  Inf width  %%%
   %%%%%%%%%%%%%%%%%%% 
@@ -579,7 +575,7 @@ if PLOT
    else
        
         for loop_x=1:length(x)
-        I = V*diag(exp(D*x(loop_x)))*c;
+        I = V*diag([exp(D0*x(loop_x));exp(D1*(x(loop_x)-wth))])*c;
         if ~isempty(find(abs(imag(I))>tol))
          cprintf('red',['Check I: ', int2str(loop_x), ', ', ...
           num2str(max(abs(imag(I)))), '\n'])
@@ -598,57 +594,43 @@ if PLOT
         end
        end
 
-       end %END IF REMSCAT == 0
+       end % END IF absorb==0
        
+   end %END IF REMSCAT == 0
    
    close(gcf)
    
    % Plot Hs = 4*sqrt(m0) where m0 = int I(theta) dtheta
    % Nb. actually plot ratio Hs(x)/Hs(0)
    elseif PLOT == 2
+    %%%%%%%%%%%%%%%
+    if absorb==0 %%
+    %%%%%%%%%%%%%%%
+     I0 = [u0,V]*diag([1;1;exp(D0*0);exp(D1*(0-wth))])*c;
+     H0 = real(sqrt(sum([I0(end);I0]))); clear I0
+     H_vec = 0*x;
+     for loop_x=1:length(x)
+      I = [x(loop_x)*v0+u0,V]*diag([1;1;exp(D0*x(loop_x));exp(D1*(x(loop_x)-wth))])*c;
+      I = [I(end);I];
+      H_vec(loop_x) = real(sqrt(sum(I)))/H0; clear I
+     end
+     plot(x,H_vec,col); set(gca,'box','on')
+     xlabel('x','fontsize',14); ylabel('H_{s}(x)/H_{s}(0)','fontsize',14);
+    %%%%%%%
+    else %%
+    %%%%%%%
     
-    if RemScat == 0
-        %%%%%%%%%%%%%%%
-        if absorb==0 %%
-        %%%%%%%%%%%%%%%
-         I0 = [u0,V]*diag([1;1;exp(D0*0);exp(D1*(0-wth))])*c;
-         H0 = real(sqrt(sum([I0(end);I0]))); clear I0
-         H_vec = 0*x;
-         for loop_x=1:length(x)
-          I = [x(loop_x)*v0+u0,V]*diag([1;1;exp(D0*x(loop_x));exp(D1*(x(loop_x)-wth))])*c;
-          I = [I(end);I];
-          H_vec(loop_x) = real(sqrt(sum(I)))/H0; clear I
-         end
-         plot(x,H_vec,col); set(gca,'box','on')
-         xlabel('x','fontsize',14); ylabel('H_{s}(x)/H_{s}(0)','fontsize',14);
-        %%%%%%%
-        else %%
-        %%%%%%%
-
-        I0 = V*diag([exp(D0*0);exp(D1*(0-wth))])*c;
-        H0 = real(sqrt(sum([I0(end);I0]))); clear I0
-        H_vec = 0*x;
-        for loop_x=1:length(x)
-         I = V*diag([exp(D0*x(loop_x));exp(D1*(x(loop_x)-wth))])*c;
-         I = [I(end);I];
-         H_vec(loop_x) = real(sqrt(sum(I)))/H0; clear I
-        end
-        plot(x,H_vec,col); set(gca,'box','on')
-        xlabel('x','fontsize',14); ylabel('H_{s}(x)/H_{s}(0)','fontsize',14);
-        end % END IF absorb==0
-        
-    else
-        I0 = V*diag(exp(D))*c;
-        H0 = real(sqrt(sum([I0(end);I0]))); clear I0
-        H_vec = 0*x;
-        for loop_x=1:length(x)
-         I = V*diag(exp(D*x(loop_x)))*c;
-         I = [I(end);I];
-         H_vec(loop_x) = real(sqrt(sum(I)))/H0; clear I
-        end
-        plot(x,H_vec,col); set(gca,'box','on')
-        xlabel('x','fontsize',14); ylabel('H_{s}(x)/H_{s}(0)','fontsize',14);
-    end %RemScat == 0      
+    I0 = V*diag([exp(D0*0);exp(D1*(0-wth))])*c;
+    H0 = real(sqrt(sum([I0(end);I0]))); clear I0
+    H_vec = 0*x;
+    for loop_x=1:length(x)
+     I = V*diag([exp(D0*x(loop_x));exp(D1*(x(loop_x)-wth))])*c;
+     I = [I(end);I];
+     H_vec(loop_x) = real(sqrt(sum(I)))/H0; clear I
+    end
+    plot(x,H_vec,col); set(gca,'box','on')
+    xlabel('x','fontsize',14); ylabel('H_{s}(x)/H_{s}(0)','fontsize',14);
+    end % END IF absorb==0
    end % END IF PLOT==
   end % ENF IF wth==inf
    

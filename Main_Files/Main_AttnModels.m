@@ -16,7 +16,7 @@
 % LONG = long floe limit (for 2d code)
 % COMM = comments on (1) or off (0)
 
-function out=Main_AttnModels(Tp,conc,PRBS,Nd,COMM,DO_PLOT)
+function out=Main_AttnModels(Tp,conc,PRBS,RemScat,Nd,COMM,DO_PLOT)
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% %%%% PRELIMS %%%%%%
@@ -43,6 +43,9 @@ if ~exist('SURGE','var'); SURGE=1; end
 
 if ~exist('extra_pts','var'); extra_pts=[]; end
 if ~exist('terms_grn','var'); terms_grn=100; end
+
+%Remove scattering for Boltzman - just losing energy
+if ~exist('RemScat','var');    RemScat=0; end
 
 if strcmp(TEST,'Oceanide')
     
@@ -250,11 +253,11 @@ if strfind(PRBS,'Boltzmann steady')
  
  for loop_p=1:length(Tp) 
   out = ...
-   fn_Boltzmann_Steady('freq',1/Tp(loop_p),conc,Param,...
+   fn_Boltzmann_Steady('freq',1/Tp(loop_p),conc,RemScat,Param,...
    'int trans energy',COMM,0);
   T_Blt(loop_p) = out(1).value; clear out
  end
- 
+
 %  [~,ind] = min(abs(th_vec));
 %  
 %  T_Blt = sqrt(I_Boltz(:,ind));

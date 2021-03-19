@@ -58,7 +58,7 @@ end
 
 %% GENERAL
 
-if ~exist('conc','var') || isempty(conc);     conc=39; end
+if ~exist('conc','var') || isempty(conc);     conc=79; end
 
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 if ~exist('DO_PLOT','var');  DO_PLOT=1; end
@@ -78,7 +78,7 @@ if DO_PLOT
   col_nl_ii=' ''ko'' , ''markersize'' , 12';
   coll=' ''b.'' , ''markersize'' , 12';
   collnl=' ''bo'' , ''markersize'' , 12';
-  col_model=' ''b-.'' ';
+  col_model=' ''r-.'' ';
   %col_model=' ''go'' , ''markersize'' , 12';
  end
 end
