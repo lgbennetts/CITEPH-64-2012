@@ -45,7 +45,7 @@ if ~exist('extra_pts','var'); extra_pts=[]; end
 if ~exist('terms_grn','var'); terms_grn=100; end
 
 %Remove scattering for Boltzman - just losing energy
-if ~exist('RemScat','var');    RemScat=0; end
+if ~exist('RemScat','var');    RemScat=1; end
 
 if strcmp(TEST,'Oceanide')
     

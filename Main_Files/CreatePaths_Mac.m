@@ -11,6 +11,10 @@ path(path,'../Fns/Misc')
 path(path,'../Fns/CollectData')
 path(path,'../Fns/CITEPH_specifics')
 
+
+path(path,'../Fns/MovingFourier')
+path(path,'Temp_data/');
+
 %path(path,'../Fns/Misc/Weight_Norm')
 %path(path,'../Fns/Misc/Weight_Ones')
 path(path,'../Fns/Misc/Weight_Standard')

@@ -51,14 +51,16 @@ if exist('my_inputs','var'); eval(my_inputs); end
 %% %%%% PRELIMS %%%%%%
 %%%%%%%%%%%%%%%%%%%%%%
 
-if ~or(strcmp(getenv('LOGNAME'),'a1612881'),...
-  strcmp(getenv('LOGNAME'),'lbennetts'))
+if ~(strcmp(getenv('LOGNAME'),'a1612881')||...
+  strcmp(getenv('LOGNAME'),'lbennetts')||...
+  strcmp(getenv('LOGNAME'),'a1229158'))
  OTHER_USR=1;
 end
 
 %% GENERAL
 
-if ~exist('conc','var') || isempty(conc);     conc=39; end
+if ~exist('conc','var') || isempty(conc);     conc=79; end
+if ~exist('WaveType','var');     WaveType= 'Regular';end; %'Irregular';end %'Regular'; end %'Irregular';
 
 if ~exist('DO_SVFG','var');  DO_SVFG=0; end
 if ~exist('DO_PLOT','var');  DO_PLOT=1; end
@@ -66,6 +68,7 @@ if ~exist('DO_DISP','var');  DO_DISP=0; end
 if ~exist('COMM','var');     COMM   =0; end
 if ~exist('EGY','var');      EGY    =1; end
 if ~exist('DO_STR','var');   DO_STR =1; end
+
 
 if ~exist('PLOT_TYP','var'); PLOT_TYP ='trans_coeff'; end
 
@@ -78,7 +81,7 @@ if DO_PLOT
   col_nl_ii=' ''ko'' , ''markersize'' , 12';
   coll=' ''b.'' , ''markersize'' , 12';
   collnl=' ''bo'' , ''markersize'' , 12';
-  col_model=' ''b-.'' ';
+  col_model=' ''r-.'' ';
   %col_model=' ''go'' , ''markersize'' , 12';
  end
 end
@@ -99,7 +102,7 @@ if ~exist('data_out','var')
  data_out.tint='[t0,t1] = fn_tint(tvec,t0,Tp,Tpers);';
 end
 
-if ~exist('DEL','var');      DEL=1; end
+if ~exist('DEL','var');      DEL=0; end
 
 if ~exist('DO_FDSP','var');  DO_FDSP=0; end
 if ~exist('DO_FPLT','var');  DO_FPLT=0; end
@@ -108,7 +111,7 @@ if ~exist('DO_FPLT','var');  DO_FPLT=0; end
 
 if ~exist('errbars','var');  errbars=1; end
 
-HT =fn_WhatTestData(conc,'Regular',0); ht_inds=1:length(HT); %1; %
+HT =fn_WhatTestData(conc,WaveType,0); ht_inds=1:length(HT(1,:)); %1; %
 % if s trfind(t_meth,'calib')  
 %  HT0=fn_WhatTestData(conc,['Regular-' t_meth],0);
 %  intersect(intersect(HT(1,:),HT0(1,:)),intersect(HT(2,:),HT0(2,:)))
@@ -120,14 +123,13 @@ if ~exist('file_pre','var'); file_pre = 'Temp_data/a00'; end
 
 %% MODEL
 
-if ~exist('DO_MODEL','var'); DO_MODEL=1; end
+if ~exist('DO_MODEL','var'); DO_MODEL=0; end
 
 if ~exist('Vert_Modes','var'); Vert_Modes=1e2; end
 if DO_DISP; model_pers=0.6:0.02:2; end
 if ~exist('model_pers','var'); model_pers=0.6:0.02:2; end %model_pers=unique(HT(2,ht_inds)); end % 0.6:0.02:2; end %
 
-what_mod = 'Boltzmann steady'; %'2d EMM' ;%'Boltzmann steady';% '2d EMM';%'Boltzmann steady'; %'2d EMM'; %
-
+what_mod = 'Boltzmann steady';%'2d EMM';%'Boltzmann steady';%'2d EMM' ;%'Boltzmann steady';%'2d EMM'; %'Boltzmann steady'; %'2d EMM'; %'Boltzmann steady' ;%'2d EMM';
 RemScat=1;
 
 % Consistency for other users:
@@ -238,7 +240,7 @@ if DO_DATA
        '; Hs=' num2str(HT(1,loop_ht)) '\n']); end
      for probe=probes
       Main_AttnData(HT(2,loop_ht),HT(1,loop_ht),conc,Tpers,data_out,...
-       loop_ht,probe,'LHS-calib',DO_FPLT,'none',DO_FDSP,file_pre,t_meth);
+       loop_ht,probe,WaveType,'LHS-calib',DO_FPLT,'none',DO_FDSP,file_pre,t_meth);
       if DO_FPLT
        pause
        close all
@@ -255,7 +257,7 @@ if DO_DATA
        '; Hs=' num2str(HT(1,loop_ht)) '\n']); end
      for probe=probes
       Main_AttnData(HT(2,loop_ht),HT(1,loop_ht),conc,Tpers,data_out,...
-       loop_ht,probe,'RHS',DO_FPLT,'none',DO_FDSP,file_pre);
+       loop_ht,probe,WaveType,'RHS',DO_FPLT,'none',DO_FDSP,file_pre);
       if DO_FPLT
        pause
        close all
@@ -276,7 +278,7 @@ if DO_DATA
        '; Hs=' num2str(HT(1,loop_ht)) '\n']); end
      for probe=probes
       Main_AttnData(HT(2,loop_ht),HT(1,loop_ht),conc,Tpers,data_out,...
-       loop_ht,probe,'LHS',DO_FPLT,'none',DO_FDSP,file_pre,t_meth);
+       loop_ht,probe,WaveType,'LHS',DO_FPLT,'none',DO_FDSP,file_pre,t_meth);
       if DO_FPLT
        pause
        close all
@@ -293,7 +295,7 @@ if DO_DATA
        '; Hs=' num2str(HT(1,loop_ht)) '\n']); end
      for probe=probes
       Main_AttnData(HT(2,loop_ht),HT(1,loop_ht),conc,Tpers,data_out,...
-       loop_ht,probe,'RHS-calib',DO_FPLT,'none',DO_FDSP,file_pre,t_meth);
+       loop_ht,probe,WaveType,'RHS-calib',DO_FPLT,'none',DO_FDSP,file_pre,t_meth);
       if DO_FPLT
        pause
        close all
@@ -408,7 +410,7 @@ if DO_DATA
        ' ; eps=' num2str(HT(4,loop_ht))'\n']); end
      for probe=probes
       Main_AttnData(HT(2,loop_ht),HT(1,loop_ht),conc,Tpers,data_out,...
-       loop_ht,probe,'LHS',DO_FPLT,'none',DO_FDSP,file_pre);
+       loop_ht,probe,WaveType,'LHS',DO_FPLT,'none',DO_FDSP,file_pre);
       if DO_FPLT
        pause
        close all
@@ -426,7 +428,7 @@ if DO_DATA
        ' ; eps=' num2str(HT(4,loop_ht)) '\n']); end
      for probe=probes
       Main_AttnData(HT(2,loop_ht),HT(1,loop_ht),[],Tpers,data_out,...
-       loop_ht,probe,'RHS-calib',DO_FPLT,'none',DO_FDSP,file_pre);
+       loop_ht,probe,WaveType,'RHS-calib',DO_FPLT,'none',DO_FDSP,file_pre);
       if DO_FPLT
        pause
        close all
@@ -492,7 +494,7 @@ if DO_DATA
       ' ; eps=' num2str(HT(4,loop_ht)) '\n']); end
     for probe=probes
      Main_AttnData(HT(2,loop_ht),HT(1,loop_ht),conc,Tpers,data_out,...
-      loop_ht,probe,'RHS',DO_FPLT,'none',DO_FDSP,file_pre,t_meth);
+      loop_ht,probe,WaveType,'RHS',DO_FPLT,'none',DO_FDSP,file_pre,t_meth);
      if DO_FPLT
       pause
       close all

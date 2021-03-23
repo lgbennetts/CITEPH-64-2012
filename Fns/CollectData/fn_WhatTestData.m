@@ -100,8 +100,8 @@ elseif conc==79
    dum_reg(count_r,2) = 10\c79_prams(loop).period;
    count_r=count_r+1;
   elseif strcmp(c79_prams(loop).type,'Irregular')
-   dum_irr(count_r,1) = 10*c79_prams(loop).wave_height;
-   dum_irr(count_r,2) = 10\c79_prams(loop).period;
+   dum_irr(count_i,1) = 10*c79_prams(loop).wave_height;
+   dum_irr(count_i,2) = 10\c79_prams(loop).period;
    count_i=count_i+1;
   end
  end
@@ -156,8 +156,8 @@ elseif conc==39
    dum_reg(count_r,2) = 10\c39_prams(loop).period;
    count_r=count_r+1;
   elseif strfind(c39_prams(loop).type,'Irregular')
-   dum_irr(count_r,1) = 10*c39_prams(loop).wave_height;
-   dum_irr(count_r,2) = 10\c39_prams(loop).period;
+   dum_irr(count_i,1) = 10*c39_prams(loop).wave_height;
+   dum_irr(count_i,2) = 10\c39_prams(loop).period;
    count_i=count_i+1;
   end
  end

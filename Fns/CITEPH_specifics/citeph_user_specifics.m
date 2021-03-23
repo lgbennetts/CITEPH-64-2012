@@ -47,6 +47,10 @@ switch user_number
   elseif strcmp(tests,'final')
    basedir  = [dum{count} 'CITEPH-64-2012/CITEPH-data-final/'];
   end
+  
+ case 3%%Jordan Pitt
+  basedir = '/Users/a1229158/Documents/Research/BoxData/CITEPH-data/';
+  
 end
 
 if strcmp(basedir,'')

@@ -37,9 +37,9 @@ types = {'Regular';
 	 'Regular';   		    
 	 'Regular';   		    
 	 'Regular';   		    
-	 'Irregular: Jonswap (3.3)';   
-	 'Irregular: Jonswap (3.3)';   		    
-	 'Irregular: Jonswap (3.3)'}; 
+	 'Irregular';   
+	 'Irregular';   		    
+	 'Irregular'}; 
 
 
 
