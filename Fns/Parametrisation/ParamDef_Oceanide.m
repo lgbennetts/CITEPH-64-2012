@@ -15,21 +15,26 @@ else
 end
 
 % thickness
-Param.thickness = 33e-3;
+Param.thickness = 33e-3; %33e-3;
+% Param.thickness = 1;
 
 % Accelaration due to gravity (in m\,s^{-2})
-Param.g = 9.81*ones(Param.Np,1);            
+Param.g = 9.81*ones(Param.Np,1);   
+% Param.g = 1*ones(Param.Np,1);    
 
 % Density of fluid (in kg\,m^{-3})
-Param.rho_0 = 1000*ones(Param.Np,1);           
+% Param.rho_0 = %1000*ones(Param.Np,1);   
+Param.rho_0 = 1000*ones(Param.Np,1);      
 
 %%%%% Choose to give draught 1.8/100 %%%%%
 
 % Densities of disks (in kg\,m^{-3})
 Param.rho = 1.8*Param.rho_0/3.3; %500*ones(Param.Np,1);
+% Param.rho = Param.rho_0;
 
 % Poisson's ratios
 Param.nu = 0.3*ones(Param.Np,1);
+% Param.nu = sqrt(11/12)*ones(Param.Np,1);
 
 % Young modulii (in MPa)
 if ~RIGID
@@ -37,6 +42,8 @@ if ~RIGID
 else
  Param.E = RIGID*(10^9)*ones(Param.Np,1);
 end
+% Param.E = 1;
+% Param.E = 4*10^4;
     
 % Draughts (in m)
 Param.draft = Param.thickness.*Param.rho./Param.rho_0; 
@@ -49,7 +56,9 @@ Param.beta = Param.D./(Param.g.*Param.rho_0);
 
 % fluid depth (open/equilibrium)
 
+%  Param.bed = 1;
 Param.bed = 3.1;
+% Param.bed = 10;
 
 % MIZ length [m]
 
@@ -58,5 +67,6 @@ Param.MIZ_length = 5;
 % diameter of floes [m]
 
 Param.floe_diam = .99;
+% Param.floe_diam = 1;
 
 return

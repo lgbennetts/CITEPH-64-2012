@@ -22,9 +22,13 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Jordan
+% Jordan
 if strcmp(user_name,'a1229158')
-   %%Tim on desktop, hexagon or nansen;
-   user_number = 3;
+    user_number = 3;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%other user - 0 
+if ~exist('user_number','var'); user_number =0; end
+
+end

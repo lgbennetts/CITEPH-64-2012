@@ -107,9 +107,8 @@ if strfind(PRBS,'2d EMM')
  attn_2d = zeros(1,length(Tp));
  
  for loop_p=1:length(Tp)
-   out = fn_ElasticRaft2d('freq',1/Tp(loop_p),Param,'transmitted energy',...
-    SURGE,0,COMM,ens1);
-   attn_2d(loop_p) = out(1).value; clear out
+    out = fn_ElasticRaft2d('freq',1/Tp(loop_p),Param,'transmitted energy',SURGE,0,COMM,ens1);
+    attn_2d(loop_p) = out(1).value; clear out
  end
   
  T_2dx = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2);  

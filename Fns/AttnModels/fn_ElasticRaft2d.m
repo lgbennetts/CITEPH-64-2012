@@ -31,7 +31,7 @@
 % visc_rp          = viscosity parameter (default = 0)
 
 function out = fn_ElasticRaft2d...
- (fortyp,lam0,Param,outputs,SURGE,LONG,COMM,Ens_size,DO_PLOT,col)
+ (fortyp,lam0,Param,outputs,SURGE,LONG,COMM,Ens_size,DO_PLOT,col,xbeam)
 
 %% Inputs & prelims
 
@@ -53,6 +53,8 @@ if ~LONG; if ~exist('Ens_size','var'); Ens_size = 1; end; end
 if ~exist('outputs','var'); 
  outputs='transmitted energy heave pitch/k surge-norm'; end
 
+if ~exist('xbeam','var');  -Param.floe_diam/2:0.01:Param.floe_diam/2; end
+
 depth = Param.bed;
 
 Forcing = Force_def(Param.g(1), depth, fortyp, lam0);
@@ -67,7 +69,9 @@ floe_length = Param.floe_diam;
 
 DimG = Vert_Dim; clear Dims
 
-draught = Param.draft; al = draught;
+draught = Param.draft;
+al = draught;
+
 
 be = Param.beta;
 
@@ -140,23 +144,62 @@ if COMM
  cprintf([0.3,0.3,0.3],['>>> lam0/k0 = ' num2str(2*pi/Roots0(1)) '/' num2str(Roots0(1)) '\n'])
 end
      
-clear Param
+% clear Param
      
 %%% ONE INTERFACE 
 
 [Rm0,Tm0,Rp0,Tp0,Sm0_sg,Sp0_sg,Roots,c_vec] = ...
             fn_WaterIce(parameter_vector, Vert_Dim, DimG, Roots0, ... 
             mat_A0, mat_Q0, thickness, depth, draught, al, be, SURGE);
-           
+
+% %Roots
+% omega = lam0*2*pi;
+% pw = Param.rho_0;
+% g = Param.g;
+% E = Param.E;
+% h = Param.thickness;
+% nu = Param.nu;
+% H = Param.bed;
+% d = Param.draft;
+% rhoi = Param.rho;
+% 
+% 
+% 
+% %Stated equation
+% for i = 1:10
+%     LHS = Roots(i)*tanh(Roots(i)*(H-d));
+%     RHS = pw*omega^2/ (pw*g - rhoi*omega^2*h + E*h^3/(12*(1- nu^2))*Roots(i)^4);
+%     abs(LHS - RHS)
+% end
+% 
+% 
+% D = E*h^3/(12*(1-nu^2));
+% alpha = omega^2/g;
+% beta = (D) / (pw*g);
+% gamma = rhoi*h/(pw);
+% 
+% 
+% %Wikiw
+% for i = 1:10
+%     LHS = 1i*Roots(i).*tan(1i*Roots(i)*(H-d));
+%     RHS = -alpha./(beta*Roots(i)^4 + (1-alpha*gamma));
+%     abs(LHS - RHS)
+% end
+
+
+
+        
 if COMM; cprintf([0.3,0.3,0.3],['>>> lam/k   = ' ...
   num2str(2*pi/Roots(1)) '/' num2str(Roots(1)) '\n']); end           
         
 if LONG %%% LONG FLOE LIMIT %%%
  
  r11 = Rm0(1,1); 
- %alpha = -2*log(1-abs(r11)^2);
  
+ %alpha = -2*log(1-abs(r11)^2);
+
  TT = (1-abs(r11)^2)^2; RR = [];
+ 
 
 else %%% NO LONG FLOE LIMIT %%% 
             
@@ -173,7 +216,8 @@ else %%% NO LONG FLOE LIMIT %%%
   [Rm,Tm,Rp,Tp,Sm_sg,Sp_sg] = ...
             fn_IndFloe(dum_fl, Rm0, Tm0, Rp0, Tp0, Sm0_sg, Sp0_sg, Roots);
    
-  %%% Equation of motion (surge) %%%         
+
+  
   Phi0_sg = Sm_sg; Phi1_sg = Sp_sg; u_sg=0; 
   X_sg0   = zeros(1,Vert_Dim);      X_sg1 = X_sg0; 
   
@@ -203,92 +247,144 @@ else %%% NO LONG FLOE LIMIT %%%
   Tp = Tp + Sp_sg*X_sg1; %clear X_sg0 X_sg1
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       
-  r_vec(loop) = abs(Rm(1,1))^2;
-  t_vec(loop) = abs(Tm(1,1))^2;      
+  r_vec(loop) =Rm(1,1); %abs(Rm(1,1))^2; %Rm(1,1);
+  t_vec(loop) =Tm(1,1); %abs(Tm(1,1))^2;      
         
  end
  
  Rm = mean(r_vec); Tm = mean(t_vec);
+%  TT = Tm; RR = Rm;
+TT = abs(Tm)^2; RR = abs(Rm)^2;
+ 
+ 
+ if  contains(outputs,'disk')
+     v1 = 1:Vert_Dim+2; v2 = v1 + Vert_Dim+2;
 
- TT = Tm; RR = Rm;
+     am = Inc; bm = zeros(Vert_Dim,1);
+
+     %%% Amplitudes in floe
+
+     El = exp(1i*Roots*floe_length);
+
+     dum_M(v1,v1)=eye(Vert_Dim+2); dum_M(v2,v2)=eye(Vert_Dim+2);
+     dum_M(v1,v2)=-Rp0*diag(El); dum_M(v2,v1)=-Rp0*diag(El);
+
+     dum_v(v1,1) = Tm0*am + Sp0_sg*(X_sg0*am+X_sg1*bm);       
+     dum_v(v2,1) = Tm0*bm - Sp0_sg*(X_sg0*am+X_sg1*bm);
+
+     dum_amps = dum_M\dum_v;
+
+     %%% The floe profile (and inc wave)
+
+
+
+     for loop_x=1:length(xbeam)
+      etabeam(loop_x) = c_vec*...
+       (diag(exp(1i*Roots*(xbeam(loop_x)+floe_length/2)))*dum_amps(v1) ...
+        + diag(exp(-1i*Roots*(xbeam(loop_x)-floe_length/2)))*dum_amps(v2));
+    
+      phibeam(loop_x) = ones(size(c_vec))*(diag(exp(1i*Roots*(xbeam(loop_x)+floe_length/2)))*dum_amps(v1) ...
+         + diag(exp(-1i*Roots*(xbeam(loop_x)-floe_length/2)))*dum_amps(v2));  
+     end
+     
+
+ end
+
  
  if abs(RR+TT-1)>1e-3
   cprintf('magenta',['>>> warning R+T=' num2str(RR+TT) '\n'])
  end
 
+ 
 end
 
 %% PLOT:
 
 if or(DO_PLOT,or(~isempty(strfind(outputs,'heave')),...
   ~isempty(strfind(outputs,'pitch'))))
- 
- x_res = 501;
- 
- [wts,xx,fac] = fn_NumInt(x_res,-floe_length/2,floe_length/2);
- 
-%  xx_ext = (floe_length/2+2*pi/Roots0(1))*linspace(-1,1,x_res);
- xx_ext = (floe_length/2+2*floe_length)*linspace(-1,1,x_res);
- 
- v1 = 1:Vert_Dim+2; v2 = v1 + Vert_Dim+2;
- 
- am = Inc; bm = zeros(Vert_Dim,1);
- 
- %%% Amplitudes in floe
- 
- El = exp(1i*Roots*floe_length);
- 
- dum_M(v1,v1)=eye(Vert_Dim+2); dum_M(v2,v2)=eye(Vert_Dim+2);
- dum_M(v1,v2)=-Rp0*diag(El); dum_M(v2,v1)=-Rp0*diag(El);
- 
- dum_v(v1,1) = Tm0*am + Sp0_sg*(X_sg0*am+X_sg1*bm);       
- dum_v(v2,1) = Tm0*bm - Sp0_sg*(X_sg0*am+X_sg1*bm);
- 
- dum_amps = dum_M\dum_v;
- 
- %%% The floe profile (and inc wave)
- 
- eta=zeros(x_res,1); eta_inc=eta;
- 
-%  for loop_x=1:length(xx)
-%   eta(loop_x) = ((Roots.*tanh(Roots*(depth-draught))).')*...
-%    (diag(exp(1i*Roots*(xx(loop_x)+floe_length/2)))*dum_amps(v1) ...
-%    + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
-%  end
-%  
-%  eta = eta/fq;
- 
- for loop_x=1:length(xx)
-  eta(loop_x) = c_vec*...
-   (diag(exp(1i*Roots*(xx(loop_x)+floe_length/2)))*dum_amps(v1) ...
-    + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
- end
- 
- for loop_x=1:length(xx); 
-  eta_inc(loop_x,1)=exp(1i*Roots0(1)*(xx(loop_x)+floe_length/2)); 
- end
- 
+    x_res = 501;
+
+     [wts,xx,fac] = fn_NumInt(x_res,-floe_length/2,floe_length/2);
+
+    %  xx_ext = (floe_length/2+2*pi/Roots0(1))*linspace(-1,1,x_res);
+     xx_ext = (floe_length/2+2*floe_length)*linspace(-1,1,x_res);
+
+     v1 = 1:Vert_Dim+2; v2 = v1 + Vert_Dim+2;
+
+     am = Inc; bm = zeros(Vert_Dim,1);
+
+     %%% Amplitudes in floe
+
+     El = exp(1i*Roots*floe_length);
+
+     dum_M(v1,v1)=eye(Vert_Dim+2); dum_M(v2,v2)=eye(Vert_Dim+2);
+     dum_M(v1,v2)=-Rp0*diag(El); dum_M(v2,v1)=-Rp0*diag(El);
+
+     dum_v(v1,1) = Tm0*am + Sp0_sg*(X_sg0*am+X_sg1*bm);       
+     dum_v(v2,1) = Tm0*bm - Sp0_sg*(X_sg0*am+X_sg1*bm);
+
+     dum_amps = dum_M\dum_v;
+
+     %%% The floe profile (and inc wave)
+
+     eta=zeros(x_res,1); eta_inc=eta;
+
+    %  for loop_x=1:length(xx)
+    %   eta(loop_x) = ((Roots.*tanh(Roots*(depth-draught))).')*...
+    %    (diag(exp(1i*Roots*(xx(loop_x)+floe_length/2)))*dum_amps(v1) ...
+    %    + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
+    %  end
+    %  
+    %  eta = eta/fq;
+
+     for loop_x=1:length(xx)
+      eta(loop_x) = c_vec*...
+       (diag(exp(1i*Roots*(xx(loop_x)+floe_length/2)))*dum_amps(v1) ...
+        + diag(exp(-1i*Roots*(xx(loop_x)-floe_length/2)))*dum_amps(v2));
+     end
+
+     for loop_x=1:length(xx); 
+      eta_inc(loop_x,1)=exp(1i*Roots0(1)*(xx(loop_x)+floe_length/2)); 
+     end
  %%% Plot
  
  if DO_PLOT
-  figure(DO_PLOT)
+%   figure(DO_PLOT)
+%   
+%   h1 = subplot(2,1,1); hold on; set(h1,'box','on')
+%   h2 = subplot(2,1,2); hold on; set(h2,'box','on')
+%   
+%   Incident = exp(1i*Roots0(1)*(xx_ext+floe_length/2));
+%   
+%   IR = Incident + Rm*exp(-1i*Roots0(1)*(xx_ext+floe_length/2));
+%   TI = Tm*exp(1i*Roots0(1)*(xx_ext-floe_length/2));
+%   
+%   plbel = thickness *(parameter_vector(2)/parameter_vector(1));
+%   plabv = thickness *(1 - parameter_vector(2)/parameter_vector(1));
+%   
+%   plot(h1,xx_ext,real(Incident),'k:')
+%   plot(h1,xx_ext(xx_ext<-floe_length/2),real(IR(xx_ext<-floe_length/2)),'b-')
+%   plot(h1,xx_ext(xx_ext>floe_length/2),real(TI(xx_ext>floe_length/2)),'g-')
+%   plot(h1,xx,real(eta),'-r')
+%   plot(h1,xx,real(eta) + plabv,'--r')
+%  plot(h1,xx,real(eta) - plbel,'--r')
+%   ylabel(h1,'Re(\eta)','fontsize',14)
+%   title(h1,['floe profile (' col ') and incident wave (k:), left wave (b-), right wave(g-)'],'fontsize',14)
+%   plot(h2,xx_ext,imag(Incident),'k:')
+%   plot(h2,xx_ext(xx_ext<-floe_length/2),imag(IR(xx_ext<-floe_length/2)),'b-')
+%   plot(h2,xx_ext(xx_ext>floe_length/2),imag(TI(xx_ext>floe_length/2)),'g-')
+%   plot(h2,xx,imag(eta),'-r')
+%   plot(h2,xx,imag(eta)+ plabv,'--r')
+%   plot(h2,xx,imag(eta)- plbel,'--r')
+%   xlabel(h2,'x','fontsize',14); ylabel(h2,'Im(\eta)','fontsize',14)
   
-  h1 = subplot(2,1,1); hold on; set(h1,'box','on')
-  h2 = subplot(2,1,2); hold on; set(h2,'box','on')
-  
-  plot(h1,xx_ext,real(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
-  plot(h1,xx,real(eta),col)
-  ylabel(h1,'Re(\eta)','fontsize',14)
-  title(h1,['floe profile (' col ') and incident wave (k:)'],'fontsize',14)
-  plot(h2,xx_ext,imag(exp(1i*Roots0(1)*(xx_ext+floe_length/2))),'k:')
-  plot(h2,xx,imag(eta),col)
-  xlabel(h2,'x','fontsize',14); ylabel(h2,'Im(\eta)','fontsize',14)
  end
  
 end
 
  
 %% OUTPUTS & FINISH 
+
 
 out_str = ' ''dummy'' '; out_val = ' 0 ';
 
@@ -331,6 +427,21 @@ end
 if strfind(outputs,'surge-nonorm')
  out_str = [out_str '; ''surge'' '];
  out_val = [out_val '; abs(u_sg)'];
+end
+
+if strfind(outputs,'disk')
+ out_str = [out_str '; ''Tm'' '];
+ out_val = [out_val '; Tm'];
+ out_str = [out_str '; ''Rm'' '];
+ out_val = [out_val '; Rm'];
+ out_str = [out_str '; ''etabeam'' '];
+ out_val = [out_val '; etabeam'];
+ out_str = [out_str '; ''phibeam'' '];
+ out_val = [out_val '; phibeam'];
+%  out_str = [out_str '; ''surge'' '];
+%  out_val = [out_val '; u_sg*tanh(Roots0(1)*depth)'];
+%   out_str = [out_str '; ''Roots'' '];
+%  out_val = [out_val '; Roots'];
 end
 
 eval(['out=struct( ''name'', {' out_str ...

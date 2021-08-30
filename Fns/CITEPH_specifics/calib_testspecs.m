@@ -38,8 +38,8 @@ types = {'Regular';
 	 'Regular';  		    
 	 'Irregular';   
 	 'Irregular';   		    
-	 'Irregular'   
-	 'Irregular';}; 
+	 'Irregular';  
+	 'Irregular'}; 
 
 
 
@@ -65,12 +65,6 @@ periods	 = {6.5;
 	    14.0;
 	    14.0;
 	    20.0}; 	
-
-
-
-
-
-
 
 
 wave_heights   = {2;

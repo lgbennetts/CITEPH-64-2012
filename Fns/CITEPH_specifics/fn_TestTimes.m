@@ -13,11 +13,12 @@
 %
 % written by L Bennetts 01.08.2013 / Oceanide, La Seyne
 
-function Tindic = fn_TestTimes(f,x,TYP)
+function Tindic = fn_TestTimes(f,x,TYP,WaveType)
 
 if ~exist('f','var');   f=0.5; end
 if ~exist('x','var');   x=-3; end
 if ~exist('TYP','var'); TYP='single'; end
+if ~exist('WaveType','var'); WaveType='Regular'; end
 
 % Waves
 
@@ -44,12 +45,22 @@ if strcmp(TYP,'attn')
  
  % Significant times [s]
  
- t0 = 50;                   d0='wave maker switched on'; c0='k:';
- t1 = t0 + (MIZ(1)-WMK)/cg; d1='waves reach MIZ'; c1='k:';
- t2 = t0 + (MIZ(2)-WMK)/cg; d2='waves leave MIZ'; c2='k:';
- t3 = t0 + (BCH-WMK)/cg;    d3='waves reach beach'; c3='k:';
- t4 = t0 + 2*(BCH-WMK)/cg;  d4='reflected waves from beach reach wave maker'; c4='k:';
- t5 = 120;                  d5='wave maker switched off'; c5='k:';
+ if strcmp(WaveType,'Regular')
+     t0 = 50;                   d0='wave maker switched on'; c0='k:';
+     t1 = t0 + (MIZ(1)-WMK)/cg; d1='waves reach MIZ'; c1='k:';
+     t2 = t0 + (MIZ(2)-WMK)/cg; d2='waves leave MIZ'; c2='k:';
+     t3 = t0 + (BCH-WMK)/cg;    d3='waves reach beach'; c3='k:';
+     t4 = t0 + 2*(BCH-WMK)/cg;  d4='reflected waves from beach reach wave maker'; c4='k:';
+     t5 = 120;                  d5='wave maker switched off'; c5='k:';
+ else
+     t0 = 50;                   d0='wave maker switched on'; c0='k:';
+     t1 = t0 + (MIZ(1)-WMK)/cg; d1='waves reach MIZ'; c1='k:';
+     t2 = t0 + (MIZ(2)-WMK)/cg; d2='waves leave MIZ'; c2='k:';
+     t3 = t0 + (BCH-WMK)/cg;    d3='waves reach beach'; c3='k:';
+     t4 = t0 + 2*(BCH-WMK)/cg;  d4='reflected waves from beach reach wave maker'; c4='k:';
+     t5 = 440;                  d5='wave maker switched off'; c5='k:';    
+     
+ end
  
  % times relative to specified point [s]
  
@@ -150,13 +161,22 @@ elseif strcmp(TYP,'calibration')
  BCH = 16;
  
  % Significant times [s]
- 
- t0 = 50;                   d0='wave maker switched on'; c0='k:';
- t1 = t0 + (MIZ(1)-WMK)/cg; d1='waves reach MIZ'; c1='k:';
- t2 = t0 + (MIZ(2)-WMK)/cg; d2='waves leave MIZ'; c2='k:';
- t3 = t0 + (BCH-WMK)/cg;    d3='waves reach beach'; c3='k:';
- t4 = t0 + 2*(BCH-WMK)/cg;  d4='reflected waves from beach r each wave maker'; c4='k:';
- t5 = 120;                  d5='wave maker switched off'; c5='k:';
+ if strcmp(WaveType,'Regular')
+     t0 = 50;                   d0='wave maker switched on'; c0='k:';
+     t1 = t0 + (MIZ(1)-WMK)/cg; d1='waves reach MIZ'; c1='k:';
+     t2 = t0 + (MIZ(2)-WMK)/cg; d2='waves leave MIZ'; c2='k:';
+     t3 = t0 + (BCH-WMK)/cg;    d3='waves reach beach'; c3='k:';
+     t4 = t0 + 2*(BCH-WMK)/cg;  d4='reflected waves from beach reach wave maker'; c4='k:';
+     t5 = 120;                  d5='wave maker switched off'; c5='k:';
+ else
+     t0 = 50;                   d0='wave maker switched on'; c0='k:';
+     t1 = t0 + (MIZ(1)-WMK)/cg; d1='waves reach MIZ'; c1='k:';
+     t2 = t0 + (MIZ(2)-WMK)/cg; d2='waves leave MIZ'; c2='k:';
+     t3 = t0 + (BCH-WMK)/cg;    d3='waves reach beach'; c3='k:';
+     t4 = t0 + 2*(BCH-WMK)/cg;  d4='reflected waves from beach reach wave maker'; c4='k:';
+     t5 = 440;                  d5='wave maker switched off'; c5='k:';    
+     
+ end
 
  
  if x<MIZ(1) % point on LHS

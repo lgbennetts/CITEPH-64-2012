@@ -2,7 +2,7 @@
 %% Author: Timothy Williams
 %% Date:   20130724, 09:39:18 CEST
 %% from C112083_Wave_calibration+Irregular_Spectrum.xlsx
-function c39_prams = conc39_testpecs();
+function c39_prams = conc39_testspecs();
 
 
 
@@ -60,8 +60,6 @@ periods	 = {6.5;
 	    14.0;
 	    8.0;  	
 	    14.0}; 	
-
-
 
 
 

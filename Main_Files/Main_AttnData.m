@@ -43,32 +43,41 @@
 function Main_AttnData(Tp,Hm,conc,Tpers,data_out,run_num,probe,WaveType,...
  CREATEIT,DO_PLOT,DO_SAVE,DO_DISP,file_pre,reps,RUNIT)
 
-if ~exist('conc','var'); conc=79; end
+% probe = 1;
+if ~exist('Tp','var'); Tp=0.8; end
+if ~exist('Hm','var'); Hm=20.0; end
+
+if ~exist('conc','var'); conc=39; end
 if ~exist('wbin','var'); wbin=3; end
-if ~exist('WaveType','var');     WaveType='Regular'; end
+if ~exist('WaveType','var');     WaveType='Irregular'; end %'Regular'
 
 if or(~exist('Tp','var'),~exist('Tp','var')); 
- HT=fn_WhatTestData(conc,WaveType,0); HT=HT(:,3); end
+ HT=fn_WhatTestData(conc,WaveType,0); HT=HT(:,1); end
 
 if ~exist('Tp','var'); Tp=HT(2); end
 if ~exist('Hm','var'); Hm=HT(1); end
 
 if ~exist('Tpers','var'); Tpers='Tpers=fn_Tpers(Tp);'; end
 
-if ~exist('CREATEIT','var'); CREATEIT='RHS'; end
+if ~exist('CREATEIT','var'); CREATEIT='calib LHS'; end % 'calib RHS'
 
 if ~exist('run_num','var');  run_num=1; end
 if ~exist('RUNIT','var');    RUNIT='FFT'; end 
 if ~exist('TYP','var');      TYP=0; end
 if ~exist('DEL','var');      DEL=1; end
-if ~exist('DO_PLOT','var');  DO_PLOT = 'Aspec-signal'; end
-if ~exist('DO_SAVE','var');  DO_SAVE = 0; end
+if ~exist('DO_PLOT','var');  DO_PLOT = 'Aspec-signal'; end %'Aspec-signal' 'signal' 'Sspec' 'vid'
+if ~exist('DO_SAVE','var');  DO_SAVE = 1; end
 if ~exist('DO_DISP','var');  DO_DISP = 1; end
 if ~exist('reps','var');     reps = 'all'; end %'calib'; end %
 
+%}{
+% DO_PLOT = 'signal';
+
 if ~exist('probe','var'); 
  if strcmp(CREATEIT(2:3),'HS'); probe=1;
- elseif strcmp(CREATEIT(1:3),'ACC'); probe=10; end
+ elseif strcmp(CREATEIT(1:3),'ACC'); probe=10; 
+ else probe = 1;
+ end
 end
 if ~exist('zoom','var'); zoom=0; end
 
@@ -205,7 +214,7 @@ if CREATEIT~=0
   if isempty(test)
    cprintf('magenta',['>>> Cant 2 find Hm=' num2str(Hm) '; Tp=' num2str(Tp) ' for calibration tests...\n'])
    cprintf('magenta',['   ... switching to LHS... \n'])
-   Main_AttnData(Tp,Hm,conc,Tpers,data_out,run_num,probe,...
+   Main_AttnData(Tp,Hm,conc,Tpers,data_out,run_num,probe,WaveType,...
     'LHS',DO_PLOT,DO_SAVE,DO_DISP,file_pre,reps)
    return
   end
@@ -329,15 +338,41 @@ if CREATEIT~=0
   
   X=xy_lhs(probe,1); Y(1)=xy_lhs(probe,2);
  
-  if isempty(conc) % calibration tests
-   count = length(dum_nms)-40+0+20*zoom; % 40 files(20 probes, 20 zoom)
-   if probe == 10; probe=19; end         % files in non-intuitive order
-  elseif conc==79
-   count = length(dum_nms)-56+0+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
-  elseif conc==39
-   count = length(dum_nms)-54+0+20*zoom; % 54 files(20 probes, 20 zoom, 14 accel 
+  %/./%
+%   if isempty(conc) % calibration tests
+%    count = length(dum_nms)-40+0+20*zoom; % 40 files(20 probes, 20 zoom)
+%    if probe == 10; probe=19; end         % files in non-intuitive order
+%   elseif conc==79
+%    count = length(dum_nms)-56+0+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
+%   elseif conc==39
+%    count = length(dum_nms)-54+0+20*zoom; % 54 files(20 probes, 20 zoom, 14 accel 
+%   end
+ 
+
+  if strcmp(WaveType,'Regular')
+      if isempty(conc) % calibration tests
+       count = length(dum_nms)-40+9+20*zoom; % 40 files(20 probes, 20 zoom)
+       if probe == 10; probe=11; end          % files in non-intuitive order
+      elseif conc==79
+       count = length(dum_nms)-56+10+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel)
+       %count = 12;
+      elseif conc==39
+       count = length(dum_nms)-54+10+20*zoom; % 54 files(20 probes, 20 zoom, 14 accel)
+       %count = 12;
+      end
+  else
+      %}{
+      if isempty(conc) % calibration tests
+       count = 16; % 40 files(20 probes, 20 zoom)
+      elseif conc==79
+       count = 16; % 56 files(20 probes, 20 zoom, 16 accel) 
+       %count = 6;
+      elseif conc==39
+       count = 16; % 54 files(20 probes, 20 zoom, 14 accel)
+       %count = 6;
+      end
   end
-  
+
 %   X(1)=xy_lhs(1,1); Y(1)=xy_lhs(1,2);
 %   dum=load([dum_path c_prams(test(run_ct)).dirname '/' dum_nms(count).name]);
 %   tm = dum(:,1)/10; tm = tm(:);
@@ -408,24 +443,29 @@ if CREATEIT~=0
    CREATEIT ' probe(s)=' int2str(probe)] ;
   end
   
+  % }{ Change this to get different files read
   X=xy_rhs(probe,1); Y(1)=xy_rhs(probe,2);
   if strcmp(WaveType,'Regular')
       if isempty(conc) % calibration tests
        count = length(dum_nms)-40+9+20*zoom; % 40 files(20 probes, 20 zoom)
        if probe == 10; probe=11; end          % files in non-intuitive order
       elseif conc==79
-       count = length(dum_nms)-56+10+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel) 
+       count = length(dum_nms)-56+10+20*zoom; % 56 files(20 probes, 20 zoom, 16 accel)
+       %count = 12;
       elseif conc==39
        count = length(dum_nms)-54+10+20*zoom; % 54 files(20 probes, 20 zoom, 14 accel)
+       %count = 12;
       end
   else
+      %}{
       if isempty(conc) % calibration tests
-       count = 7; % 40 files(20 probes, 20 zoom)
-       if probe == 10; probe=11; end          % files in non-intuitive order
+       count = 16; % 40 files(20 probes, 20 zoom)
       elseif conc==79
-       count = 7; % 56 files(20 probes, 20 zoom, 16 accel) 
+       count = 16; % 56 files(20 probes, 20 zoom, 16 accel) 
+       %count = 6;
       elseif conc==39
-       count = 7; % 54 files(20 probes, 20 zoom, 14 accel)
+       count = 16; % 54 files(20 probes, 20 zoom, 14 accel)
+       %count = 6;
       end
   end
   
@@ -447,6 +487,7 @@ if CREATEIT~=0
   for loop_xy=1:np
    dum=load([dum_path c_prams(test(run_ct)).dirname '/' ...
     dum_nms(count+probe(loop_xy)).name]);
+
    if loop_xy==1; tm = dum(:,1)/10; tm = tm(:); end
    data(:,loop_xy) = dum(:,2)/100; clear dum 
   end
