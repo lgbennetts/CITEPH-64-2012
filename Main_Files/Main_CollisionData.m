@@ -37,16 +37,16 @@ if ~or(strcmp(getenv('LOGNAME'),'a1612881'),...
 end
 
 if exist('OTHER_USR','var')
- DO_CALC = 0;
+ DO_CALC = 1;
  DO_ANALYSIS = 1;
- DO_SAVE = 0;
+ DO_SAVE = 1;
  conc=79;
 end
 
 if ~exist('fig','var');  fig=fn_getfig; end
 if ~exist('col','var');  col=' ''b.'' , ''markersize'' , 12'; end
 if ~exist('conc','var'); conc=79; end
-if ~exist('HT','var');   HT=fn_WhatTestData(conc,'Regular',0); 
+if ~exist('HT','var');   HT=fn_WhatTestData(conc,'Irregular',0); 
                          HT=HT(1:2,:); end
 if ~exist('DO_CALC','var');     DO_CALC     = 1; end
 if ~exist('DO_ANALYSIS','var'); DO_ANALYSIS = 1; end
@@ -58,8 +58,7 @@ if ~exist('xtra_opts','var');   xtra_opts   = 'middle'; end
 if ~exist('data_out','var');
  % data_out.tint='ts=ts+4*T_target; tf=ts+10*T_target; ';
  % data_out.tint='tf=min(t_vec); ';
- data_out.tint=['Tpers=fn_Tpers(T_target); ' ...
-  '[ts,tf] = fn_tint(t_vec,ts,T_target,Tpers);'];
+ data_out.tint=["Tpers=fn_Tpers(T_target,'Irregular');[ts,tf] = fn_tint(t_vec,ts,T_target,Tpers);"];
 end
 
 if conc==39
@@ -98,13 +97,13 @@ if strcmp(test_type,'c79')
   %   Ntests      = 12;
   %   Ntests_reg  = 8;
   %   test_list   = 1:Ntests_reg;
-  HT=fn_WhatTestData(79,'Regular',0); HT=HT(1:2,end);
+  HT=fn_WhatTestData(79,'Irregular',0); HT=HT(1:2,end);
   test_list=1:size(HT,2);
  else
   eval(['c_prams = conc79_testspecs();'])
   pers = zeros(1,length(c_prams)); hts = pers;
   for loop=1:length(c_prams)
-   if strcmp(c_prams(loop).type,'Regular')
+   if strcmp(c_prams(loop).type,'Irregular')
     pers(loop)=10\c_prams(loop).period;
     hts(loop) =10*c_prams(loop).wave_height;
    end
@@ -591,7 +590,7 @@ return
 
 function [time,data,file_list,sensor_names] = citeph_get_data(test_type,test_num,opt,scale)
 
-if ~exist('what_tests','var'); what_tests = 'prelim'; end
+if ~exist('what_tests','var'); what_tests = 'final'; end
 
 if nargin==0
  %test_type   = 'calib';
@@ -633,7 +632,7 @@ elseif strcmp(test_type,'c79')
  if strcmp(what_tests,'prelim')
   fdir  = [basedir '/attenuation_tests/Conc79/'];
  elseif strcmp(what_tests,'final')
-  fdir  = [basedir '/2-Wave_attenuation/Conc79/'];
+  fdir  = [basedir '/2-Wave_attenuation/Conc79/Irregular/'];
  end
  str1  = 'houle_';
  %%
@@ -756,7 +755,7 @@ end
 %%
 
 fx_dir   = [fdir,expt_dir]; %,sub_dir];
-DD       = dir([fx_dir '/' str1 '*.dat']);
+DD       = dir([fx_dir ,'/', str1,'*.dat']);
 n0       = length(DD)-sum(nn)+n0;
 DD       = DD(n0); clear n0
 Nprobes  = length(DD);
@@ -1216,7 +1215,7 @@ else
  elseif strfind(outloc{4},'2')
   X = 2;
  end
- Tind = fn_TestTimes(1/T_target,X,'attn'); clear X
+ Tind = fn_TestTimes(1/T_target,X,'attn','Irregular'); clear X
  count=1;
  for loop=1:length(Tind)
   if strfind(Tind(loop).description,'x')
@@ -1229,6 +1228,8 @@ else
   tstop=min(t_vec); clear t_vec
  else
   eval(data_out.tint)
+  ts = min(t_vec);
+  tf = max(t_vec);
   clear t_vec
  end % end if tint='default'
 end

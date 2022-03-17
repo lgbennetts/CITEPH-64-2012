@@ -39,7 +39,7 @@ if ~exist('th_res','var'); th_res=100; end
 
 if ~exist('TEST','var'); TEST='Oceanide'; end
 
-if ~exist('SURGE','var'); SURGE=1; end
+if ~exist('SURGE','var'); SURGE=0; end
 
 if ~exist('extra_pts','var'); extra_pts=[]; end
 if ~exist('terms_grn','var'); terms_grn=100; end
@@ -57,6 +57,23 @@ else
  cprintf('red',['Not set up yet' '\n'])
  
 end
+
+% %Param
+% % - PolyProp
+% Param.thickness = 0.005;
+% % Param.thickness = 0.01;
+% % Param.thickness = 0.02;
+% % Param.thickness = 0.04;
+% Param.rho = 905;
+% Param.bed = 0.5;
+% Param.floe_diam = 1;
+% Param.MIZ_length = 1;
+% Param.E = 1.6e9;
+% Param.nu = 0.43;
+% Param.draft = Param.thickness.*Param.rho./Param.rho_0; 
+% Param.D = Param.E.*Param.thickness.^3./(12*(1-Param.nu.^2));
+% Param.beta = Param.D./(Param.g.*Param.rho_0);
+
 
 conc=conc/100;
 out_str = ' ''Dummy'' ';
@@ -111,7 +128,8 @@ if strfind(PRBS,'2d EMM')
     attn_2d(loop_p) = out(1).value; clear out
  end
   
- T_2dx = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2);  
+%  T_2dx = exp(conc*log(attn_2d)*Param.MIZ_length/Param.floe_diam/2);  
+ T_2dx = attn_2d;
  clear attn_2d
  
  out_str = [out_str '; ''2d no long'' '];
